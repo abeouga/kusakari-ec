@@ -1,4 +1,4 @@
-﻿namespace KusakariSysOverRay;
+﻿namespace KusakariEcSysOverRay;
 
 public static class AppLog
 {

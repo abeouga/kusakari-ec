@@ -68,10 +68,7 @@ function Get-FreePort {
 
 function Get-MySqlBinCandidates {
     $items = New-Object System.Collections.Generic.List[string]
-    $stateRoots = @(
-        (Join-Path $env:LOCALAPPDATA 'Kusakari\mysql'),
-        (Join-Path $env:LOCALAPPDATA 'Greenly\mysql')
-    )
+    $stateRoots = @((Join-Path $env:LOCALAPPDATA 'Kusakari\mysql'))
     foreach ($root in $stateRoots) {
         $state = Join-Path $root 'instance.json'
         if (Test-Path -LiteralPath $state) {
@@ -82,7 +79,6 @@ function Get-MySqlBinCandidates {
         }
     }
     $items.Add((Join-Path $env:LOCALAPPDATA 'Kusakari\tools\mysql-8.4.11-winx64\bin'))
-    $items.Add((Join-Path $env:LOCALAPPDATA 'Greenly\tools\mysql-8.4.11-winx64\bin'))
     $items.Add((Join-Path $env:ProgramFiles 'MySQL\MySQL Server 8.4\bin'))
     $items.Add((Join-Path $env:ProgramFiles 'MySQL\MySQL Server 8.0\bin'))
     $command = Get-Command mysqld.exe -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -133,9 +129,9 @@ function Resolve-SettingPath([string]$value, [string]$config) {
 
 function Get-PortFromFile([string]$path) {
     if (-not (Test-Path -LiteralPath $path)) { return 0 }
-    $line = Get-Content -LiteralPath $path | Where-Object { $_ -match '^\s*(KUSAKARI_DB_PORT|GREENLY_DB_URL|GREENLY_E2E_DB_URL)\s*=' } | Select-Object -First 1
+    $line = Get-Content -LiteralPath $path | Where-Object { $_ -match '^\s*KUSAKARI_EC_(DB_PORT|DB_URL|E2E_DB_URL)\s*=' } | Select-Object -First 1
     if ($line -match ':(\d{1,5})(?:/|$)') { return [int]$Matches[1] }
-    if ($line -match '^\s*KUSAKARI_DB_PORT\s*=\s*(\d{1,5})') { return [int]$Matches[1] }
+    if ($line -match '^\s*KUSAKARI_EC_DB_PORT\s*=\s*(\d{1,5})') { return [int]$Matches[1] }
     return 0
 }
 
@@ -165,10 +161,7 @@ function Get-PortProcess([int]$number) {
 
 function Get-StateTarget([int]$number) {
     $targets = New-Object System.Collections.Generic.List[object]
-    foreach ($root in @(
-        (Join-Path $env:LOCALAPPDATA 'Kusakari\mysql'),
-        (Join-Path $env:LOCALAPPDATA 'Greenly\mysql')
-    )) {
+    foreach ($root in @((Join-Path $env:LOCALAPPDATA 'Kusakari\mysql'))) {
         $statePath = Join-Path $root 'instance.json'
         if (-not (Test-Path -LiteralPath $statePath)) { continue }
         try { $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json } catch { continue }
@@ -187,7 +180,6 @@ function Get-StateTarget([int]$number) {
 function Get-ConfigCandidate([int]$number) {
     $paths = @(
         (Join-Path $env:LOCALAPPDATA 'Kusakari\mysql\my.ini'),
-        (Join-Path $env:LOCALAPPDATA 'Greenly\mysql\my.ini'),
         (Join-Path $env:ProgramData 'MySQL\MySQL Server 8.4\my.ini'),
         (Join-Path $env:ProgramData 'MySQL\MySQL Server 8.0\my.ini')
     ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -Unique

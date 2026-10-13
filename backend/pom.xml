@@ -11,8 +11,8 @@
     <relativePath />
   </parent>
 
-  <groupId>jp.kusakari</groupId>
-  <artifactId>kusakari-api</artifactId>
+  <groupId>jp.kusakari.ec</groupId>
+  <artifactId>kusakari-ec-api</artifactId>
   <version>0.1.0</version>
 
   <properties>

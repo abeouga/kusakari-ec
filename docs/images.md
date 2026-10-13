@@ -2,7 +2,7 @@
 
 生成方式: 組み込み image_gen（CLI/APIフォールバックは使用していません）。
 生成日: 2026-10-02。各画像は1024 × 1536 PNGで、不透明背景です。実在商品の写真ではありません。
-保存先: `C:\Users\hanam\Desktop\kusakari-mvp\frontend\public\images\`。
+保存先: `frontend/public/images/`（プロジェクトルートからの相対パス）。
 元の生成物を残し、選択した4画像をプロジェクトへコピーしました。画面上のトリミングはCSSの表示範囲です。
 
 ## 最終プロンプト

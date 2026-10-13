@@ -1,11 +1,11 @@
+import { PageLink } from '../workspace/Common';
 import { useState } from 'react';
-import { ShoppingBag, Sun, Ruler, MapPin } from 'lucide-react';
+import { ShoppingBag, Sun, Ruler, MapPin, Eye, ArrowUpRight } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { yen } from '../api';
 
-/** @param {{product:import('../types').Product,storeName:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
-export function ProductDetail({ product, storeName, onClose, onAdd, busy, notice, error }) {
-  
+/** @param {{product:import('../types').Product,storeName:string,storeId?:number,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
+export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onClose, onAdd, busy, notice, error }) {
   const [image, setImage] = useState(product.imageUrl);
   const [quantity, setQuantity] = useState(1);
 
@@ -14,9 +14,7 @@ export function ProductDetail({ product, storeName, onClose, onAdd, busy, notice
     images.push(product.imageUrl);
   }
 
-  const productImages = Array.isArray(product.images)
-    ? product.images
-    : [];
+  const productImages = Array.isArray(product.images) ? product.images : [];
 
   for (const url of productImages) {
     if (url && !images.includes(url)) {
@@ -49,7 +47,8 @@ export function ProductDetail({ product, storeName, onClose, onAdd, busy, notice
           )}
           <div className="spec-chips">
             <div>
-              <small>生産者</small>
+              <small>出店者・生産者</small>
+              <PageLink href={`/store/${storeId}`}>販売店舗の紹介を見る</PageLink>
               <strong>{product.nurseryName || '未設定'}</strong>
               <small>{product.nurseryAddress}</small>
             </div>
@@ -153,6 +152,14 @@ export function ProductDetail({ product, storeName, onClose, onAdd, busy, notice
             <ShoppingBag size={18} />
             カートに追加
           </button>
+          <div className="canvas-product-entry">
+            <a className="canvas-product-button" href={canvasUrl}>
+              <Eye size={19} />
+              <span>Canvasでイメージする</span>
+              <ArrowUpRight size={15} />
+            </a>
+            <p>Canvasの試作画面へ移動します。商品情報は引き継がれません。</p>
+          </div>
           {notice && (
             <p className="success-text" role="status">
               {notice}

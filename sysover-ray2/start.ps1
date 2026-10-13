@@ -3,15 +3,15 @@
 $ErrorActionPreference = 'Stop'
 $setup = Join-Path $PSScriptRoot 'setup.ps1'
 $runtimeRoot = Join-Path $env:LOCALAPPDATA 'Kusakari\tools\dotnet-desktop-10'
-$executable = Join-Path $PSScriptRoot 'app\KusakariSysOverRay.exe'
+$executable = Join-Path $PSScriptRoot 'app\KusakariEcSysOverRay.exe'
 
-if (-not ('KusakariSysOverRayWindowActivation' -as [type])) {
+if (-not ('KusakariEcSysOverRayWindowActivation' -as [type])) {
   Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-public static class KusakariSysOverRayWindowActivation
+public static class KusakariEcSysOverRayWindowActivation
 {
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -51,7 +51,7 @@ public static class KusakariSysOverRayWindowActivation
 
             var className = new StringBuilder(256);
             GetClassName(hWnd, className, className.Capacity);
-            if (!className.ToString().StartsWith("HwndWrapper[KusakariSysOverRay;", StringComparison.Ordinal)) return true;
+            if (!className.ToString().StartsWith("HwndWrapper[KusakariEcSysOverRay;", StringComparison.Ordinal)) return true;
             var title = new StringBuilder(256);
             GetWindowText(hWnd, title, title.Capacity);
             if (title.ToString() != "Kusakari 起動オーバーレイ") return true;
@@ -82,7 +82,7 @@ Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes
 
 try {
   $targetExecutable = [IO.Path]::GetFullPath($executable)
-  $existingProcesses = @(Get-CimInstance Win32_Process -Filter "Name='KusakariSysOverRay.exe'" |
+  $existingProcesses = @(Get-CimInstance Win32_Process -Filter "Name='KusakariEcSysOverRay.exe'" |
     Where-Object {
       if ([string]::IsNullOrWhiteSpace($_.ExecutablePath)) { return $false }
       try { return [IO.Path]::GetFullPath($_.ExecutablePath) -ieq $targetExecutable } catch { return $false }
@@ -94,14 +94,14 @@ try {
     if ($current.ExecutablePath -ine $targetExecutable -or $current.CreationDate -ne $candidate.CreationDate) { continue }
     $oldProcess = Get-Process -Id $candidate.ProcessId -ErrorAction Stop
     Stop-Process -Id $candidate.ProcessId -Force -ErrorAction Stop
-    if (-not $oldProcess.WaitForExit(5000)) { throw '既存のKusakariSysOverRayを終了できませんでした。' }
+    if (-not $oldProcess.WaitForExit(5000)) { throw '既存のKusakariEcSysOverRayを終了できませんでした。' }
     Write-Host "旧オーバーレイを終了しました (PID $($candidate.ProcessId))。"
   }
 
   & $setup
-  if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'KusakariSysOverRayのセットアップに失敗しました。' }
+  if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'KusakariEcSysOverRayのセットアップに失敗しました。' }
   if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-    throw "KusakariSysOverRay.exeが見つかりません: $executable"
+    throw "KusakariEcSysOverRay.exeが見つかりません: $executable"
   }
 
   $systemDotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -121,15 +121,15 @@ try {
   $deadline = [DateTime]::UtcNow.AddSeconds(30)
   do {
     $process.Refresh()
-    if ($process.HasExited) { throw "KusakariSysOverRayが起動後に終了しました (exit $($process.ExitCode))。" }
-    $window = [KusakariSysOverRayWindowActivation]::FindMainWindow([uint32]$process.Id)
+    if ($process.HasExited) { throw "KusakariEcSysOverRayが起動後に終了しました (exit $($process.ExitCode))。" }
+    $window = [KusakariEcSysOverRayWindowActivation]::FindMainWindow([uint32]$process.Id)
     if ($window -ne [IntPtr]::Zero) {
-      [KusakariSysOverRayWindowActivation]::Activate($window)
+      [KusakariEcSysOverRayWindowActivation]::Activate($window)
       [void]$activationShell.AppActivate('Kusakari 起動オーバーレイ')
       Start-Sleep -Milliseconds 250
-      if ([KusakariSysOverRayWindowActivation]::IsWindowVisible($window) -and
-          -not [KusakariSysOverRayWindowActivation]::IsIconic($window) -and
-          [KusakariSysOverRayWindowActivation]::IsTopMost($window)) {
+      if ([KusakariEcSysOverRayWindowActivation]::IsWindowVisible($window) -and
+          -not [KusakariEcSysOverRayWindowActivation]::IsIconic($window) -and
+          [KusakariEcSysOverRayWindowActivation]::IsTopMost($window)) {
         $ui = [System.Windows.Automation.AutomationElement]::FromHandle($window)
         $controlsReady = $true
         foreach ($id in @('StartButton','StopButton','RestartButton')) {
@@ -137,14 +137,14 @@ try {
           if ($null -eq $ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)) { $controlsReady = $false }
         }
         if ($controlsReady) {
-          Write-Host "KusakariSysOverRayの可視画面・最前面属性・操作部品を確認しました (PID $($process.Id))。"
+          Write-Host "KusakariEcSysOverRayの可視画面・最前面属性・操作部品を確認しました (PID $($process.Id))。"
           exit 0
         }
       }
     }
     Start-Sleep -Milliseconds 250
   } while ([DateTime]::UtcNow -lt $deadline)
-  throw "KusakariSysOverRayは起動しましたが、30秒以内に可視画面・最前面属性・操作部品を確認できませんでした (PID $($process.Id))。"
+  throw "KusakariEcSysOverRayは起動しましたが、30秒以内に可視画面・最前面属性・操作部品を確認できませんでした (PID $($process.Id))。"
 } catch {
   Write-Error $_ -ErrorAction Continue
   exit 1

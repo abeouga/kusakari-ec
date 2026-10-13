@@ -1,3 +1,4 @@
+import { ImagePreview } from '../workspace/ImagePreview';
 import { formText, formNumber, numberValue } from '../forms';
 
 /** @type {import('../types').Product} */
@@ -111,6 +112,8 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
             <option>観葉植物</option>
             <option>鉢・庭材</option>
             <option>土・ケア用品</option>
+            <option>芝</option>
+            <option>道具</option>
           </select>
         </label>
         <label>
@@ -212,6 +215,7 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
           相性のよい庭・空間
           <textarea name="styleDescription" defaultValue={p.styleDescription || ''} rows={2} maxLength={5000} />
         </label>
+        <ImagePreview />
         <label className="form-full">
           メイン画像URL
           <input name="imageUrl" defaultValue={p.imageUrl} required maxLength={250} />

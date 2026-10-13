@@ -10,7 +10,7 @@ Import-Toolchain
 function Import-LocalSettings {
     $settingsFile = Join-Path $projectRoot '.env'
     if (-not (Test-Path -LiteralPath $settingsFile)) { throw '.env がありません。.env.example から作成してください。' }
-    $allowed = @('KUSAKARI_DB_USER','KUSAKARI_DB_PASSWORD','KUSAKARI_DB_URL','KUSAKARI_E2E_DB_URL','KUSAKARI_DB_PORT','KUSAKARI_DATABASE_MODE')
+    $allowed = @('KUSAKARI_EC_DB_USER','KUSAKARI_EC_DB_PASSWORD','KUSAKARI_EC_DB_URL','KUSAKARI_EC_E2E_DB_URL','KUSAKARI_EC_DB_PORT','KUSAKARI_EC_DATABASE_MODE')
     foreach ($key in $allowed) { [Environment]::SetEnvironmentVariable($key, $null, 'Process') }
     $seen = @{}
     foreach ($line in Get-Content -LiteralPath $settingsFile) {
@@ -24,15 +24,15 @@ function Import-LocalSettings {
             [Environment]::SetEnvironmentVariable($key, $value, 'Process')
         }
     }
-    if (-not $env:KUSAKARI_DB_PORT) { $env:KUSAKARI_DB_PORT = '3306' }
-    if (-not $env:KUSAKARI_DATABASE_MODE) { $env:KUSAKARI_DATABASE_MODE = 'existing' }
-    if ($env:KUSAKARI_DB_USER -notmatch '^[A-Za-z0-9_]{1,32}$' -or $env:KUSAKARI_DB_USER -eq 'root') { throw 'アプリ用DBユーザー設定が不正です。setup.bat -Reconfigureで設定してください。' }
-    if ($env:KUSAKARI_DB_PORT -notmatch '^\d{1,5}$' -or [int]$env:KUSAKARI_DB_PORT -lt 1 -or [int]$env:KUSAKARI_DB_PORT -gt 65535) { throw 'DBポート設定が不正です。' }
-    if ($env:KUSAKARI_DATABASE_MODE -notin @('existing','managed')) { throw 'MySQL方式の設定が不正です。' }
-    if (-not $env:KUSAKARI_DB_PASSWORD -or $env:KUSAKARI_DB_PASSWORD.Length -gt 128 -or $env:KUSAKARI_DB_PASSWORD -match "['\r\n\x00]") { throw 'アプリ用DBパスワード設定が不正です。setup.bat -Reconfigureで設定してください。' }
-    foreach ($pair in @(@('KUSAKARI_DB_URL','kusakari'), @('KUSAKARI_E2E_DB_URL','kusakari_e2e'))) {
+    if (-not $env:KUSAKARI_EC_DB_PORT) { $env:KUSAKARI_EC_DB_PORT = '3306' }
+    if (-not $env:KUSAKARI_EC_DATABASE_MODE) { $env:KUSAKARI_EC_DATABASE_MODE = 'existing' }
+    if ($env:KUSAKARI_EC_DB_USER -notmatch '^[A-Za-z0-9_]{1,32}$' -or $env:KUSAKARI_EC_DB_USER -eq 'root') { throw 'アプリ用DBユーザー設定が不正です。setup.bat -Reconfigureで設定してください。' }
+    if ($env:KUSAKARI_EC_DB_PORT -notmatch '^\d{1,5}$' -or [int]$env:KUSAKARI_EC_DB_PORT -lt 1 -or [int]$env:KUSAKARI_EC_DB_PORT -gt 65535) { throw 'DBポート設定が不正です。' }
+    if ($env:KUSAKARI_EC_DATABASE_MODE -notin @('existing','managed')) { throw 'MySQL方式の設定が不正です。' }
+    if (-not $env:KUSAKARI_EC_DB_PASSWORD -or $env:KUSAKARI_EC_DB_PASSWORD.Length -gt 128 -or $env:KUSAKARI_EC_DB_PASSWORD -match "['\r\n\x00]") { throw 'アプリ用DBパスワード設定が不正です。setup.bat -Reconfigureで設定してください。' }
+    foreach ($pair in @(@('KUSAKARI_EC_DB_URL','kusakari'), @('KUSAKARI_EC_E2E_DB_URL','kusakari_e2e'))) {
         $url = [Environment]::GetEnvironmentVariable($pair[0], 'Process')
-        $pattern = '^jdbc:mysql://127\.0\.0\.1:' + [regex]::Escape($env:KUSAKARI_DB_PORT) + '/' + $pair[1] + '\?connectionTimeZone=UTC$'
+        $pattern = '^jdbc:mysql://127\.0\.0\.1:' + [regex]::Escape($env:KUSAKARI_EC_DB_PORT) + '/' + $pair[1] + '\?connectionTimeZone=UTC$'
         if ($url -notmatch $pattern) { throw 'DB設定は127.0.0.1のKusakari専用DBに限定しています。setup.bat -Reconfigureで設定してください。' }
     }
 }
@@ -56,11 +56,16 @@ function Get-JavaExecutable {
 }
 
 function Get-OwnedServiceProcesses {
-    $apiMarker = (Join-Path $projectRoot 'backend\target\kusakari-api-0.1.0.jar').ToLowerInvariant()
+    $apiMarkers = @(
+        (Join-Path $projectRoot 'backend\target\kusakari-ec-api-0.1.0.jar'),
+        # A process started before the identifier migration may still hold the old JAR open.
+        (Join-Path $projectRoot 'backend\target\kusakari-api-0.1.0.jar')
+    ) | ForEach-Object { $_.Replace('/', '\').ToLowerInvariant() }
     $webMarker = (Join-Path $projectRoot 'node_modules\vite\bin\vite.js').ToLowerInvariant()
     @(Get-CimInstance Win32_Process -Filter "Name='java.exe' OR Name='node.exe'" | ForEach-Object {
         $command = ([string]$_.CommandLine).Replace('/', '\').ToLowerInvariant()
-        $kind = if ($_.Name -ieq 'java.exe' -and $command.Contains($apiMarker)) { 'Api' }
+        $apiOwned = @($apiMarkers | Where-Object { $command.Contains($_) }).Count -gt 0
+        $kind = if ($_.Name -ieq 'java.exe' -and $apiOwned) { 'Api' }
             elseif ($_.Name -ieq 'node.exe' -and $command.Contains($webMarker)) { 'Web' }
             else { $null }
         if ($kind) {
@@ -119,9 +124,9 @@ function Wait-Endpoint([string]$url, [int]$seconds = 60) {
 
 function Assert-ServicesHealthy {
     $api = Wait-Endpoint 'http://127.0.0.1:8086/api/health' 60
-    if ($api.application -ne 'kusakari' -or $api.backend -ne 'spring-boot') { throw 'API の応答元が Kusakari ではありません。' }
+    if ($api.application -ne 'kusakari-ec' -or $api.backend -ne 'spring-boot') { throw 'API の応答元が Kusakari EC ではありません。' }
     $page = Wait-Endpoint 'http://127.0.0.1:5186/' 30
     if ([string]$page -notlike '*Kusakari*') { throw 'Web 画面の応答元が Kusakari ではありません。' }
     $proxy = Wait-Endpoint 'http://127.0.0.1:5186/api/health' 15
-    if ($proxy.application -ne 'kusakari') { throw 'Web から API への接続が機能していません。' }
+    if ($proxy.application -ne 'kusakari-ec') { throw 'Web から API への接続が機能していません。' }
 }

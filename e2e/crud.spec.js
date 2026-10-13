@@ -66,21 +66,21 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await page.getByRole('button', { name: '商品を保存', exact: true }).click();
     await expect(page.getByTestId(`manage-${product.id}`)).toContainText('3,500');
     await page.reload();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await page.getByRole('link', { name: /カートを開く/ }).click();
     await expect(page.locator('.grand-total')).toContainText('7,000');
     const otherStock = await page.request.get('/api/products?storeId=2').then((r) => r.json());
     expect(otherStock.find((item) => item.id === product.id).stock).toBe(0);
-    await page.getByRole('button', { name: '閉じる', exact: true }).click();
+    await page.goto('/');
     await page.getByRole('button', { name: '商品管理', exact: true }).click();
     await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: '削除', exact: true }).click();
     await page.getByRole('button', { name: '削除を確定', exact: true }).click();
     await expect(page.getByTestId(`manage-${product.id}`)).toHaveCount(0);
     await page.reload();
     await expect(page.getByTestId(`product-${product.id}`)).toHaveCount(0);
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await page.getByRole('link', { name: /カートを開く/ }).click();
     await expect(page.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
     await page.getByRole('button', { name: 'CRUDデモ植物を削除', exact: true }).click();
-    await expect(page.getByRole('dialog')).toContainText('まだ植物が入っていません');
+    await expect(page.getByRole('heading', { name: 'まだ植物が入っていません。' })).toBeVisible();
     expect(sql(`SELECT active FROM products WHERE id='${product.id}';`)).toBe('0');
   } finally {
     if (product && /^[a-f0-9-]{36}$/.test(product.id)) {
@@ -116,12 +116,12 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     await page.goto('/');
     await expect(page.getByTestId('product-rosemary')).toBeVisible();
     await page.getByRole('button', { name: 'ローズマリーをカートに追加', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'カートを開く（1点）' })).toBeVisible();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await expect(page.getByRole('link', { name: 'カートを開く（1点）' })).toBeVisible();
+    await page.getByRole('link', { name: /カートを開く/ }).click();
     await fillDelivery(page, 'デモ受取者');
     await expect(page.locator('.grand-total')).toContainText('2,280');
     await page.reload();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await expect(page.locator('.grand-total')).toContainText('2,280');
     await expect(page.getByLabel('受取者名', { exact: true })).toHaveValue('デモ受取者');
     await page.screenshot({ path: 'artifacts/e2e/crud-cart-after-reload.png', fullPage: true });
     await page.getByRole('button', { name: '入力情報を削除', exact: true }).click();
@@ -138,7 +138,7 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     expect(order.totalYen).toBe(2280);
     expect(order.subtotalYen).toBe(1480);
     expect(order.shippingFeeYen).toBe(800);
-    await expect(page.getByRole('dialog')).toContainText('注文を保存しました');
+    await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
     await page.getByRole('button', { name: '注文情報を編集', exact: true }).click();
@@ -205,12 +205,12 @@ test('mobile detail and delivery form fit the screen and survive reload', async 
   await page.screenshot({ path: 'artifacts/e2e/crud-detail-mobile.png', fullPage: true });
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
   await page.getByRole('button', { name: 'ローズマリーをカートに追加', exact: true }).click();
-  await page.getByRole('button', { name: /カートを開く/ }).click();
+  await page.getByRole('link', { name: /カートを開く/ }).click();
   await fillDelivery(page, 'モバイルデモ受取者');
   await page.reload();
-  await page.getByRole('button', { name: /カートを開く/ }).click();
+  await expect(page.locator('.grand-total')).toContainText('2,280');
   await expect(page.getByLabel('受取者名', { exact: true })).toHaveValue('モバイルデモ受取者');
-  expect(await page.getByRole('dialog').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByLabel('受取者名', { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'artifacts/e2e/crud-cart-mobile.png', fullPage: true });
   const cart = await page.request.get('/api/cart').then((response) => response.json());

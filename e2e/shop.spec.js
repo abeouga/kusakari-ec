@@ -9,7 +9,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
   try {
     await page.goto('/');
     await expect(page.getByTestId('product-olive')).toBeVisible();
-    await page.getByRole('link', { name: 'お気に入りの植物を探す' }).click();
+    await page.getByRole('link', { name: '植物を探す', exact: true }).first().click();
     await expect(page).toHaveURL(/#plants$/);
     await page.getByRole('button', { name: 'ハーブ', exact: true }).click();
     await expect(page.getByTestId('product-rosemary')).toBeVisible();
@@ -26,23 +26,22 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await page.getByRole('button', { name: 'すべて', exact: true }).click();
     await page.getByRole('button', { name: '検索をクリア' }).click();
     await page.getByLabel('商品の並び順').selectOption('price-desc');
-    await expect(page.locator('.product-card').first()).toHaveAttribute('data-testid', 'product-olive');
+    await expect(page.locator('.product-card').first()).toHaveAttribute('data-testid', 'product-canvas-bench');
     await page.getByLabel('商品の並び順').selectOption('price-asc');
-    await expect(page.locator('.product-card').first()).toHaveAttribute('data-testid', 'product-rosemary');
+    await expect(page.locator('.product-card').first()).toHaveAttribute('data-testid', 'product-canvas-brick');
     await page.getByRole('button', { name: 'オリーブの詳細', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('KS-OLV-001');
     await page.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('status')).toContainText('カートを更新');
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await page.getByRole('link', { name: /カートを開く/ }).click();
     await page.getByRole('button', { name: 'オリーブを1個増やす' }).click();
     await expect(page.locator('.quantity-control')).toHaveText('2');
     await expect(page.locator('.grand-total')).toContainText('13,600');
     await page.reload();
-    await expect(page.getByRole('button', { name: 'カートを開く（2点）' })).toBeVisible();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await expect(page.getByRole('link', { name: 'カート（2点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
-    await expect(page.getByRole('dialog')).toHaveAccessibleName('注文内容の確認');
+    await expect(page.getByRole('heading', { name: '注文内容の確認' })).toBeVisible();
     const saved = page.waitForResponse(
       (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
     );
@@ -51,9 +50,9 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     expect(response.status()).toBe(200);
     order = await response.json();
     expect(order.totalYen).toBe(13600);
-    await expect(page.getByRole('dialog')).toContainText('注文を保存しました');
+    await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
-    await expect(page.getByRole('button', { name: 'カートを開く（0点）' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'カート（0点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toContainText(order.id);
     const history = await page.request.get('/api/orders');
@@ -62,6 +61,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await writeFile('artifacts/e2e/order-after-reload.json', JSON.stringify(await history.json(), null, 2));
     await page.screenshot({ path: 'artifacts/e2e/order-after-reload.png', fullPage: true });
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
+    await page.goto('/');
     await page.screenshot({ path: 'artifacts/e2e/catalog-desktop.png', fullPage: true });
     expect(errors).toEqual([]);
   } finally {
@@ -72,21 +72,23 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
 test('nearest store, stock shortage, material match and cart removal', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'モンステラをカートに追加' }).click();
-  await expect(page.getByRole('button', { name: 'カートを開く（1点）' })).toBeVisible();
-  await page.getByRole('button', { name: '店舗を変更' }).click();
+  await expect(page.getByRole('link', { name: 'カートを開く（1点）' })).toBeVisible();
+  await page.getByRole('link', { name: /カートを開く/ }).click();
+  await page.locator('.cart-store').getByRole('button', { name: '変更', exact: true }).click();
   await page.getByLabel('距離の基準').selectOption('横浜駅');
   await expect(page.locator('.store-card').first()).toContainText('横浜グリーンハウス');
   await expect(page.locator('.store-card').first()).toContainText('0 km');
   await page.locator('.store-card').first().getByRole('button', { name: 'この店舗で受け取る' }).click();
   await expect(page.locator('.store-card').first()).toContainText('選択中');
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.goto('/');
   await expect(page.getByRole('button', { name: 'モンステラをカートに追加' })).toBeDisabled();
-  await page.getByRole('button', { name: /カートを開く/ }).click();
-  await expect(page.getByRole('dialog')).toContainText('在庫不足');
+  await page.getByRole('link', { name: /カートを開く/ }).click();
+  await expect(page.locator('.cart-content')).toContainText('在庫不足');
   await expect(page.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
   await page.getByRole('button', { name: 'モンステラを削除' }).click();
-  await expect(page.getByRole('dialog')).toContainText('まだ植物が入っていません');
-  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'まだ植物が入っていません。' })).toBeVisible();
+  await page.goto('/');
   await page.getByRole('checkbox', { name: '在庫ありのみ' }).check();
   await expect(page.getByTestId('product-monstera')).toHaveCount(0);
   await page.getByRole('button', { name: '材料リストから探す' }).click();
@@ -95,10 +97,10 @@ test('nearest store, stock shortage, material match and cart removal', async ({ 
   await page.locator('.material-candidate').first().getByRole('button', { name: 'カートに追加' }).click();
   await expect(page.getByRole('dialog').getByRole('status')).toContainText('カートを更新');
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page.getByRole('button', { name: /カートを開く/ }).click();
-  await expect(page.getByRole('dialog')).toContainText('横浜グリーンハウス');
+  await page.getByRole('link', { name: /カートを開く/ }).click();
+  await expect(page.locator('.cart-store')).toContainText('横浜グリーンハウス');
   await page.getByRole('button', { name: 'オリーブを削除' }).click();
-  await expect(page.getByRole('dialog')).toContainText('まだ植物が入っていません');
+  await expect(page.getByRole('heading', { name: 'まだ植物が入っていません。' })).toBeVisible();
   const cart = await page.request.get('/api/cart');
   expect((await cart.json()).items).toHaveLength(0);
 });
@@ -145,8 +147,8 @@ test('checkout retry after an explicitly lost response keeps the same order', as
     const products = await productsResponse.json();
     const before = products.find((product) => product.id === 'rosemary').stock;
     await page.getByRole('button', { name: 'ローズマリーをカートに追加' }).click();
-    await expect(page.getByRole('button', { name: 'カートを開く（1点）' })).toBeVisible();
-    await page.getByRole('button', { name: /カートを開く/ }).click();
+    await expect(page.getByRole('link', { name: 'カートを開く（1点）' })).toBeVisible();
+    await page.getByRole('link', { name: /カートを開く/ }).click();
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
     await page.route('**/api/orders', async (route) => {
       if (route.request().method() !== 'POST') {
@@ -164,13 +166,13 @@ test('checkout retry after an explicitly lost response keeps the same order', as
       await route.continue();
     });
     await page.getByRole('button', { name: 'デモ注文を確定する' }).click();
-    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('サーバーに接続できません');
+    await expect(page.getByRole('alert')).toContainText('サーバーに接続できません');
     await page.getByRole('button', { name: 'デモ注文を確定する' }).click();
-    await expect(page.getByRole('dialog')).toContainText('注文を保存しました');
+    await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     expect(payloads).toHaveLength(2);
     expect(payloads[1]).toEqual(payloads[0]);
     await page.reload();
-    await expect(page.getByRole('button', { name: 'カートを開く（0点）' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'カート（0点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toContainText(order.id);
     const historyResponse = await page.request.get('/api/orders');

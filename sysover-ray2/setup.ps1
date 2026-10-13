@@ -3,9 +3,9 @@ $source = Join-Path $PSScriptRoot 'SysOverRay'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 . (Join-Path $projectRoot 'scripts\toolchain.ps1')
 Import-Toolchain
-$project = Join-Path $source 'KusakariSysOverRay.csproj'
+$project = Join-Path $source 'KusakariEcSysOverRay.csproj'
 $destination = Join-Path $PSScriptRoot 'app'
-$executable = Join-Path $destination 'KusakariSysOverRay.exe'
+$executable = Join-Path $destination 'KusakariEcSysOverRay.exe'
 
 if (-not (Get-Command dotnet.exe -ErrorAction SilentlyContinue)) {
     throw 'SysOverRay の作成には .NET 10 SDK が必要です。'

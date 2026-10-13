@@ -1,4 +1,4 @@
-namespace KusakariSysOverRay;
+namespace KusakariEcSysOverRay;
 
 public sealed class OverlaySettings
 {

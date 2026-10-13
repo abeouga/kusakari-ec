@@ -9,16 +9,16 @@ importRuntimeTools(root);
 if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
 const mode = process.argv[2] || 'dev';
 if (mode === 'e2e') {
-  const url = process.env.KUSAKARI_E2E_DB_URL;
+  const url = process.env.KUSAKARI_EC_E2E_DB_URL;
   e2eDatabasePort();
-  process.env.KUSAKARI_DB_URL = url;
-  process.env.KUSAKARI_API_PORT = '18086';
-  process.env.KUSAKARI_WEB_ORIGIN = 'http://127.0.0.1:15186';
+  process.env.KUSAKARI_EC_DB_URL = url;
+  process.env.KUSAKARI_EC_API_PORT = '18086';
+  process.env.KUSAKARI_EC_WEB_ORIGIN = 'http://127.0.0.1:15186';
 }
 const build = mode === 'build';
 const windowsBuild = build && process.platform === 'win32';
 let command = 'java';
-let args = ['-jar', 'target/kusakari-api-0.1.0.jar'];
+let args = ['-jar', 'target/kusakari-ec-api-0.1.0.jar'];
 if (build) {
   command = './mvnw';
   args = ['-B', '-ntp', 'package', '-DskipTests'];

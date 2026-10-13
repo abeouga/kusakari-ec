@@ -1,4 +1,4 @@
-﻿$toolsRoot = if ($env:KUSAKARI_TOOLS_HOME) { $env:KUSAKARI_TOOLS_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\tools' }
+﻿$toolsRoot = if ($env:KUSAKARI_EC_TOOLS_HOME) { $env:KUSAKARI_EC_TOOLS_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\tools' }
 
 function Add-ToolPath([string]$directory) {
     if ($directory -and (Test-Path -LiteralPath $directory)) { $env:Path = "$directory;$env:Path" }
@@ -10,12 +10,12 @@ function Import-Toolchain {
         $tools = Get-Content -Raw -LiteralPath $settings | ConvertFrom-Json
         foreach ($directory in @($tools.Node, $tools.Java, $tools.Dotnet, $tools.MySql)) { Add-ToolPath $directory }
         if (Test-Path -LiteralPath (Join-Path $tools.Java 'javac.exe')) { $env:JAVA_HOME = Split-Path $tools.Java -Parent }
-        if ($tools.DotnetDesktop -and (Test-Path -LiteralPath (Join-Path $tools.DotnetDesktop 'dotnet.exe'))) {
-            $env:DOTNET_ROOT = $tools.DotnetDesktop
-            $env:DOTNET_ROOT_X64 = $tools.DotnetDesktop
-        } elseif ($tools.Dotnet -and (Test-Path -LiteralPath (Join-Path $tools.Dotnet 'dotnet.exe'))) {
+        if ($tools.Dotnet -and (Test-Path -LiteralPath (Join-Path $tools.Dotnet 'dotnet.exe'))) {
             $env:DOTNET_ROOT = $tools.Dotnet
             $env:DOTNET_ROOT_X64 = $tools.Dotnet
+        } elseif ($tools.DotnetDesktop -and (Test-Path -LiteralPath (Join-Path $tools.DotnetDesktop 'dotnet.exe'))) {
+            $env:DOTNET_ROOT = $tools.DotnetDesktop
+            $env:DOTNET_ROOT_X64 = $tools.DotnetDesktop
         }
     }
 }
@@ -41,6 +41,91 @@ function Get-VerifiedArchive([string]$url, [string]$hash, [string]$algorithm = '
 function Expand-ToolArchive([string]$archive, [string]$destination) {
     try { Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force }
     finally { Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue }
+}
+
+function Test-DotnetToolchain([string]$executable, [string]$root) {
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { return $false }
+    $previousRoot = $env:DOTNET_ROOT
+    $previousRootX64 = $env:DOTNET_ROOT_X64
+    try {
+        $env:DOTNET_ROOT = $root
+        $env:DOTNET_ROOT_X64 = $root
+        $sdks = @(& $executable --list-sdks 2>$null)
+        $sdkExitCode = $LASTEXITCODE
+        $runtimes = @(& $executable --list-runtimes 2>$null)
+        $runtimeExitCode = $LASTEXITCODE
+        return $sdkExitCode -eq 0 -and $runtimeExitCode -eq 0 -and
+            @($sdks | Where-Object { $_ -match '^10\.' }).Count -gt 0 -and
+            @($runtimes | Where-Object { $_ -match '^Microsoft\.WindowsDesktop\.App 10\.' }).Count -gt 0
+    } catch {
+        return $false
+    } finally {
+        if ($null -eq $previousRoot) { Remove-Item Env:DOTNET_ROOT -ErrorAction SilentlyContinue }
+        else { $env:DOTNET_ROOT = $previousRoot }
+        if ($null -eq $previousRootX64) { Remove-Item Env:DOTNET_ROOT_X64 -ErrorAction SilentlyContinue }
+        else { $env:DOTNET_ROOT_X64 = $previousRootX64 }
+    }
+}
+
+function Remove-ManagedDotnetDirectory([string]$directory) {
+    $toolsPath = [IO.Path]::GetFullPath($toolsRoot).TrimEnd('\')
+    $fullPath = [IO.Path]::GetFullPath($directory).TrimEnd('\')
+    $toolsPrefix = $toolsPath + [IO.Path]::DirectorySeparatorChar
+    if (-not $fullPath.StartsWith($toolsPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        (Split-Path -Leaf $fullPath) -ne 'dotnet10') {
+        throw "Refusing to remove a .NET directory outside the managed tools folder: $fullPath"
+    }
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Container)) { return }
+    $item = Get-Item -LiteralPath $fullPath -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Refusing to remove a .NET reparse point: $fullPath"
+    }
+    $reparsePoints = Get-ChildItem -Force -LiteralPath $fullPath -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 }
+    if ($reparsePoints) { throw "Refusing to remove a .NET directory containing reparse points: $fullPath" }
+    Remove-Item -LiteralPath $fullPath -Recurse -Force
+}
+
+function Install-VerifiedDotnetSdk([string]$version, [string]$archiveHash, [string]$directory) {
+    New-Item -ItemType Directory -Path $toolsRoot -Force | Out-Null
+    $installerScript = Join-Path $toolsRoot 'dotnet-install.ps1'
+    $archive = Join-Path $toolsRoot ([guid]::NewGuid().ToString('N') + '.zip')
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri 'https://dot.net/v1/dotnet-install.ps1' -OutFile $installerScript -TimeoutSec 120
+        $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $arguments = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "{0}" -Version "{1}" -InstallDir "{2}" -NoPath -Architecture x64 -ZipPath "{3}" -KeepZip' -f $installerScript, $version, $directory, $archive
+        $process = New-Object Diagnostics.Process
+        $process.StartInfo.FileName = $powershell
+        $process.StartInfo.Arguments = $arguments
+        $process.StartInfo.WorkingDirectory = $toolsRoot
+        $process.StartInfo.UseShellExecute = $false
+        $process.StartInfo.CreateNoWindow = $true
+        $process.StartInfo.RedirectStandardOutput = $true
+        $process.StartInfo.RedirectStandardError = $true
+        $null = $process.Start()
+        $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
+        $standardErrorTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $standardOutput = $standardOutputTask.Result
+        $standardError = $standardErrorTask.Result
+        $installerExitCode = $process.ExitCode
+        $process.Dispose()
+        if ($standardOutput) { Write-Host $standardOutput.TrimEnd() }
+        if ($installerExitCode -ne 0) { throw "Microsoft .NET SDK installer failed with exit code $installerExitCode. $standardError" }
+        if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'Microsoft .NET SDK installer did not retain its archive for verification.' }
+        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA512).Hash -ine $archiveHash) {
+            throw 'The installed .NET SDK archive checksum does not match Microsoft release metadata.'
+        }
+        if (-not (Test-DotnetToolchain (Join-Path $directory 'dotnet.exe') $directory)) {
+            throw 'The installed .NET SDK or Windows Desktop runtime failed validation.'
+        }
+    } catch {
+        Remove-ManagedDotnetDirectory $directory
+        throw
+    } finally {
+        Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $installerScript -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Initialize-Toolchain {
@@ -101,53 +186,32 @@ function Initialize-Toolchain {
     }
     Add-ToolPath $javaBin
     $env:JAVA_HOME = Split-Path $javaBin -Parent
-    $dotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue
-    $sdkReady = $false
-    if ($dotnet) {
-        $sdks = & $dotnet.Source --list-sdks
-        $runtimes = & $dotnet.Source --list-runtimes
-        $sdkReady = @($sdks | Where-Object { $_ -match '^10\.' }).Count -gt 0 -and
-            @($runtimes | Where-Object { $_ -match '^Microsoft.WindowsDesktop.App 10\.' }).Count -gt 0
+    $dotnetDirectory = Join-Path $toolsRoot 'dotnet10'
+    $dotnetExecutable = Join-Path $dotnetDirectory 'dotnet.exe'
+    $dotnet = Get-Command dotnet.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    $dotnetRoot = $null
+    if ($dotnet -and (Test-DotnetToolchain $dotnet.Source (Split-Path $dotnet.Source -Parent))) {
+        $dotnetRoot = Split-Path $dotnet.Source -Parent
     }
-    if (-not $sdkReady) {
+    if (-not $dotnetRoot -and (Test-DotnetToolchain $dotnetExecutable $dotnetDirectory)) {
+        $dotnet = [pscustomobject]@{ Source = $dotnetExecutable }
+        $dotnetRoot = $dotnetDirectory
+    }
+    if (-not $dotnetRoot) {
+        Remove-ManagedDotnetDirectory $dotnetDirectory
         $metadata = Invoke-RestMethod 'https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json' -TimeoutSec 30
         $release = $metadata.releases | Where-Object { $_.sdk.version -eq $metadata.'latest-sdk' } | Select-Object -First 1
-        $file = $release.sdk.files | Where-Object { $_.rid -eq 'win-x64' -and $_.name -like '*.zip' } | Select-Object -First 1
-        if (-not $file.hash) { throw '.NET SDK配布情報を取得できません。' }
-        $directory = Join-Path $toolsRoot 'dotnet10'
-        Expand-ToolArchive (Get-VerifiedArchive $file.url $file.hash 'SHA512') $directory
-        Add-ToolPath $directory
-        $env:DOTNET_ROOT = $directory; $env:DOTNET_ROOT_X64 = $directory
+        $file = $release.sdk.files | Where-Object { $_.rid -eq 'win-x64' -and $_.name -eq 'dotnet-sdk-win-x64.zip' } | Select-Object -First 1
+        if (-not $release.sdk.version -or $file.hash -notmatch '^[a-fA-F0-9]{128}$') { throw '.NET SDK配布情報を取得できません。' }
+        Install-VerifiedDotnetSdk $release.sdk.version $file.hash $dotnetDirectory
+        $dotnet = [pscustomobject]@{ Source = $dotnetExecutable }
+        $dotnetRoot = $dotnetDirectory
     }
-    $dotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $dotnet) { throw '.NET SDKの実行ファイルを特定できません。' }
-    $runtimes = & $dotnet.Source --list-runtimes
-    $dotnetDesktop = $null
-    if (-not (@($runtimes | Where-Object { $_ -match '^Microsoft\.WindowsDesktop\.App 10\.' }).Count -gt 0)) {
-        $metadata = Invoke-RestMethod 'https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json' -TimeoutSec 30
-        $release = $metadata.releases | Select-Object -First 1
-        $file = $release.windowsdesktop.files | Where-Object { $_.rid -eq 'win-x64' -and $_.name -like '*.zip' } | Select-Object -First 1
-        if (-not $file.hash) { throw '.NET Windows Desktop Runtime配布情報を取得できません。' }
-        $dotnetDesktop = Join-Path $toolsRoot 'dotnet-desktop-10'
-        $desktopExecutable = Join-Path $dotnetDesktop 'dotnet.exe'
-        $desktopReady = $false
-        if (Test-Path -LiteralPath $desktopExecutable) {
-            $desktopRuntimes = & $desktopExecutable --list-runtimes 2>$null
-            $desktopReady = @($desktopRuntimes | Where-Object { $_ -match '^Microsoft\.WindowsDesktop\.App 10\.' }).Count -gt 0
-        }
-        if (-not $desktopReady) {
-            Expand-ToolArchive (Get-VerifiedArchive $file.url $file.hash 'SHA512') $dotnetDesktop
-            if (-not (Test-Path -LiteralPath $desktopExecutable)) { throw '.NET Windows Desktop Runtimeの展開後確認に失敗しました。' }
-            $desktopRuntimes = & $desktopExecutable --list-runtimes 2>$null
-            if (-not (@($desktopRuntimes | Where-Object { $_ -match '^Microsoft\.WindowsDesktop\.App 10\.' }).Count -gt 0)) {
-                throw '.NET Windows Desktop Runtime 10の導入確認に失敗しました。'
-            }
-        }
-        $env:DOTNET_ROOT = $dotnetDesktop
-        $env:DOTNET_ROOT_X64 = $dotnetDesktop
-    }
+    if (-not (Test-DotnetToolchain $dotnet.Source $dotnetRoot)) { throw '.NET SDK 10またはWindows Desktop Runtime 10が利用できません。' }
+    Add-ToolPath $dotnetRoot
+    $env:DOTNET_ROOT = $dotnetRoot
+    $env:DOTNET_ROOT_X64 = $dotnetRoot
     $tools = @{ Node = Split-Path (Get-Command node.exe).Source -Parent; Java = $javaBin; Dotnet = Split-Path $dotnet.Source -Parent }
-    if ($dotnetDesktop) { $tools.DotnetDesktop = $dotnetDesktop }
     New-Item -ItemType Directory -Path (Join-Path $projectRoot '.runtime') -Force | Out-Null
     $tools | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $projectRoot '.runtime\toolchain.json') -Encoding UTF8
     Write-Host 'Node.js・Java JDK・.NET SDKの準備を確認しました。'

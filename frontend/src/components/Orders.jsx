@@ -3,9 +3,10 @@ import { PackageCheck } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { OrderSummary } from './Cart';
 import { DeliveryForm } from './DeliveryForm';
+import { CancelRequest } from '../workspace/OrderPages';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void}} props */
-export function Orders({ shop, onClose }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,demo?:import('../workspace/useDemo').Demo}} props */
+export function Orders({ shop, onClose, demo }) {
   const [editing, setEditing] = useState('');
   const [deleting, setDeleting] = useState('');
   /** @param {string} id @param {import('../types').DeliveryDetails} details */
@@ -41,6 +42,8 @@ export function Orders({ shop, onClose }) {
       {shop.orders.map((order) => (
         <section className="history-entry" key={order.id} data-testid={`order-${order.id}`}>
           <OrderSummary order={order} />
+          <p>注文状態：デモ注文受付済み（実決済・発送なし）</p>
+          {demo && <CancelRequest demo={demo} orderId={order.id} />}
           <div className="form-actions">
             <button className="secondary-button" disabled={shop.busy} onClick={() => setEditing(order.id)}>
               注文情報を編集

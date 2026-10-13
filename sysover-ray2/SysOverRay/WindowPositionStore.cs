@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace KusakariSysOverRay;
+namespace KusakariEcSysOverRay;
 
 public readonly record struct WindowPosition(double Left, double Top, bool Compact);
 

@@ -1,0 +1,105 @@
+/* ECのヘッダーを正本とし、両アプリはこのCSSを読み込みます。 */
+.kusakari-site-chrome {
+  --green: #294c3e;
+  --line: #e1e4da;
+  flex: none;
+  min-width: 0;
+  color: #293a31;
+  background: #fcfbf7;
+  font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.kusakari-site-chrome * { box-sizing: border-box; }
+.kusakari-site-chrome a { color: inherit; text-decoration: none; }
+.kusakari-site-chrome button { color: inherit; font: inherit; cursor: pointer; }
+.kusakari-site-chrome svg { flex-shrink: 0; }
+.kusakari-site-chrome a:focus-visible,
+.kusakari-site-chrome button:focus-visible { outline: 3px solid #bb9568; outline-offset: 4px; }
+.kusakari-site-chrome .announcement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 5%;
+  color: #f5f4ed;
+  background: var(--green);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+.kusakari-site-chrome .announcement span:first-child { font-size: 9px; letter-spacing: 1.8px; }
+.kusakari-site-chrome .site-header {
+  display: flex;
+  align-items: center;
+  height: 92px;
+  gap: 24px;
+  padding: 0 5%;
+  border-bottom: 1px solid var(--line);
+}
+.kusakari-site-chrome .brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  font-family: Georgia, serif;
+  font-size: 37px;
+  font-weight: 400;
+  letter-spacing: -1.8px;
+}
+.kusakari-site-chrome .brand-icon { display: block; width: 44px; height: 44px; flex: 0 0 44px; object-fit: contain; }
+.kusakari-site-chrome .brand-dot { color: #a88f6c; }
+.kusakari-site-chrome nav { display: flex; align-items: center; gap: 24px; margin: auto; min-width: 0; max-width: 100%; }
+.kusakari-site-chrome nav a,
+.kusakari-site-chrome nav button { background: none; border: 0; padding: 32px 0; font-size: 12px; white-space: nowrap; }
+.kusakari-site-chrome nav .active { border-bottom: 2px solid var(--green); }
+.kusakari-site-chrome .workspace-entry-links { display: flex; align-items: center; gap: 16px; font-size: 12px; white-space: nowrap; }
+.kusakari-site-chrome .account-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid #d8e0d2;
+  border-radius: 999px;
+  color: var(--green);
+  background: #f1f4ec;
+}
+.kusakari-site-chrome .account-entry:hover { background: #e4ebdc; border-color: #a8b99e; }
+.kusakari-site-chrome .account-entry-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: #fff; }
+.kusakari-site-chrome .header-actions { display: flex; align-items: center; gap: 22px; }
+.kusakari-site-chrome .history-button { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 1px 6px; background: none; font-size: 11px; white-space: nowrap; }
+.kusakari-site-chrome .bag-button { display: flex; align-items: center; gap: 9px; font-size: 12px; white-space: nowrap; }
+.kusakari-site-chrome .bag-count { display: grid; place-items: center; min-width: 20px; height: 20px; border-radius: 50%; color: #fff; background: var(--green); font-size: 10px; }
+@media (min-width: 1600px) {
+  .kusakari-site-chrome .site-header,
+  .kusakari-site-chrome .announcement { padding-inline: max(5%, calc((100% - 1360px) / 2)); }
+}
+@media (max-width: 1200px) {
+  .kusakari-site-chrome .site-header { height: auto; min-height: 92px; flex-wrap: wrap; padding-block: 16px; row-gap: 8px; }
+  .kusakari-site-chrome nav { order: 3; flex-basis: 100%; justify-content: center; }
+  .kusakari-site-chrome nav a,
+  .kusakari-site-chrome nav button { padding-block: 12px; }
+  .kusakari-site-chrome .header-actions { margin-left: auto; }
+}
+@media (max-width: 1000px) {
+  .kusakari-site-chrome .site-header { gap: 20px; padding-inline: 4%; }
+  .kusakari-site-chrome nav { gap: 20px; }
+  .kusakari-site-chrome .header-actions { gap: 12px; }
+}
+@media (max-width: 900px) {
+  .kusakari-site-chrome .workspace-entry-links { gap: 10px; flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+  .kusakari-site-chrome .announcement { height: 29px; justify-content: center; font-size: 9px; }
+  .kusakari-site-chrome .announcement span:first-child,
+  .kusakari-site-chrome .announcement span:last-child { display: none; }
+  .kusakari-site-chrome .site-header { height: auto; min-height: 74px; justify-content: space-between; gap: 10px; }
+  .kusakari-site-chrome .brand { font-size: 31px; }
+  .kusakari-site-chrome .brand-icon { width: 36px; height: 36px; flex-basis: 36px; }
+  .kusakari-site-chrome nav { justify-content: flex-start; gap: 18px; overflow-x: auto; }
+  .kusakari-site-chrome .workspace-entry-links { order: 4; width: 100%; margin: 0; }
+  .kusakari-site-chrome .history-button { font-size: 10px; }
+  .kusakari-site-chrome .header-actions { gap: 12px; }
+  .kusakari-site-chrome .bag-text { display: none; }
+}

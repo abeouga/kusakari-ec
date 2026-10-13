@@ -1,10 +1,11 @@
 {
-  "name": "kusakari",
+  "name": "kusakari-ec",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "workspaces": [
-    "frontend"
+    "frontend",
+    "packages/site-header"
   ],
   "scripts": {
     "dev:web": "npm --workspace frontend run dev",
@@ -12,7 +13,7 @@
     "build:api": "node scripts/api.mjs build",
     "build:web": "npm --workspace frontend run build",
     "typecheck": "tsc -p frontend/jsconfig.json",
-    "lint": "eslint frontend/src scripts e2e *.js",
+    "lint": "eslint frontend/src packages/site-header scripts e2e *.js",
     "check": "npm run typecheck && npm run lint && npm run build:web && npm run build:api",
     "test:e2e": "playwright test",
     "format": "prettier --write frontend/src backend/src/main/java scripts/*.mjs e2e/*.js *.js",

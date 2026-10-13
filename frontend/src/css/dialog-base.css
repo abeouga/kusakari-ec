@@ -89,6 +89,36 @@
   width: 100%;
   gap: 14px;
 }
+.canvas-product-entry {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid #dce3d7;
+  border-radius: 10px;
+  background: #f4f6ef;
+}
+.canvas-product-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 4px;
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.canvas-product-button svg:first-child {
+  color: #71866a;
+}
+.canvas-product-button svg:last-child {
+  margin-left: auto;
+}
+.canvas-product-entry p {
+  margin: 7px 0 0 26px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
 .product-detail .fine-print {
   font-size: 9px;
   margin-bottom: 0;

@@ -70,10 +70,63 @@
   background: transparent;
   color: var(--green);
 }
-.hero-button {
+.canvas-entry-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 400px);
+  max-width: 100%;
+  min-height: 70px;
+  margin-top: 0;
+  padding: 12px 16px;
+  border: 1px solid #d5ddcf;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f8f2, #edf2e9);
+  color: var(--green);
   text-decoration: none;
-  padding: 17px 25px;
-  gap: 35px;
+  box-shadow: 0 8px 24px #294c3e0d;
+  transition:
+    transform 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.canvas-entry-button:hover {
+  transform: translateY(-2px);
+  border-color: #aab9a2;
+  box-shadow: 0 12px 28px #294c3e18;
+}
+.canvas-entry-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #294c3e;
+  color: #f8f8f2;
+}
+.canvas-entry-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.canvas-entry-copy small {
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  color: #798470;
+}
+.canvas-entry-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.canvas-entry-arrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #6e8063;
+  width: 19px;
+  height: 19px;
 }
 .hero-footnote {
   margin-top: 42px;
@@ -151,23 +204,4 @@
   letter-spacing: 2px;
   background: #f7f4e9b5;
   padding: 12px 14px;
-}
-.benefits {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-block: 1px solid var(--line);
-  padding: 21px 5%;
-  gap: 9%;
-  font-size: 11px;
-  letter-spacing: 0.4px;
-  background: #f6f6ef;
-}
-.benefits span {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.benefits svg {
-  color: #6e8063;
 }

@@ -3,8 +3,8 @@ import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
 import { yen } from '../api';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void}} props */
-export function ProductManager({ shop, onClose }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
+export function ProductManager({ shop, onClose, embedded = false }) {
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
   const [formKey, setFormKey] = useState(0);
   const [deleting, setDeleting] = useState('');
@@ -28,7 +28,7 @@ export function ProductManager({ shop, onClose }) {
     }
   }
   return (
-    <Dialog title="商品管理" onClose={onClose} wide>
+    <ManagerFrame embedded={embedded} onClose={onClose}>
       <p className="muted">
         ローカルデモの商品と店舗別在庫を登録・編集します。削除した商品は販売一覧から非表示になります。
       </p>
@@ -112,6 +112,23 @@ export function ProductManager({ shop, onClose }) {
           onDone={newProduct}
         />
       </div>
+    </ManagerFrame>
+  );
+}
+
+/** @param {{embedded:boolean,onClose:()=>void,children:import('react').ReactNode}} props */
+function ManagerFrame({ embedded, onClose, children }) {
+  if (embedded)
+    return (
+      <section className="workspace-card">
+        <h2>商品一覧・登録・編集</h2>
+        <p className="api-note">実API・MySQLを使用します。ローカルデモでは出店者の権限分離はありません。</p>
+        {children}
+      </section>
+    );
+  return (
+    <Dialog title="商品管理" onClose={onClose} wide>
+      {children}
     </Dialog>
   );
 }

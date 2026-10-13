@@ -1,4 +1,5 @@
-import { ShoppingBag, Sprout } from 'lucide-react';
+import { History, ShoppingCart } from 'lucide-react';
+import { BrandIcon } from './BrandIcon';
 import { Cart } from './Cart';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onOrders:()=>void,onStores:()=>void}} props */
@@ -15,7 +16,7 @@ export function CartPage({ shop, onOrders, onStores }) {
       </div>
       <header className="site-header cart-page-header">
         <a className="brand" href="/" aria-label="Kusakari トップへ">
-          <Sprout strokeWidth={1.5} />
+          <BrandIcon />
           <span>
             kusakari<span className="brand-dot">.</span>
           </span>
@@ -25,10 +26,11 @@ export function CartPage({ shop, onOrders, onStores }) {
         </nav>
         <div className="header-actions">
           <button className="history-button" onClick={onOrders}>
+            <History size={18} aria-hidden="true" />
             注文履歴
           </button>
           <a className="bag-button active-bag" href="/cart" aria-current="page" aria-label={`カート（${itemCount}点）`}>
-            <ShoppingBag size={20} />
+            <ShoppingCart size={20} />
             <span className="bag-text">カート</span>
             <span className="bag-count">{itemCount}</span>
           </a>
@@ -40,7 +42,7 @@ export function CartPage({ shop, onOrders, onStores }) {
       <footer className="site-footer cart-page-footer">
         <div>
           <a className="brand footer-brand" href="/">
-            <Sprout strokeWidth={1.5} />
+            <BrandIcon />
             <span>kusakari.</span>
           </a>
           <p>植物と、暮らす。</p>

@@ -82,15 +82,15 @@
 
 50行まで受け付け、未対応コードは `UNMAPPED` です。単位は `piece`（鉢）のみです。
 
-### 将来のGreenly接続手順
+### Kusakari Canvas（仮称）からの商品候補連携
 
-1. Greenly側でGardenDocumentを集計し、材料コード・個数・単位へ変換します。Three.jsの表示オブジェクトは送信しません。
-2. Kusakariの候補取得APIへ送り、利用者が商品と受取店舗を選択します。
+1. Canvas側でGardenDocumentの配置内容を商品候補照合用の `materialCode / quantity / unit` へ変換します。Three.jsのScene/Object3Dは送信しません。
+2. Kusakariの `/materials/quote` に送り、利用者が候補商品と受取店舗を選択します。
 3. 選択した `productId / quantity` をECのカートへ追加します。
-4. ECの最新価格・在庫を確認し、注文確認画面で利用者が確定します。
+4. EC側で最新価格・在庫を確認し、注文確認画面で利用者が確定します。
 
-現在はGreenlyからの通信を許可しておらず、この変換処理も実装していません。
-接続時には認証・許可Origin・Cookieの共有方針・改ざんや重複の扱いを別途決定します。
+現在、Canvas試作から候補取得APIへの自動通信とカート連携は実装していません。現在の `/materials/quote` は材料コード・数量・単位を受け取り、デモ商品から候補を返します。単位は `piece` のみです。
+接続時には認証・許可Origin・Cookieの共有方針・改ざんや重複の扱いを定めます。
 クライアントからの価格やownerIdは採用しません。
 
 ## エラー

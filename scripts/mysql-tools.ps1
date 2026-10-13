@@ -1,10 +1,10 @@
 ﻿$ErrorActionPreference = 'Stop'
 
-function Get-KusakariMySqlBin {
+function Get-KusakariEcMySqlBin {
   param([switch]$Portable)
   $candidates = @()
-  if ($env:KUSAKARI_EXISTING_MYSQL_BIN) { $candidates += $env:KUSAKARI_EXISTING_MYSQL_BIN }
-  $stateRoot = if ($env:KUSAKARI_MYSQL_HOME) { $env:KUSAKARI_MYSQL_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\mysql' }
+  if ($env:KUSAKARI_EC_EXISTING_MYSQL_BIN) { $candidates += $env:KUSAKARI_EC_EXISTING_MYSQL_BIN }
+  $stateRoot = if ($env:KUSAKARI_EC_MYSQL_HOME) { $env:KUSAKARI_EC_MYSQL_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\mysql' }
   $stateFile = Join-Path $stateRoot 'instance.json'
   if (Test-Path -LiteralPath $stateFile) {
     $state = Get-Content -Raw -LiteralPath $stateFile | ConvertFrom-Json
@@ -15,8 +15,7 @@ function Get-KusakariMySqlBin {
   $candidates += Join-Path $tools 'bin'
 
   # Reuse any compatible extracted MySQL before considering an archive or a
-  # network download. This includes Greenly's user-scoped tools and normal
-  # MySQL installations, so the two projects do not download the same ZIP.
+  # network download. System-wide MySQL installations remain reusable.
   $installed = Get-Command mysqld.exe -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($null -ne $installed) { $candidates += Split-Path -Parent $installed.Source }
   $services = @(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {
@@ -38,7 +37,6 @@ function Get-KusakariMySqlBin {
     (Join-Path $env:ProgramFiles 'MySQL'),
     $(if ($programFilesX86) { Join-Path $programFilesX86 'MySQL' }),
     (Join-Path $env:LOCALAPPDATA 'Kusakari\tools'),
-    (Join-Path $env:LOCALAPPDATA 'Greenly\tools'),
     (Join-Path $env:USERPROFILE 'mysql'),
     (Join-Path $env:USERPROFILE 'Downloads')
   ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) }
@@ -62,7 +60,7 @@ function Get-KusakariMySqlBin {
     }
   }
 
-  if ($env:KUSAKARI_EXISTING_MYSQL_ONLY -eq '1') {
+  if ($env:KUSAKARI_EC_EXISTING_MYSQL_ONLY -eq '1') {
     throw '既存MySQLの実行ファイルを特定できません。MySQL Serverのインストール先とサービス設定を確認してください。'
   }
 
@@ -75,7 +73,6 @@ function Get-KusakariMySqlBin {
   $expected = 'A492371D687D2BAB088B0062581144A0044B8964BAEFDF4FAA579292B423D25C'
   $archiveCandidates = @(
     $archive,
-    (Join-Path $env:LOCALAPPDATA "Greenly\downloads\mysql-$version-winx64.zip"),
     (Join-Path $env:USERPROFILE "Downloads\mysql-$version-winx64.zip"),
     (Join-Path $PSScriptRoot "..\tools\mysql-$version-winx64.zip")
   ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -Unique
@@ -126,7 +123,7 @@ function Get-KusakariMySqlBin {
   return (Join-Path $tools 'bin')
 }
 
-function Initialize-KusakariMySqlRuntime {
+function Initialize-KusakariEcMySqlRuntime {
   param([string]$Bin)
   $key = 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
   $runtime = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue

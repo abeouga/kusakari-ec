@@ -4,15 +4,19 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  PencilRuler,
   Leaf,
-  MapPin,
-  ShoppingBag,
-  PackageCheck,
-  Sprout,
   X,
   ListTree,
 } from 'lucide-react';
 import { useShop } from './useShop';
+import { BrandIcon } from './components/BrandIcon';
+import { useDemo } from './workspace/useDemo';
+import { usePath, navigate } from './workspace/navigation';
+import { KusakariHeader } from '@kusakari/site-header';
+import '@kusakari/site-header/style.css';
+import { Workspace } from './workspace/Workspace';
+import { PageLink } from './workspace/Common';
 import { Catalog } from './components/Catalog';
 import { ProductManager } from './components/ProductManager';
 import { Orders } from './components/Orders';
@@ -22,9 +26,31 @@ import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
 
+const canvasUrl = import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/';
+
+/** @param {string} url */
+function navigateFromHeader(url) {
+  const target = new URL(url);
+  if (target.origin !== window.location.origin) {
+    window.location.assign(url);
+    return;
+  }
+  navigate(target.pathname + target.search + target.hash);
+  if (target.hash === '#plants') document.getElementById('plants')?.scrollIntoView();
+}
+
+function requestedPanel() {
+  const panel = new URLSearchParams(window.location.search).get('panel');
+  if (panel === 'stores' || panel === 'guide' || panel === 'orders') return panel;
+  return '';
+}
+
 export default function App() {
   const shop = useShop();
-  const [panel, setPanel] = useState('');
+  const demo = useDemo();
+  const location = usePath();
+  const path = location.split('#')[0];
+  const [panel, setPanel] = useState(requestedPanel);
   const [detailId, setDetailId] = useState('');
   const detail = shop.products.find((product) => product.id === detailId);
   let itemCount = 0;
@@ -52,12 +78,16 @@ export default function App() {
     setPanel(next);
   }
 
-  if (window.location.pathname === '/cart') {
+  if (path !== '/' && path !== '/cart') {
+    return <Workspace shop={shop} demo={demo} path={path} />;
+  }
+
+  if (path === '/cart') {
     return (
       <>
         <CartPage shop={shop} onOrders={() => open('orders')} onStores={() => open('stores')} />
         {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-        {panel === 'orders' && <Orders shop={shop} onClose={close} />}
+        {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
       </>
     );
   }
@@ -67,36 +97,15 @@ export default function App() {
       <a className="skip-link" href="#plants">
         商品一覧へスキップ
       </a>
-      <div className="announcement">
-        <span>GREEN FOR YOUR EVERYDAY</span>
-        <span>ひと鉢からはじまる、緑のある暮らし。</span>
-        <span>植物のオンラインストア</span>
-      </div>
-      <header className="site-header">
-        <a className="brand" href="#" aria-label="Kusakari トップへ">
-          <Sprout strokeWidth={1.5} />
-          <span>
-            kusakari<span className="brand-dot">.</span>
-          </span>
-        </a>
-        <nav aria-label="メインナビゲーション">
-          <a className="active" href="#plants">
-            植物を探す
-          </a>
-          <button onClick={() => open('stores')}>店舗を探す</button>
-          <button onClick={() => open('guide')}>Kusakariについて</button>
-        </nav>
-        <div className="header-actions">
-          <button className="history-button" onClick={() => open('orders')}>
-            注文履歴
-          </button>
-          <a className="bag-button" href="/cart" aria-label={`カートを開く（${itemCount}点）`}>
-            <ShoppingBag size={20} />
-            <span className="bag-text">バッグ</span>
-            <span className="bag-count">{itemCount}</span>
-          </a>
-        </div>
-      </header>
+      <KusakariHeader
+        ecUrl={window.location.origin}
+        canvasUrl={canvasUrl}
+        logoUrl="/icon/kusakari_ico.png"
+        activeSection="plants"
+        cartCount={itemCount}
+        onPanel={open}
+        onNavigate={navigateFromHeader}
+      />
 
       <main>
         <section className="hero">
@@ -116,9 +125,15 @@ export default function App() {
               <br />
               あなたの毎日に、ひと鉢の余白を。
             </p>
-            <a className="primary-button hero-button" href="#plants">
-              お気に入りの植物を探す
-              <ArrowRight size={18} />
+            <a className="canvas-entry-button" href={canvasUrl}>
+              <span className="canvas-entry-icon">
+                <PencilRuler size={22} aria-hidden="true" />
+              </span>
+              <span className="canvas-entry-copy">
+                <small>KUSAKARI CANVAS</small>
+                <strong>Canvasでお気に入りの植物を探す</strong>
+              </span>
+              <ArrowUpRight className="canvas-entry-arrow" size={16} />
             </a>
             <div className="hero-footnote">
               <span>01 — THE GREEN COLLECTION</span>
@@ -153,22 +168,7 @@ export default function App() {
           </div>
         </section>
 
-        <div className="benefits">
-          <span>
-            <Sprout size={20} />
-            暮らしに合う植物を
-          </span>
-          <span>
-            <MapPin size={19} />
-            お近くの店舗で受け取り
-          </span>
-          <span>
-            <PackageCheck size={20} />
-            店舗ごとの在庫を確認
-          </span>
-        </div>
-
-        <Catalog shop={shop} onStores={() => open('stores')} onDetail={openDetail} />
+        <Catalog shop={shop} onDetail={openDetail} />
 
         <section className="material-banner section-container">
           <div className="material-illustration">
@@ -216,12 +216,13 @@ export default function App() {
       <footer className="site-footer">
         <div>
           <span className="brand footer-brand">
-            <Sprout strokeWidth={1.5} />
+            <BrandIcon />
             <span>kusakari.</span>
           </span>
           <p>植物と、暮らす。</p>
         </div>
         <div className="footer-links">
+          <PageLink href="/seller">出店者ポータル</PageLink>
           <button onClick={() => open('manage')}>商品管理</button>
           <button onClick={() => open('guide')}>ご利用ガイド</button>
           <button onClick={() => open('stores')}>店舗一覧</button>
@@ -251,6 +252,8 @@ export default function App() {
           key={detail.id}
           product={detail}
           storeName={storeName}
+          storeId={shop.cart?.storeId}
+          canvasUrl={canvasUrl}
           onClose={close}
           onAdd={(quantity) => shop.add(detail.id, quantity)}
           busy={shop.busy}
@@ -260,7 +263,7 @@ export default function App() {
       )}
       {panel === 'stores' && <Stores shop={shop} onClose={close} />}
       {panel === 'materials' && <Materials shop={shop} onClose={close} />}
-      {panel === 'orders' && <Orders shop={shop} onClose={close} />}
+      {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
       {panel === 'manage' && <ProductManager shop={shop} onClose={close} />}
       {panel === 'guide' && (
         <Dialog title="Kusakariについて" onClose={close}>
@@ -282,7 +285,10 @@ export default function App() {
               カートと注文履歴はブラウザーのCookieに紐づいて保存されます。Cookieを削除すると、同じ履歴を開けなくなります。連絡先にはデモ情報を入力してください。カード情報は入力しません。
             </p>
             <h4>材料リストについて</h4>
-            <p>材料コードから商品候補を検索できます。現在はGreenlyとの自動接続はありません。</p>
+            <p>
+              材料コードから商品候補を検索できます。Kusakari
+              Canvasの配置一覧から商品候補を確認し、選んだ商品をカートに追加できます。
+            </p>
           </div>
         </Dialog>
       )}

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Leaf, MapPin, Search, X, ChevronDown } from 'lucide-react';
+import { Leaf, Search, X } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-const categories = ['すべて', '庭木', '草花', 'ハーブ', '観葉植物', '鉢・庭材', '土・ケア用品'];
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,onDetail:(id:string)=>void}} props */
-export function Catalog({ shop, onStores, onDetail }) {
+const categories = ['すべて', '庭木', '草花', 'ハーブ', '観葉植物', '鉢・庭材', '土・ケア用品', '芝', '道具'];
+/** @param {{shop:ReturnType<import('../useShop').useShop>,onDetail:(id:string)=>void}} props */
+export function Catalog({ shop, onDetail }) {
   const [category, setCategory] = useState('すべて');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recommended');
@@ -28,7 +28,7 @@ export function Catalog({ shop, onStores, onDetail }) {
     if (useCase && !product.useCase.includes(useCase)) continue;
     if (maxPrice && product.priceYen > Number(maxPrice)) continue;
     const text =
-      `${product.name} ${product.latinName} ${product.sku} ${product.nurseryName} ${product.useCase}`.toLowerCase();
+      `${product.name} ${product.latinName} ${product.sku} ${product.description} ${product.nurseryName} ${product.useCase}`.toLowerCase();
     if (!text.includes(keyword)) continue;
     products.push(product);
   }
@@ -37,10 +37,6 @@ export function Catalog({ shop, onStores, onDetail }) {
   }
   if (sort === 'price-desc') {
     products.sort((a, b) => b.priceYen - a.priceYen);
-  }
-  let storeLabel = '読み込み中…';
-  if (shop.cart) {
-    storeLabel = shop.cart.storeName;
   }
   const loading = !shop.cart && shop.busy;
 
@@ -68,17 +64,6 @@ export function Catalog({ shop, onStores, onDetail }) {
           <br />
           植物との暮らしを、ここから。
         </p>
-      </div>
-      <div className="store-strip">
-        <span>
-          <MapPin size={17} />
-          <small>受取店舗</small>
-          <strong>{storeLabel}</strong>
-        </span>
-        <button onClick={onStores} disabled={!shop.cart}>
-          店舗を変更
-          <ChevronDown size={15} />
-        </button>
       </div>
       <div className="catalog-controls">
         <div className="categories" aria-label="商品カテゴリー">

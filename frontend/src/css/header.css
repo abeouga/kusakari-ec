@@ -17,7 +17,7 @@
   height: 92px;
   display: flex;
   align-items: center;
-  gap: 50px;
+  gap: 24px;
   padding: 0 5%;
   border-bottom: 1px solid var(--line);
 }
@@ -41,10 +41,24 @@
 .brand-dot {
   color: #a88f6c;
 }
+.brand .brand-icon {
+  display: block;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  object-fit: contain;
+}
+@media (max-width: 700px) {
+  .brand .brand-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+}
 .site-header nav {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
   margin: auto;
 }
 .site-header nav button,
@@ -65,10 +79,59 @@
   gap: 22px;
 }
 .history-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: none;
   font-size: 11px;
   white-space: nowrap;
+}
+.account-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid #d8e0d2;
+  border-radius: 999px;
+  background: #f1f4ec;
+  color: var(--green);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.account-entry:hover {
+  background: #e4ebdc;
+  border-color: #a8b99e;
+}
+.account-entry-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+}
+@media (max-width: 1200px) {
+  .site-header {
+    height: auto;
+    min-height: 92px;
+    flex-wrap: wrap;
+    padding-block: 16px;
+    row-gap: 8px;
+  }
+  .site-header nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+  .site-header nav a,
+  .site-header nav button {
+    padding-block: 12px;
+  }
+  .header-actions {
+    margin-left: auto;
+  }
 }
 .bag-button {
   background: none;

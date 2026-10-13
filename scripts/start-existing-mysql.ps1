@@ -10,8 +10,8 @@ $ErrorActionPreference = 'Stop'
 try {
     $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $settings = Join-Path $projectRoot '.env'
-    $modeLine = if (Test-Path -LiteralPath $settings) { Get-Content -LiteralPath $settings | Where-Object { $_ -eq 'KUSAKARI_DATABASE_MODE=existing' } | Select-Object -First 1 }
-    $portLine = if (Test-Path -LiteralPath $settings) { Get-Content -LiteralPath $settings | Where-Object { $_ -eq 'KUSAKARI_DB_PORT=3306' } | Select-Object -First 1 }
+    $modeLine = if (Test-Path -LiteralPath $settings) { Get-Content -LiteralPath $settings | Where-Object { $_ -eq 'KUSAKARI_EC_DATABASE_MODE=existing' } | Select-Object -First 1 }
+    $portLine = if (Test-Path -LiteralPath $settings) { Get-Content -LiteralPath $settings | Where-Object { $_ -eq 'KUSAKARI_EC_DB_PORT=3306' } | Select-Object -First 1 }
     $mysqlReady = @(Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue).Count -gt 0
     if (-not $modeLine -or -not $portLine -or -not $mysqlReady) {
         & (Join-Path $PSScriptRoot 'setup-existing-mysql.ps1') -SkipInstall

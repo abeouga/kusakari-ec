@@ -2,9 +2,23 @@
 
 ## Context
 
-Greenlyから独立した植物ECを作成します。Java / Spring Boot、JavaScript / React / Vite、MySQLを使用し、将来の材料リスト連携に備えます。現時点で商品データ提供元やAPI認証情報は指定されていません。
+Kusakariは、商品閲覧・選定・注文を中心とする一つのガーデニングECサイトです。Kusakari Canvas（仮称）の3D庭づくり機能は、そのサイト内で商品選びを支援します。現在のEC・3D MVPはローカルで別々に動作しますが、これは開発上の構成であり、利用者向けサービスの分離を意味しません。Java / Spring Boot、JavaScript / React / Vite、MySQLをEC側で使用し、材料コードによる商品候補連携を定義します。
 
 ## Decision
+
+### 技術識別子と保存データの境界
+
+- プロジェクトルートとnpm package名は `kusakari-ec`、Web workspaceは `@kusakari-ec/frontend`、Java基底packageは `jp.kusakari.ec`、API artifactは `kusakari-ec-api` とします。
+- ECの設定環境変数は `KUSAKARI_EC_` を接頭辞にします。画面上のブランド名 `Kusakari` は変更しません。
+- 既存のMySQL schema `kusakari` / `kusakari_e2e`、MySQLユーザー `kusakari`、Docker volume `kusakari-mysql`、`%LOCALAPPDATA%\Kusakari` の保存領域は既存データと設定を維持するため変更しません。コード上の識別子変更と永続データの移設を分けます。
+
+### 製品境界と公開入口
+
+- 利用者向けのサービスはKusakari EC一つです。3D庭づくり機能はKusakari Canvas（仮称）として商品選びを支援します。
+- 公開環境のCloudFront DistributionはKusakari全体で一つとします。単一CloudFrontは、内部APIやDBを一つに統合する決定ではありません。APIのパス・オリジン構成は統合実装前に別途定めます。
+- EC側は商品、価格、在庫、カート、注文を管理します。Canvas側の庭データ・写真・配置情報から、商品候補照合用の `materialCode / quantity / unit` を渡します。Three.jsランタイムオブジェクトやクライアント指定価格は渡しません。
+- 現在のローカルMVPはECと3Dでコード・ポート・DBを分けています。統合が完了するまではこの開発分離と利用者向けサービス境界を区別して記述します。
+- 公開時の利用者認証はCognitoとSpring Securityを用い、庭データを認証済み利用者に紐付ける方針です。現在のローカルMVPのCookieや固定デモ所有者は本番認証ではありません。
 
 ### データの正本と責務
 
@@ -28,9 +42,9 @@ Greenlyから独立した植物ECを作成します。Java / Spring Boot、JavaS
 - 元商品の価格を変えても、保存済み注文の単価は変わりません。在庫不足はカートを残して409を返します。
 - UIは確定応答が届かない場合の再試行で同じキーを使用します。サーバー再起動後も冪等性情報がDBに残ります。
 
-### Greenlyと外部商品データ
+### Canvasとの商品対応付けと外部商品データ
 
-- 連携単位は `materialCode / quantity / unit` のJSONです。Three.jsオブジェクトやGreenlyのDBには依存しません。
+- 連携単位は `materialCode / quantity / unit` のJSONです。Three.jsオブジェクトやCanvas試作のDBには依存しません。
 - `material_products` の明示マッピングで候補を出します。未対応コードは `UNMAPPED` と返し、推測による置換をしません。
 - 複数候補からの選択は人が行います。数量は現在 `piece` の整数のみで、m²やmの自動換算は行いません。
 - 商品には出所 `source`、外部ID用 `source_product_id`、データ更新日時を保持します。現在の値は `demo` です。
@@ -55,10 +69,10 @@ Greenlyから独立した植物ECを作成します。Java / Spring Boot、JavaS
 ## Alternatives
 
 - Spring JDBC: SQLとロック範囲を直接追いやすい一方、行マッピングやCRUDの定型処理が重複するため今回は採用しません。必要なロック条件はJPA Repositoryのクエリとして明示します。
-- Spring Security: 現状は会員認証を提供せず、ローカルデモ用のセッションCookieだけを扱います。認証・認可フローがない段階で導入すると設定と責務が増えるため追加しません。
+- ローカルMVPでは会員認証を提供せず、デモ用Cookieを扱います。公開時は既定方針のCognito / Spring Securityによる認証・認可と、利用者ごとの庭データ分離を実装します。
 - localStorageカート: サーバー側の整合性と再起動後の注文確認を優先し、MySQLへ保存します。
 - 実決済の導入: 決済提供元・店舗契約が指定されていないため、デモ注文に限定します。
-- Greenlyから直接注文: 設計データと購入同意を分けるため、候補提示→人による選択→ECの確認画面の順にします。
+- Canvasから直接注文: 設計データと購入同意を分けるため、候補提示→人による選択→ECの確認画面の順にします。
 - 固定ポートの競合時に別プロジェクトのプロセスを強制終了する方法: 所有を誤認する危険があるため採用せず、起動を止めて競合PIDを報告します。
 
 ## Consequences

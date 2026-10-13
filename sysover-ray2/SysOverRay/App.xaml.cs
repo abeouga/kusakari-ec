@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace KusakariSysOverRay;
+namespace KusakariEcSysOverRay;
 
 public partial class App : System.Windows.Application
 {

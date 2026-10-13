@@ -1,5 +1,5 @@
 {
-  "name": "@kusakari/frontend",
+  "name": "@kusakari-ec/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
   "dependencies": {
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "@kusakari/site-header": "0.1.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.1",

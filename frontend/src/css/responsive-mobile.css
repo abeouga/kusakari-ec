@@ -9,7 +9,8 @@
     display: none;
   }
   .site-header {
-    height: 74px;
+    height: auto;
+    min-height: 74px;
     justify-content: space-between;
     gap: 10px;
   }
@@ -20,7 +21,14 @@
     width: 26px;
   }
   .site-header nav {
-    display: none;
+    justify-content: flex-start;
+    gap: 18px;
+    overflow-x: auto;
+  }
+  .site-header .workspace-entry-links {
+    order: 4;
+    width: 100%;
+    margin: 0;
   }
   .history-button {
     font-size: 10px;
@@ -59,14 +67,29 @@
     line-height: 2.05;
     margin-bottom: 22px;
   }
-  .hero-button {
-    font-size: 9px;
-    padding: 12px 10px;
-    gap: 7px;
-    min-height: 42px;
+  .canvas-entry-button {
+    min-height: 66px;
+    gap: 9px;
+    padding: 10px 11px;
+    border-radius: 10px;
   }
-  .hero-button svg {
-    width: 13px;
+  .canvas-entry-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+  }
+  .canvas-entry-icon svg {
+    width: 17px;
+  }
+  .canvas-entry-copy small {
+    display: none;
+  }
+  .canvas-entry-copy strong {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .canvas-entry-arrow {
+    display: none;
   }
   .hero-footnote {
     font-size: 6px;
@@ -111,20 +134,9 @@
   .hero-visual > img {
     object-position: 52% center;
   }
-  .benefits {
-    padding: 16px 4%;
-    gap: 0;
-    justify-content: space-between;
-  }
-  .benefits span {
-    font-size: 8px;
-    gap: 5px;
-  }
-  .benefits svg {
-    width: 15px;
-  }
   .catalog {
     padding-top: 40px;
+    padding-inline: 4%;
   }
   .section-heading h2 {
     font-size: 22px;
@@ -134,21 +146,6 @@
     display: none;
   }
   .section-heading .eyebrow {
-    font-size: 9px;
-  }
-  .store-strip {
-    font-size: 10px;
-    padding: 12px 10px;
-    margin-bottom: 20px;
-  }
-  .store-strip > span {
-    gap: 6px;
-  }
-  .store-strip button {
-    font-size: 9px;
-    gap: 4px;
-  }
-  .store-strip small {
     font-size: 9px;
   }
   .catalog-controls {

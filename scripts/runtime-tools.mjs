@@ -14,7 +14,7 @@ export function importRuntimeTools(root) {
 
 export function e2eDatabasePort() {
   const match = /^jdbc:mysql:\/\/127\.0\.0\.1:(\d{1,5})\/kusakari_e2e\?connectionTimeZone=UTC$/.exec(
-    process.env.KUSAKARI_E2E_DB_URL || '',
+    process.env.KUSAKARI_EC_E2E_DB_URL || '',
   );
   const port = Number(match?.[1]);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {

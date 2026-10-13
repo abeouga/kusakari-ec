@@ -5,7 +5,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
       MYSQL_DATABASE: kusakari
       MYSQL_USER: kusakari
-      MYSQL_PASSWORD: ${KUSAKARI_DB_PASSWORD:-password}
+      MYSQL_PASSWORD: ${KUSAKARI_EC_DB_PASSWORD:-password}
     ports:
       - "${MYSQL_HOST_PORT:-13306}:3306"
     volumes:
@@ -24,18 +24,18 @@ services:
       dockerfile: docker/api.Dockerfile
     environment:
       SERVER_ADDRESS: 0.0.0.0
-      KUSAKARI_API_PORT: 8086
-      KUSAKARI_DB_URL: jdbc:mysql://mysql:3306/kusakari?connectionTimeZone=UTC
-      KUSAKARI_E2E_DB_URL: jdbc:mysql://mysql:3306/kusakari_e2e?connectionTimeZone=UTC
-      KUSAKARI_DB_PORT: 3306
-      KUSAKARI_DB_USER: kusakari
-      KUSAKARI_DB_PASSWORD: ${KUSAKARI_DB_PASSWORD:-password}
-      KUSAKARI_WEB_ORIGIN: http://localhost:${KUSAKARI_WEB_HOST_PORT:-5186}
+      KUSAKARI_EC_API_PORT: 8086
+      KUSAKARI_EC_DB_URL: jdbc:mysql://mysql:3306/kusakari?connectionTimeZone=UTC
+      KUSAKARI_EC_E2E_DB_URL: jdbc:mysql://mysql:3306/kusakari_e2e?connectionTimeZone=UTC
+      KUSAKARI_EC_DB_PORT: 3306
+      KUSAKARI_EC_DB_USER: kusakari
+      KUSAKARI_EC_DB_PASSWORD: ${KUSAKARI_EC_DB_PASSWORD:-password}
+      KUSAKARI_EC_WEB_ORIGIN: http://localhost:${KUSAKARI_EC_WEB_HOST_PORT:-5186}
     depends_on:
       mysql:
         condition: service_healthy
     ports:
-      - "${KUSAKARI_API_HOST_PORT:-8086}:8086"
+      - "${KUSAKARI_EC_API_HOST_PORT:-8086}:8086"
 
   web:
     build:
@@ -45,7 +45,7 @@ services:
       api:
         condition: service_started
     ports:
-      - "${KUSAKARI_WEB_HOST_PORT:-5186}:80"
+      - "${KUSAKARI_EC_WEB_HOST_PORT:-5186}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null"]
       interval: 10s

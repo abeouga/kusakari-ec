@@ -1,7 +1,8 @@
 # Kusakari — 植物と、暮らす。
 
-Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、植物ECサイトのローカルデモです。
-Greenlyとは別プロジェクトで、コード・ポート・DBを分離しています。
+Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニングECサイトのローカルMVPです。Kusakari Canvas（仮称）の3D庭づくり機能は、商品選びを支援する同じサイト内の機能として扱います。
+
+現在、ECと3D庭づくり機能の試作コード・開発ポート・DBは別々です。Canvasの配置数量をECの商品候補画面へ渡し、利用者が選んだ商品を既存カートへ追加できます。この技術上の試作分割は、利用者向けサービスを分ける方針ではありません。
 
 ## 開く
 
@@ -34,7 +35,7 @@ Javaや依存を更新した場合は、停止 → ビルド → 起動の順に
 商品削除は販売終了、履歴削除は非表示です。注文取消や在庫の復元は行いません。
 DB拡張と保存項目は [画面案のCRUD実装](docs/mockup-crud.md) に記載しています。
 注文によるデモ在庫の減算と注文履歴の永続化は実装しています。外部EC APIは未接続です。
-Greenlyとの自動接続もありません。将来の接続仕様は [docs/api.md](docs/api.md) に記載しています。
+Canvasから商品候補の取得へ接続しています。候補選択後にカートへ追加します。連携項目と現在のAPI契約は [docs/api.md](docs/api.md) に記載しています。
 
 ## 構成
 
@@ -46,7 +47,7 @@ Greenlyとの自動接続もありません。将来の接続仕様は [docs/api
 | E2E | Playwright Chromium / DB `kusakari_e2e` | 15186 / 18086 |
 
 フロントの実装は `.js` / `.jsx` です。JSDoc + TypeScriptの `checkJs` で型を確認します。
-MySQLサーバーそのものは既存のものを使い、DBと権限を分離しています。GreenlyのDBへはアクセスしません。
+MySQLサーバーそのものは既存のものを使い、EC試作用DBと権限を分離しています。ローカル試作の3Dデータベースとは直接共有せず、商品連携は合意したAPI契約を通します。
 
 ```text
 frontend/src/
@@ -90,7 +91,7 @@ MySQL ServerをそのPCへインストール済みで、rootパスワードを `
 
 ## Dockerで起動する場合
 
-Docker Desktopを起動した状態で、プロジェクトのルートから次を実行します。ホスト側のMySQLやGreenlyのDBは使用しません。
+Docker Desktopを起動した状態で、プロジェクトのルートから次を実行します。ホスト側のMySQLや他プロジェクトのDBは使用しません。
 
 ```powershell
 docker compose up --build
@@ -113,8 +114,8 @@ docker compose down -v
 ホスト側ポートを変更する場合は、例えば次のように指定します。
 
 ```powershell
-$env:KUSAKARI_WEB_HOST_PORT = '15186'
-$env:KUSAKARI_API_HOST_PORT = '18086'
+$env:KUSAKARI_EC_WEB_HOST_PORT = '15186'
+$env:KUSAKARI_EC_API_HOST_PORT = '18086'
 $env:MYSQL_HOST_PORT = '13306'
 docker compose up --build
 ```
@@ -151,3 +152,7 @@ API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` �
 設計判断: [docs/architecture.md](docs/architecture.md) / API: [docs/api.md](docs/api.md) / 画像: [docs/images.md](docs/images.md)
 
 技術要件の確認元: [Spring Boot 3.5](https://docs.spring.io/spring-boot/3.5/system-requirements.html)、[Vite](https://vite.dev/guide/)。
+
+## 機能要件と画面モック
+
+出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証・審査・通知・精算はメモリ内モックです。

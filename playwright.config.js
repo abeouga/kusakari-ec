@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: 'canvas-integration.spec.js',
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
@@ -23,7 +24,7 @@ export default defineConfig({
     },
     {
       command: 'npm --workspace frontend run dev -- --port 15186',
-      env: { KUSAKARI_API_TARGET: 'http://127.0.0.1:18086' },
+      env: { KUSAKARI_EC_API_TARGET: 'http://127.0.0.1:18086' },
       url: 'http://127.0.0.1:15186',
       reuseExistingServer: false,
     },

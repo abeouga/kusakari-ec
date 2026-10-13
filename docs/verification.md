@@ -1,5 +1,59 @@
 # 検証記録
 
+## 2026-10-09: Kusakari EC識別子移行・移設検証
+
+実行先: `C:\Users\t_abe\Desktop\kusakari-ec`。移設試験は、空白と日本語を含む一時フォルダーへ独立コピーして行いました。
+
+### 識別子と配置
+
+- npmルート`kusakari-ec`、workspace`@kusakari-ec/frontend`、Java group/package`jp.kusakari.ec`、JAR`kusakari-ec-api`、Spring application`kusakari-ec-api`、SysOverRay`KusakariEcSysOverRay`を確認しました。
+- Javaソース全47本のpackage名とディレクトリ階層が一致し、古いJavaソース階層は残っていません。
+- `.env`の設定名は`KUSAKARI_EC_*`へ統一しました。値は検証出力に表示していません。
+- BAT 8本の改行をCRLF、プロジェクトPowerShell 15本の構文とUTF-8 BOMを確認しました。
+- スクリプトは実行場所からプロジェクトを特定します。`C:\Windows\Temp`から`script-for-mysql\common.ps1`でルート検出し、`1009修正スクリプト.bat /dry-run`も移設コピー上で終了コード0でした。
+
+### 移設先での復旧と動作
+
+- `1009修正スクリプト.bat`を移設コピー上で実行し、生成物削除、`npm ci`、Java 21ビルド、Viteビルド、SysOverRayビルド、既存MySQLの開発/E2E DB確認、API/Web/プロキシ、可視Overlay確認まで終了コード0でした。
+- 既存DBはFlyway V1/V2で、各DBに4商品がある構成でした。初回復旧ではセットアップの許可テーブル一覧がV2の`product_images`、`cart_details`、`order_details`を含まず安全停止しました。許可一覧をV1/V2それぞれに対応させ、再実行で両DBのFlyway・商品データ確認を通しました。
+- 移設後にMySQL CLIが日本語を含むプロジェクトパス配下の一時設定ファイルを開けない問題を再現しました。資格情報ファイルをACL制限したWindows一時フォルダーへ置き、必要時はASCIIの短縮パスを使うよう変更し、root/appユーザーの読み取り接続を再確認しました。
+- 移設コピーからのChromium E2Eは実APIと専用MySQL `kusakari_e2e`で11件成功しました。ルートでも11件成功しました。E2Eは開発用カート・注文を削除せず、専用テストフィクスチャのみを片付けます。
+- Web/APIの固定ポート5186/8086を別作業ディレクトリから起動し、APIの`application=kusakari-ec`、Web応答、Web経由API、SysOverRayの可視画面・最前面属性・操作部品を確認しました。
+- `npm run check`（JavaScript型確認、ESLint、Vite、Maven）と`git diff --check`は成功しました。
+
+再読み込み後の画面/API JSONは`artifacts/e2e/order-after-reload.*`と`artifacts/e2e/relocated-japanese-path/`に保存しました。移設試験のカタログ画面は`artifacts/e2e/relocated-japanese-path/catalog-desktop.png`です。
+
+物理的に別のPCでの実行は未実施です。移設試験では同じWindowsホストのMySQLサービスと既存ツールチェーンを利用したため、未導入端末での全依存自動取得を今回の試験結果としては扱いません。
+
+### 2026-10-09 追試: 旧`.env`名からの復旧
+
+- ルートで`npm run check`と`npm run test:e2e`を再実行し、前者は終了コード0、後者は実API・MySQL・Chromiumで11件成功しました。
+- 依存ディレクトリを含めず複製した、空白・日本語を含む別パスから`1009修正スクリプト.bat`を実行しました。`C:\Windows\Temp`からの`/dry-run`と通常復旧はいずれも終了コード0でした。通常復旧は`npm ci`（151 packages、監査上の脆弱性0）、Java 21向けAPI、Vite、SysOverRayを再構築し、DB・Flyway・商品データ、API/Web/プロキシ、可視Overlayを確認しました。
+- 隔離コピーの`.env`だけを旧`KUSAKARI_*`名にして復旧を実行し、対象6キーの名前変更、値の完全一致、旧名残存なし、バックアップACLが現在のユーザーに限定されたことを確認しました。移行後のコピーからもChromium E2E 11件が成功しました。
+- 追試で見つけたバックアップACL設定のPowerShellコマンドレット依存を除き、`.NET FileSecurity`でACLを設定する実装へ変更しました。Windows PowerShell 5.1の復旧BAT実行で旧`.env`移行を再確認しました。
+
+### 2026-10-09 追試: 初回ツール導入を含む隔離プロファイル
+
+- `.git`、`.runtime`、依存・ビルド生成物を含めずに複製したソースを、空白と日本語を含むパス`C:\Users\t_abe\AppData\Local\Temp\Kusakari EC fresh-profile_日本語_5790472f1c4242c7976a1b6a57544c0e`で実行しました。`1009修正スクリプト.bat`は`C:\Windows\Temp`から起動し、スクリプトの配置場所からプロジェクトルートを検出しました。
+- Node/JDK/.NETとMaven・NuGet・npm・Playwrightのキャッシュを新しいユーザー一時プロファイルへ分離し、Node 24.21.0、Temurin JDK 21.0.12.1、.NET SDK 10.0.401を取得しました。SDKの`.runtime/toolchain.json`も隔離先を指すことを確認しました。検証時のPATHからNode/JDK/.NETのグローバル導入先は外しています。
+- `1009修正スクリプト.bat`は依存復元、Vite、Maven、SysOverRayのビルドと、既存MySQL上の開発/E2E DB・Flyway・商品データ確認を終了コード0で完了しました。別途`npm run check`を隔離環境で実行し、checkJs、ESLint、Vite、Mavenの全工程が終了コード0でした。
+- 同じコピーで実API・専用MySQL `kusakari_e2e`・ChromiumのE2E 11件が成功しました。注文の保存・再読み込み後の画面とAPI JSON、PC/モバイルのカタログ画面を`artifacts/e2e/isolated-profile-japanese-path/`へ保存しました。
+- API 8086、Web 5186、Web経由APIとSysOverRayの可視画面・操作ボタンを確認し、検証コピーの`stop.bat`が終了コード0でAPI/Webを停止しました。MySQL 3306は稼働を維持しました。
+- ルートの`1009修正スクリプト.bat /dry-run`も`C:\Windows\Temp`から実行し、終了コード0、`.env`のハッシュと生成ディレクトリの有無が実行前後で不変でした。
+- `C:\Windows\Temp`から絶対パス指定でDocker Compose設定を解決し、終了コード0、プロジェクト名`kusakari-ec`と`api`/`mysql`/`web`サービス、`kusakari-mysql`論理ボリュームを確認しました。コンテナー自体は起動していません。
+
+この追試は同じ物理PC上での隔離・移設試験です。MySQLは既存のローカルサービスを使っており、別PCでの実機実行、MySQL未導入環境、管理者権限が必要なVisual C++導入までは証明していません。
+
+### 2026-10-09 追試: 実ルートのBAT入口
+
+- `C:\Windows\Temp`を作業ディレクトリにして、実ルートの`setup.bat -SkipInstall`を実行しました。終了コード0で、MySQL 3306上の`kusakari`と`kusakari_e2e`を実API・Flyway・商品データで確認し、`.env`のSHA-256は実行前後で一致しました。
+- 同じ条件で`start.bat -NoBrowser`を実行し、終了コード0、API healthの`application=kusakari-ec`、Web 200、Web経由API、API/Nodeの実行パスが当該ルート配下であることを確認しました。SysOverRayは可視・最前面の操作画面と操作部品まで確認しました。
+- `stop.bat`は終了コード0でWeb/APIを停止し、5186/8086の待受がなくなりました。MySQL 3306は維持されました。SysOverRayは操作画面として残る仕様のため、検証で起動したPIDと実行パスを照合してから終了しました。
+- すべてのBATは別の作業ディレクトリから起動しました。物理的な別PCでの試験ではありません。
+- 続けて実ルートの`1009修正スクリプト.bat`を通常実行し、終了コード0でした。`npm ci`で151 packagesを導入し脆弱性0、Maven API・Vite Web・SysOverRayのビルド、両DBのFlyway・商品データ、API/Web/プロキシ、可視Overlayを確認しました。
+- 復旧前の`node_modules\@kusakari\frontend`は存在しない旧`kusakari-mvp\frontend`を指すJunctionでした。復旧後は旧Junctionがなくなり、`node_modules\@kusakari-ec\frontend`が実ルートの`frontend`を指すJunctionとして再生成されました。
+- 通常復旧前後で追跡ソース115ファイルのSHA-256一覧と`.env`のSHA-256が一致しました。復旧後に`stop.bat`を実行し、API/Webポートを解放、MySQL 3306を維持しました。検証で起動したOverlayは実行パス照合後に終了し、当該プロジェクトのJava/Node/Overlayプロセスは残っていません。
+
 ## 2026-10-06: Stitch画面案のCRUD拡張（検証中）
 
 実行先: `C:\Users\t_abe\Desktop\kusakari-mvp`。

@@ -6,7 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using MediaColor = System.Windows.Media.Color;
 
-namespace KusakariSysOverRay;
+namespace KusakariEcSysOverRay;
 
 public partial class MainWindow : Window
 {
@@ -16,7 +16,7 @@ public partial class MainWindow : Window
     private static readonly System.Windows.Media.Brush ErrorBrush = new SolidColorBrush(MediaColor.FromRgb(244, 91, 105));
 
     private readonly OverlaySettings _settings;
-    private readonly KusakariController _controller;
+    private readonly KusakariEcController _controller;
     private readonly DispatcherTimer _statusTimer;
     private readonly System.Windows.Forms.NotifyIcon _trayIcon;
     private bool _operationRunning;
@@ -27,7 +27,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _settings = OverlaySettings.Load();
-        _controller = new KusakariController(_settings);
+        _controller = new KusakariEcController(_settings);
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _trayIcon = CreateTrayIcon();

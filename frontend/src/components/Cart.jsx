@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingBag, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { yen } from '../api';
 import { DeliveryForm } from './DeliveryForm';
 import { DeliverySummary } from './DeliverySummary';
@@ -27,7 +27,7 @@ export function Cart({ shop, onStores }) {
   if (!cart) {
     return (
       <section className="cart-content cart-empty-state">
-        <p className="eyebrow">YOUR SHOPPING BAG</p>
+        <p className="eyebrow">YOUR SHOPPING CART</p>
         <h1>ショッピングカート</h1>
         {shop.error && (
           <>
@@ -46,7 +46,7 @@ export function Cart({ shop, onStores }) {
   if (cart.items.length === 0) {
     return (
       <section className="cart-content cart-empty-state">
-        <p className="eyebrow">YOUR SHOPPING BAG</p>
+        <p className="eyebrow">YOUR SHOPPING CART</p>
         <h1>ショッピングカート</h1>
         {shop.error && (
           <p className="error" role="alert">
@@ -54,7 +54,7 @@ export function Cart({ shop, onStores }) {
           </p>
         )}
         <div className="empty">
-          <ShoppingBag size={40} />
+          <ShoppingCart size={40} />
           <h3>まだ植物が入っていません。</h3>
           <p>お気に入りのひと鉢を見つけてください。</p>
           <a className="primary-button" href="/#plants">
@@ -70,7 +70,7 @@ export function Cart({ shop, onStores }) {
   if (shop.busy) checkoutLabel = '保存中…';
   return (
     <section className="cart-content">
-      <p className="eyebrow">YOUR SHOPPING BAG</p>
+      <p className="eyebrow">YOUR SHOPPING CART</p>
       <h1>{title}</h1>
       <p className="cart-page-lead">商品と受取方法をご確認ください。</p>
       <ol className="step-list">
@@ -156,12 +156,18 @@ export function Cart({ shop, onStores }) {
           <h3>ご請求内容</h3>
           <div className="totals">
             <div>
-              <span>商品小計（税込）</span>
+              <span>
+                商品小計（税込）<small> / 内税10%・デモ表示</small>
+              </span>
               <span>{yen(cart.subtotalYen)}</span>
             </div>
             <div>
               <span>受取・配送料</span>
               <span>{yen(cart.shippingFeeYen)}</span>
+            </div>
+            <div>
+              <span>うち消費税（内税10%・デモ）</span>
+              <span>{yen(Math.floor((cart.totalYen * 10) / 110))}</span>
             </div>
             <div className="grand-total">
               <strong>合計</strong>

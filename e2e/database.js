@@ -19,7 +19,7 @@ export function sql(statement) {
       '-P',
       String(port),
       '-u',
-      process.env.KUSAKARI_DB_USER,
+      process.env.KUSAKARI_EC_DB_USER,
       '--default-character-set=utf8mb4',
       '--batch',
       '--skip-column-names',
@@ -28,7 +28,7 @@ export function sql(statement) {
     {
       input: statement,
       encoding: 'utf8',
-      env: { ...process.env, MYSQL_PWD: process.env.KUSAKARI_DB_PASSWORD },
+      env: { ...process.env, MYSQL_PWD: process.env.KUSAKARI_EC_DB_PASSWORD },
     },
   );
   if (result.status !== 0) throw new Error(`E2E database operation failed: ${result.error?.message || result.stderr}`);

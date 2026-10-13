@@ -76,17 +76,17 @@ function Start-InstalledMySql {
 try {
     New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
     Set-Location $projectRoot
-    $env:KUSAKARI_EXISTING_MYSQL_ONLY = '1'
+    $env:KUSAKARI_EC_EXISTING_MYSQL_ONLY = '1'
     $installedBin = Get-InstalledMySqlBin
     if ($installedBin) {
-        $env:KUSAKARI_EXISTING_MYSQL_BIN = $installedBin
+        $env:KUSAKARI_EC_EXISTING_MYSQL_BIN = $installedBin
         Write-Host "既存MySQLの実行ファイルを使用します: $installedBin"
     }
     Start-InstalledMySql
 
-    # database.ps1 uses this only for this invocation, so no root secret is
-    # persisted. The application user is also provisioned with password.
-    $env:KUSAKARI_EXISTING_MYSQL_PASSWORD = 'password'
+    # database.ps1 tries the local default first, then asks for the root
+    # password through hidden input when that credential is rejected.
+    # The application account is provisioned with the local demo password.
     $setupScript = Join-Path $PSScriptRoot 'setup.ps1'
     if ($SkipInstall) {
         & $setupScript -DatabaseMode existing -Reconfigure -SkipInstall -ExistingMySql
@@ -98,7 +98,6 @@ try {
     Write-Error $_.Exception.Message
     exit 1
 } finally {
-    Remove-Item Env:KUSAKARI_EXISTING_MYSQL_PASSWORD -ErrorAction SilentlyContinue
-    Remove-Item Env:KUSAKARI_EXISTING_MYSQL_BIN -ErrorAction SilentlyContinue
-    Remove-Item Env:KUSAKARI_EXISTING_MYSQL_ONLY -ErrorAction SilentlyContinue
+    Remove-Item Env:KUSAKARI_EC_EXISTING_MYSQL_BIN -ErrorAction SilentlyContinue
+    Remove-Item Env:KUSAKARI_EC_EXISTING_MYSQL_ONLY -ErrorAction SilentlyContinue
 }
