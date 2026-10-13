@@ -24,10 +24,9 @@ test('EC to Canvas, quantity, save, product matching, real cart and independent 
     expect(bounds).toBeTruthy();
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
-    await page.getByRole('button', { name: '数量・施工範囲' }).click();
-    await page.getByLabel('木の配置個数').fill('2');
-    await expect(page.getByLabel('木の配置個数')).toHaveValue('2');
-    await page.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true }).click();
+    await page.getByTestId('object-details-toggle').click();
+    await page.getByRole('button', { name: '複製', exact: true }).click();
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 2 / 2');
     await page.getByRole('button', { name: '植物候補を相談' }).click();
     await page.getByRole('combobox', { name: '日照', exact: true }).selectOption('半日陰');
@@ -71,7 +70,8 @@ test('EC to Canvas, quantity, save, product matching, real cart and independent 
     expect(original.objects).toHaveLength(2);
     await page.goto('http://127.0.0.1:15173/');
     const card = page.locator('.garden-card').filter({ hasText: name });
-    await card.getByRole('button', { name: 'この庭を複製' }).click();
+    await card.getByRole('button', { name: `${name}のオプション`, exact: true }).click();
+    await card.getByRole('button', { name: '複製', exact: true }).click();
     await expect(page.locator('.garden-card').filter({ hasText: `${name}（複製）` })).toHaveCount(1);
     const list = await (await request.get('http://127.0.0.1:18080/api/gardens')).json();
     const copy = list.find((entry) => entry.name === `${name}（複製）`);

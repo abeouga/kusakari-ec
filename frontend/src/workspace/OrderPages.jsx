@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { yen } from '../api';
-import { DataTable, Field, MockNote, text } from './Common';
+import { DataTable, Field, text } from './Common';
 
 /** @param {{demo:import('./useDemo').Demo,operator?:boolean}} props */
 export function SampleOrders({ demo, operator = false }) {
@@ -26,11 +26,10 @@ export function SampleOrders({ demo, operator = false }) {
         body: `${target.carrier} / 追跡番号 ${target.tracking}`,
         read: false,
       });
-    }, '発送情報と購入者通知を更新しました（モック）。');
+    }, '発送情報と購入者通知を更新しました。');
   }
   return (
     <>
-      <MockNote>サンプル受注です。購入者の実注文とは別のデータです。</MockNote>
       <section className="workspace-card">
         <h2>{operator ? 'サイト全体の注文' : '受注一覧'}</h2>
         <label>
@@ -91,17 +90,16 @@ export function CancelRequest({ demo, orderId, eligible = true }) {
     const data = new FormData(event.currentTarget);
     demo.update((draft) => {
       draft.cancellations.push({ orderId, reason: text(data, 'reason'), status: '申請受付' });
-    }, 'キャンセル申請を受け付けました（モック）。実注文は取り消していません。');
+    }, 'キャンセル申請を受け付けました。');
     setOpen(false);
   }
   return (
     <div className="mock-cancel">
-      <small>注文状態・キャンセル申請はモックです。発送前のサンプル条件で申請できます。</small>
       {existing && <p>キャンセル：{existing.status}</p>}
       {!eligible && <p>発送済み・取消済みの注文は申請できません。</p>}
       {!existing && eligible && (
         <button className="text-button" onClick={() => setOpen(!open)}>
-          キャンセルを申請（モック）
+          キャンセルを申請
         </button>
       )}
       {open && (
@@ -117,25 +115,15 @@ export function CancelRequest({ demo, orderId, eligible = true }) {
   );
 }
 
-/** @param {{demo:import('./useDemo').Demo,operator?:boolean}} props */
-export function SalesPage({ demo, operator = false }) {
+/** @param {{demo:import('./useDemo').Demo}} props */
+export function SalesPage({ demo }) {
   let sales = 0;
   for (const order of demo.state.orders) {
     if (order.status !== 'キャンセル') sales += order.total;
   }
   const fee = Math.floor((sales * demo.state.feePercent) / 100);
-  /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function saveFee(event) {
-    event.preventDefault();
-    const rate = Number(new FormData(event.currentTarget).get('rate'));
-    if (!Number.isFinite(rate) || rate < 0 || rate > 100) return;
-    demo.update((draft) => {
-      draft.feePercent = rate;
-    }, 'デモ手数料率を更新しました。');
-  }
   return (
     <>
-      <MockNote>売上・精算のサンプルです。実際の送金は発生しません。</MockNote>
       <div className="workspace-metrics">
         <section>
           <small>注文総額</small>
@@ -150,23 +138,6 @@ export function SalesPage({ demo, operator = false }) {
           <strong>{yen(sales - fee)}</strong>
         </section>
       </div>
-      {operator && (
-        <form className="workspace-card workspace-form" onSubmit={saveFee}>
-          <label>
-            手数料率（%）
-            <input
-              type="number"
-              name="rate"
-              min="0"
-              max="100"
-              step="0.1"
-              defaultValue={demo.state.feePercent}
-              required
-            />
-          </label>
-          <button>手数料を更新</button>
-        </form>
-      )}
       <section className="workspace-card">
         <h2>注文ごとの売上</h2>
         <DataTable
@@ -177,26 +148,8 @@ export function SalesPage({ demo, operator = false }) {
       <section className="workspace-card">
         <h2>精算状況</h2>
         <DataTable
-          headers={['対象月', '対象額', '状態', '操作']}
-          rows={demo.state.settlements.map((entry) => [
-            entry.id,
-            yen(sales - fee),
-            entry.status,
-            operator && (
-              <button
-                key={entry.id}
-                disabled={entry.status === '精算済み'}
-                onClick={() =>
-                  demo.update((draft) => {
-                    const target = draft.settlements.find((item) => item.id === entry.id);
-                    if (target) target.status = '精算済み';
-                  }, '精算状態を更新しました（モック）。')
-                }
-              >
-                精算済みにする
-              </button>
-            ),
-          ])}
+          headers={['対象月', '対象額', '状態']}
+          rows={demo.state.settlements.map((entry) => [entry.id, yen(sales - fee), entry.status])}
         />
       </section>
     </>

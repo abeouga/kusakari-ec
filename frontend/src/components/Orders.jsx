@@ -36,13 +36,13 @@ export function Orders({ shop, onClose, demo }) {
         <div className="empty">
           <PackageCheck size={36} />
           <h3>注文履歴はまだありません。</h3>
-          <p>このブラウザーで確定したデモ注文が表示されます。</p>
+          <p>このブラウザーで確定した注文が表示されます。</p>
         </div>
       )}
       {shop.orders.map((order) => (
         <section className="history-entry" key={order.id} data-testid={`order-${order.id}`}>
           <OrderSummary order={order} />
-          <p>注文状態：デモ注文受付済み（実決済・発送なし）</p>
+          <p>注文状態：注文受付済み</p>
           {demo && <CancelRequest demo={demo} orderId={order.id} />}
           <div className="form-actions">
             <button className="secondary-button" disabled={shop.busy} onClick={() => setEditing(order.id)}>

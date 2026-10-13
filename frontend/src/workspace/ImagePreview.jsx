@@ -27,7 +27,7 @@ export function ImagePreview() {
   return (
     <div className="form-full">
       <label>
-        商品画像ファイル（モック・プレビューのみ）
+        商品画像ファイル
         <input type="file" accept="image/png,image/jpeg,image/webp" onChange={choose} />
       </label>
       {error && (

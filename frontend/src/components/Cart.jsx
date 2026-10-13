@@ -15,7 +15,6 @@ export function Cart({ shop, onStores }) {
         <div className="order-success">
           <CheckCircle2 size={42} />
           <h3>植物を迎える準備ができました。</h3>
-          <p>デモ注文のため、お支払い・実際の取り置きは発生しません。</p>
         </div>
         <OrderSummary order={shop.lastOrder} />
         <a className="primary-button full" href="/#plants">
@@ -65,7 +64,7 @@ export function Cart({ shop, onStores }) {
     );
   }
   let title = `ショッピングカート (${cart.itemCount})`;
-  let checkoutLabel = 'デモ注文を確定する';
+  let checkoutLabel = '注文を確定する';
   if (confirming) title = '注文内容の確認';
   if (shop.busy) checkoutLabel = '保存中…';
   return (
@@ -157,7 +156,7 @@ export function Cart({ shop, onStores }) {
           <div className="totals">
             <div>
               <span>
-                商品小計（税込）<small> / 内税10%・デモ表示</small>
+                商品小計（税込）<small> / 内税10%</small>
               </span>
               <span>{yen(cart.subtotalYen)}</span>
             </div>
@@ -166,7 +165,7 @@ export function Cart({ shop, onStores }) {
               <span>{yen(cart.shippingFeeYen)}</span>
             </div>
             <div>
-              <span>うち消費税（内税10%・デモ）</span>
+              <span>うち消費税（内税10%）</span>
               <span>{yen(Math.floor((cart.totalYen * 10) / 110))}</span>
             </div>
             <div className="grand-total">
@@ -179,9 +178,6 @@ export function Cart({ shop, onStores }) {
               {shop.notice}
             </p>
           )}
-          <p className="fine-print">
-            すべてデモ商品です。注文はこの端末用に保存されます。実決済・発送・取り置きは行いません。
-          </p>
           {confirming && (
             <>
               <button className="primary-button full" disabled={shop.busy || !cart.canCheckout} onClick={shop.checkout}>
@@ -214,7 +210,7 @@ export function OrderSummary({ order }) {
   return (
     <article className="order-summary">
       <div className="order-label">
-        DEMO ORDER <span>{new Date(order.createdAt).toLocaleString('ja-JP')}</span>
+        ORDER <span>{new Date(order.createdAt).toLocaleString('ja-JP')}</span>
       </div>
       <p className="order-id">注文番号：{order.id}</p>
       <p>{order.storeName}</p>

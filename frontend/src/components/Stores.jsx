@@ -79,7 +79,6 @@ export function Stores({ shop, onClose }) {
           );
         })}
       </div>
-      <p className="fine-print">店舗はすべて架空です。実店舗の営業時間・在庫とは連動していません。</p>
     </Dialog>
   );
 }

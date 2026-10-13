@@ -49,7 +49,6 @@ export function CartPage({ shop, onOrders, onStores }) {
         </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Kusakari</span>
-          <span>LOCAL DEMO STORE · NO PAYMENT</span>
         </div>
       </footer>
     </>

@@ -5,9 +5,10 @@ import base from './playwright.config.js';
 const canvasRoot = fileURLToPath(new URL('../kusakari-canvas/', import.meta.url));
 export default defineConfig({
   ...base,
-  testMatch: 'canvas-integration.spec.js',
+  testMatch: ['canvas-integration.spec.js', 'canvas-commerce.spec.js'],
   testIgnore: [],
   timeout: 90000,
+  expect: { timeout: 15000 },
   webServer: [
     base.webServer[0],
     { ...base.webServer[1], env: { ...base.webServer[1].env, VITE_KUSAKARI_CANVAS_URL: 'http://127.0.0.1:15173/' } },

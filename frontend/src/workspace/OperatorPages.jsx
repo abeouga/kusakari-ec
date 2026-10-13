@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DataTable, Field, MockNote, text } from './Common';
+import { DataTable, Field, text } from './Common';
 
 /** @param {{demo:import('./useDemo').Demo,products?:boolean}} props */
 export function ReviewPage({ demo, products = false }) {
@@ -23,7 +23,7 @@ export function ReviewPage({ demo, products = false }) {
         body: reason.trim() || '申請が承認されました。',
         read: false,
       });
-    }, '審査結果を反映しました（モック）。');
+    }, '審査結果を反映しました。');
   }
   const rows = products
     ? demo.state.reviews.map((record) => ({
@@ -42,7 +42,6 @@ export function ReviewPage({ demo, products = false }) {
       }));
   return (
     <>
-      <MockNote>承認・却下はサンプル内だけに反映します。実商品の公開状態は変更しません。</MockNote>
       <section className="workspace-card">
         <h2>{products ? '商品審査' : '出店審査・承認'}</h2>
         <label>
@@ -80,13 +79,12 @@ export function MembersPage({ demo, sellers = false }) {
       if (!user) return;
       if (user.status === '利用中') user.status = '利用停止';
       else user.status = '利用中';
-    }, 'モックの利用状態を変更しました。実APIのアクセス権は変更していません。');
+    }, '利用状態を変更しました。');
   }
   return (
     <>
-      <MockNote>会員・出店者の利用状態を管理するサンプルです。</MockNote>
       <section className="workspace-card">
-        <h2>{sellers ? '出店者情報・利用状態' : '会員管理'}</h2>
+        <h2>{sellers ? '店舗情報・利用状態' : '会員管理'}</h2>
         <label>
           氏名・メール検索
           <input value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -133,13 +131,12 @@ export function CategoriesPage({ demo }) {
     demo.update((draft) => {
       if (editing) draft.categories = draft.categories.map((entry) => (entry === editing ? value : entry));
       else draft.categories.push(value);
-    }, 'カテゴリを更新しました（モック）。実商品カテゴリは変更していません。');
+    }, 'カテゴリを更新しました。');
     setEditing('');
     event.currentTarget.reset();
   }
   return (
     <>
-      <MockNote>カテゴリ管理のサンプルです。</MockNote>
       <section className="workspace-card">
         <h2>商品カテゴリ管理</h2>
         <form key={editing} className="workspace-form" onSubmit={save}>
@@ -161,7 +158,7 @@ export function CategoriesPage({ demo }) {
         />
         {deleting && (
           <div role="alertdialog" aria-label="カテゴリ削除の確認">
-            <p>「{deleting}」をモック一覧から削除しますか？</p>
+            <p>「{deleting}」を一覧から削除しますか？</p>
             <button
               onClick={() => {
                 demo.update((draft) => {

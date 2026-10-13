@@ -66,6 +66,21 @@
   background: #f1f4ec;
 }
 .kusakari-site-chrome .account-entry:hover { background: #e4ebdc; border-color: #a8b99e; }
+.kusakari-site-chrome .login-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  padding: 9px 13px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--green);
+  color: #fff;
+  white-space: nowrap;
+}
+.kusakari-site-chrome .login-entry svg { flex-shrink: 0; }
 .kusakari-site-chrome .account-entry-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: #fff; }
 .kusakari-site-chrome .header-actions { display: flex; align-items: center; gap: 22px; }
 .kusakari-site-chrome .history-button { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 1px 6px; background: none; font-size: 11px; white-space: nowrap; }
@@ -75,7 +90,7 @@
   .kusakari-site-chrome .site-header,
   .kusakari-site-chrome .announcement { padding-inline: max(5%, calc((100% - 1360px) / 2)); }
 }
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .kusakari-site-chrome .site-header { height: auto; min-height: 92px; flex-wrap: wrap; padding-block: 16px; row-gap: 8px; }
   .kusakari-site-chrome nav { order: 3; flex-basis: 100%; justify-content: center; }
   .kusakari-site-chrome nav a,

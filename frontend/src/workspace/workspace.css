@@ -7,18 +7,6 @@
     Meiryo,
     sans-serif;
 }
-.workspace-header {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  justify-content: space-between;
-  background: #fffefa;
-  padding: 18px 4%;
-  border-bottom: 1px solid #dce2d8;
-}
-.workspace-header .brand {
-  font-size: 28px;
-}
 .workspace-layout {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
@@ -47,6 +35,31 @@
 }
 .workspace-sidebar a svg {
   flex-shrink: 0;
+}
+.workspace-shell .workspace-sidebar .workspace-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 13px;
+  margin: 3px 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #e7eee5;
+  text-align: left;
+}
+.workspace-shell .workspace-sidebar .workspace-back:hover {
+  background: #42634f;
+  color: white;
+}
+.workspace-sidebar .workspace-back svg {
+  flex-shrink: 0;
+}
+.workspace-sidebar a:focus-visible,
+.workspace-sidebar .workspace-back:focus-visible {
+  outline: 2px solid #e7eee5;
+  outline-offset: 2px;
 }
 .workspace-sidebar a:hover,
 .workspace-sidebar .is-active {
@@ -141,16 +154,6 @@
 .workspace-form .full-width {
   grid-column: 1/-1;
 }
-.workspace-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-.workspace-tabs button[aria-pressed='true'] {
-  background: #244c3c;
-  color: white;
-}
 .workspace-table-scroll {
   overflow: auto;
   margin: 20px 0;
@@ -179,21 +182,6 @@
   padding: 24px;
   text-align: center;
   color: #647660;
-}
-.mock-note {
-  background: #f0f3e9;
-  border-left: 3px solid #7e9569;
-  padding: 12px 16px;
-  color: #536344;
-  margin: 0 0 20px;
-  font-size: 12px;
-}
-.mock-note strong {
-  margin-right: 12px;
-}
-.api-note {
-  font-size: 12px;
-  color: #526a52;
 }
 .workspace-feedback {
   padding: 14px 18px;
@@ -314,16 +302,6 @@
     display: inline-flex;
     font-size: 12px;
   }
-  .workspace-header {
-    padding: 12px;
-    gap: 12px;
-  }
-  .workspace-header > span {
-    font-size: 12px;
-  }
-  .workspace-header .brand {
-    font-size: 24px;
-  }
   .workspace-main {
     padding: 20px 12px;
   }
@@ -344,5 +322,32 @@
   }
   .workspace-feedback {
     display: block;
+  }
+}
+
+.workspace-account-menu {
+  margin: 4px 0 12px 15px;
+  padding-left: 10px;
+  border-left: 1px solid #668372;
+}
+.workspace-account-menu a {
+  font-size: 12px;
+  padding: 9px 10px;
+}
+
+@media (max-width: 600px) {
+  .workspace-sidebar nav {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .workspace-account-menu {
+    display: flex;
+    flex-wrap: wrap;
+    order: 1;
+    width: 100%;
+    margin: 8px 0 0;
+    padding: 8px 0 0;
+    border-left: 0;
+    border-top: 1px solid #668372;
   }
 }

@@ -130,7 +130,7 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     await fillDelivery(page, 'デモ受取者');
     await page.getByRole('button', { name: '注文内容を確認する', exact: true }).click();
     const saved = page.waitForResponse((r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
-    await page.getByRole('button', { name: 'デモ注文を確定する', exact: true }).click();
+    await page.getByRole('button', { name: '注文を確定する', exact: true }).click();
     const response = await saved;
     expect(response.status()).toBe(200);
     checkoutBody = response.request().postDataJSON();

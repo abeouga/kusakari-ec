@@ -45,7 +45,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     const saved = page.waitForResponse(
       (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
     );
-    await page.getByRole('button', { name: 'デモ注文を確定する' }).click();
+    await page.getByRole('button', { name: '注文を確定する' }).click();
     const response = await saved;
     expect(response.status()).toBe(200);
     order = await response.json();
@@ -165,9 +165,9 @@ test('checkout retry after an explicitly lost response keeps the same order', as
       }
       await route.continue();
     });
-    await page.getByRole('button', { name: 'デモ注文を確定する' }).click();
+    await page.getByRole('button', { name: '注文を確定する' }).click();
     await expect(page.getByRole('alert')).toContainText('サーバーに接続できません');
-    await page.getByRole('button', { name: 'デモ注文を確定する' }).click();
+    await page.getByRole('button', { name: '注文を確定する' }).click();
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     expect(payloads).toHaveLength(2);
     expect(payloads[1]).toEqual(payloads[0]);

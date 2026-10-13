@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import {
-  ArrowDown,
-  ArrowRight,
-  ArrowUpRight,
-  Check,
-  PencilRuler,
-  Leaf,
-  X,
-  ListTree,
-} from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, Leaf, X, ListTree } from 'lucide-react';
 import { useShop } from './useShop';
 import { BrandIcon } from './components/BrandIcon';
 import { useDemo } from './workspace/useDemo';
@@ -25,6 +16,7 @@ import { Dialog } from './components/Dialog';
 import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
+import { AuthDialog } from './components/AuthDialog';
 
 const canvasUrl = import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/';
 
@@ -41,7 +33,7 @@ function navigateFromHeader(url) {
 
 function requestedPanel() {
   const panel = new URLSearchParams(window.location.search).get('panel');
-  if (panel === 'stores' || panel === 'guide' || panel === 'orders') return panel;
+  if (panel === 'stores' || panel === 'guide' || panel === 'orders' || panel === 'login') return panel;
   return '';
 }
 
@@ -78,8 +70,25 @@ export default function App() {
     setPanel(next);
   }
 
-  if (path !== '/' && path !== '/cart') {
-    return <Workspace shop={shop} demo={demo} path={path} />;
+  const workspace = path !== '/' && path !== '/cart';
+  /** @param {string} next */
+  function openHeaderPanel(next) {
+    if (workspace) navigate('/');
+    open(next);
+  }
+  const header = (
+    <KusakariHeader
+      ecUrl={window.location.origin}
+      canvasUrl={canvasUrl}
+      logoUrl="/icon/kusakari_ico.png"
+      activeSection={workspace ? '' : 'plants'}
+      cartCount={itemCount}
+      onPanel={openHeaderPanel}
+      onNavigate={navigateFromHeader}
+    />
+  );
+  if (workspace) {
+    return <Workspace shop={shop} demo={demo} path={path} header={header} />;
   }
 
   if (path === '/cart') {
@@ -97,15 +106,7 @@ export default function App() {
       <a className="skip-link" href="#plants">
         商品一覧へスキップ
       </a>
-      <KusakariHeader
-        ecUrl={window.location.origin}
-        canvasUrl={canvasUrl}
-        logoUrl="/icon/kusakari_ico.png"
-        activeSection="plants"
-        cartCount={itemCount}
-        onPanel={open}
-        onNavigate={navigateFromHeader}
-      />
+      {header}
 
       <main>
         <section className="hero">
@@ -230,7 +231,6 @@ export default function App() {
         </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Kusakari</span>
-          <span>LOCAL DEMO STORE · NO PAYMENT</span>
         </div>
       </footer>
 
@@ -265,24 +265,23 @@ export default function App() {
       {panel === 'materials' && <Materials shop={shop} onClose={close} />}
       {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
       {panel === 'manage' && <ProductManager shop={shop} onClose={close} />}
+      {panel === 'login' && <AuthDialog onClose={close} />}
       {panel === 'guide' && (
         <Dialog title="Kusakariについて" onClose={close}>
           <div className="guide">
             <p className="eyebrow">PLANTS FOR EVERYDAY LIVING</p>
             <h3>植物と暮らす、はじめの一歩。</h3>
-            <p>Kusakariは、庭木・草花・ハーブ・観葉植物を探し、店舗ごとの価格と在庫を確認できるECサイトのデモです。</p>
+            <p>Kusakariは、庭木・草花・ハーブ・観葉植物を探し、店舗ごとの価格と在庫を確認できるECサイトです。</p>
             <h4>お買い物の流れ</h4>
             <ol>
               <li>受取店舗を選び、植物をカートに追加します。</li>
               <li>カートで購入個数と合計金額を確認します。</li>
-              <li>確認画面からデモ注文を確定します。</li>
+              <li>確認画面から注文を確定します。</li>
             </ol>
-            <h4>このデモでの取り扱い</h4>
+            <h4>お買い物について</h4>
+            <p>価格はすべて税込です。店舗受け取りは無料です。</p>
             <p>
-              すべて税込価格、店舗受け取りは無料です。実決済・配送・実店舗への予約は発生しません。商品画像はAI生成、店舗は架空です。
-            </p>
-            <p>
-              カートと注文履歴はブラウザーのCookieに紐づいて保存されます。Cookieを削除すると、同じ履歴を開けなくなります。連絡先にはデモ情報を入力してください。カード情報は入力しません。
+              カートと注文履歴はブラウザーのCookieに紐づいて保存されます。Cookieを削除すると、同じ履歴を開けなくなります。
             </p>
             <h4>材料リストについて</h4>
             <p>

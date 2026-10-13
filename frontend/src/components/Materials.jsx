@@ -169,7 +169,7 @@ function MaterialsFrame({ embedded, onClose, children }) {
     return (
       <section className="workspace-card">
         <h2>配置したものから商品を探す</h2>
-        <p className="api-note">価格・在庫はECの実APIから取得します。</p>
+
         {children}
       </section>
     );

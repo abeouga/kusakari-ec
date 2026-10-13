@@ -29,9 +29,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
   }
   return (
     <ManagerFrame embedded={embedded} onClose={onClose}>
-      <p className="muted">
-        ローカルデモの商品と店舗別在庫を登録・編集します。削除した商品は販売一覧から非表示になります。
-      </p>
+      <p className="muted">商品と店舗別在庫を登録・編集します。削除した商品は販売一覧から非表示になります。</p>
       {shop.error && (
         <p className="error" role="alert">
           {shop.error}
@@ -122,7 +120,6 @@ function ManagerFrame({ embedded, onClose, children }) {
     return (
       <section className="workspace-card">
         <h2>商品一覧・登録・編集</h2>
-        <p className="api-note">実API・MySQLを使用します。ローカルデモでは出店者の権限分離はありません。</p>
         {children}
       </section>
     );

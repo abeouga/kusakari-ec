@@ -1,4 +1,4 @@
-import { Field, MockNote, text } from './Common';
+import { Field, text } from './Common';
 
 /** @param {{demo:import('./useDemo').Demo}} props */
 export function ApplicationPage({ demo }) {
@@ -23,12 +23,11 @@ export function ApplicationPage({ demo }) {
         body: '運営の出店審査画面で申請内容を確認できます。',
         read: false,
       });
-    }, '出店申請を送信しました（モック）。');
+    }, '出店申請を送信しました。');
     form.reset();
   }
   return (
     <>
-      <MockNote>入力・申請・運営審査までを確認できます。添付資料は保存しません。</MockNote>
       <section className="workspace-card">
         <h2>パートナー出店申請</h2>
         <form className="workspace-form" onSubmit={apply}>
@@ -45,12 +44,12 @@ export function ApplicationPage({ demo }) {
             </select>
           </label>
           <label>
-            事業確認書類（プレビューのみ）
+            事業確認書類
             <input type="file" accept=".pdf,image/*" />
           </label>
           <label>
             <input type="checkbox" required />
-            デモ申請の内容を確認しました
+            申請の内容を確認しました
           </label>
           <button className="primary-button">出店を申請</button>
         </form>
@@ -84,12 +83,11 @@ export function ProfilePage({ demo }) {
         story: text(data, 'story'),
         status: text(data, 'status'),
       };
-    }, '店舗プロフィールを更新しました（モック）。');
+    }, '店舗プロフィールを更新しました。');
   }
   const profile = demo.state.profile;
   return (
     <>
-      <MockNote>店舗紹介ページと同じプロフィールを表示します。</MockNote>
       <section className="workspace-card">
         <h2>店舗情報・ショッププロフィール</h2>
         <form className="workspace-form" onSubmit={save}>
@@ -113,46 +111,6 @@ export function ProfilePage({ demo }) {
           <button className="primary-button">店舗情報を保存</button>
         </form>
       </section>
-    </>
-  );
-}
-
-/** @param {{demo:import('./useDemo').Demo}} props */
-export function MessagesPage({ demo }) {
-  /** @param {import('react').FormEvent<HTMLFormElement>} event @param {string} id */
-  function reply(event, id) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    demo.update((draft) => {
-      const message = draft.messages.find((entry) => entry.id === id);
-      if (!message) return;
-      message.reply = text(data, 'reply');
-      draft.notices.unshift({
-        id: crypto.randomUUID(),
-        audience: 'buyer',
-        title: 'お問い合わせへの返信',
-        body: message.reply,
-        read: false,
-      });
-    }, '返信を登録しました（メール送信なし）。');
-  }
-  return (
-    <>
-      <MockNote>お問い合わせと返信のサンプルです。</MockNote>
-      {demo.state.messages.map((message) => (
-        <section className="workspace-card" key={message.id}>
-          <h2>{message.subject}</h2>
-          <p>{message.from}</p>
-          <p>{message.body}</p>
-          <form onSubmit={(event) => reply(event, message.id)} className="workspace-form">
-            <label className="full-width">
-              返信
-              <textarea name="reply" defaultValue={message.reply} required maxLength={1000} />
-            </label>
-            <button className="primary-button">返信を登録</button>
-          </form>
-        </section>
-      ))}
     </>
   );
 }

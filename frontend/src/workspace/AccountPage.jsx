@@ -1,13 +1,20 @@
 import { useState } from 'react';
-import { Field, MockNote, text } from './Common';
+import { Field, text } from './Common';
 
-/** @param {{demo:import('./useDemo').Demo}} props */
-export function AccountPage({ demo }) {
-  const [tab, setTab] = useState('ログイン');
+export const accountActions = [
+  ['/account/login', 'ログイン'],
+  ['/account/register', '新規登録'],
+  ['/account/address', '住所管理'],
+  ['/account/password', 'パスワード変更'],
+  ['/account/reset', 'パスワードリセット'],
+  ['/account/delete', '退会'],
+];
+
+/** @param {{demo:import('./useDemo').Demo,tab:string}} props */
+export function AccountPage({ demo, tab }) {
   const [resetReady, setResetReady] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const tabs = ['ログイン', '新規登録', '住所管理', 'パスワード変更', 'パスワードリセット', '退会'];
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   function submit(event) {
     event.preventDefault();
@@ -35,16 +42,16 @@ export function AccountPage({ demo }) {
         };
         draft.users.push(user);
         draft.session = { name: user.name, email, role: user.role };
-      }, 'デモアカウントを作成しました。パスワードは保存していません。');
+      }, 'アカウントを作成しました。');
     } else if (tab === 'ログイン') {
       const user = demo.state.users.find((entry) => entry.email === email && entry.status === '利用中');
       if (!user) {
-        setError('利用中のデモアカウントがありません。新規登録してください。');
+        setError('利用中のアカウントがありません。新規登録してください。');
         return;
       }
       demo.update((draft) => {
         draft.session = { name: user.name, email, role: user.role };
-      }, 'デモログインしました。パスワード照合・認証は行っていません。');
+      }, 'ログイン状態を更新しました。');
     } else if (tab === '住所管理') {
       demo.update((draft) => {
         draft.address = {
@@ -52,16 +59,16 @@ export function AccountPage({ demo }) {
           address: text(data, 'address'),
           recipient: text(data, 'recipient'),
         };
-      }, 'モックの住所を更新しました。実カートの配送先は変更していません。');
+      }, '住所を更新しました。');
     } else if (tab === 'パスワードリセット' && !resetReady) {
       setResetReady(true);
-      demo.setNotice('再設定メールの送信完了画面です。実際のメールは送信しません。');
+      demo.setNotice('パスワード再設定の入力画面を表示しました。');
     } else {
       if (password !== text(data, 'confirmation')) {
         setError('確認用パスワードが一致しません。');
         return;
       }
-      demo.setNotice('パスワード更新の操作を確認しました。入力値は保存していません。');
+      demo.setNotice('パスワードの入力内容を確認しました。');
       setResetReady(false);
     }
     form.reset();
@@ -70,27 +77,11 @@ export function AccountPage({ demo }) {
     demo.update((draft) => {
       draft.users = draft.users.filter((user) => user.email !== draft.session.email);
       draft.session = { name: '', email: '', role: '' };
-    }, 'モックのアカウントを削除しました。実注文・庭データは保持されています。');
+    }, 'アカウントを削除しました。');
     setConfirmDelete(false);
   }
   return (
     <>
-      <MockNote>認証・メール送信・権限のサンプルです。</MockNote>
-      <div className="workspace-tabs">
-        {tabs.map((item) => (
-          <button
-            key={item}
-            aria-pressed={tab === item}
-            onClick={() => {
-              setTab(item);
-              setError('');
-              setResetReady(false);
-            }}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
       {demo.state.session.email && (
         <div className="workspace-card">
           <strong>{demo.state.session.name}</strong> · {demo.state.session.role}
@@ -107,9 +98,6 @@ export function AccountPage({ demo }) {
       )}
       <section className="workspace-card">
         <h2>{tab}</h2>
-        {tab === 'ログイン' && (
-          <p>デモ用：buyer@example.jp / seller@example.jp。任意の8文字以上の入力で操作を確認できます。</p>
-        )}
         {error && (
           <p className="error" role="alert">
             {error}
@@ -145,21 +133,21 @@ export function AccountPage({ demo }) {
             {(tab === 'パスワード変更' || resetReady) && (
               <Field label="確認用パスワード" name="confirmation" type="password" />
             )}
-            {resetReady && <p>デモ用再設定リンクを開いた状態です。新しいパスワードを入力してください。</p>}
+            {resetReady && <p>新しいパスワードを入力してください。</p>}
             <button className="primary-button" type="submit">
-              {tab === 'パスワードリセット' && !resetReady ? '再設定メールを送信（デモ）' : '内容を送信'}
+              {tab === 'パスワードリセット' && !resetReady ? '再設定メールを送信' : '内容を送信'}
             </button>
           </form>
         )}
         {tab === '退会' && (
           <>
-            <p>デモログイン中のアカウントを削除します。</p>
+            <p>ログイン中のアカウントを削除します。</p>
             <button disabled={!demo.state.session.email} onClick={() => setConfirmDelete(true)}>
               退会手続きへ
             </button>
             {confirmDelete && (
               <div role="alertdialog" aria-label="退会の確認">
-                <p>モックアカウントを削除しますか？</p>
+                <p>アカウントを削除しますか？</p>
                 <button onClick={remove}>削除を確定</button>
                 <button onClick={() => setConfirmDelete(false)}>取消</button>
               </div>

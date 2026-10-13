@@ -1,12 +1,12 @@
 /** @param {{details:import('../types').DeliveryDetails}} props */
 export function DeliverySummary({ details }) {
   let method = '店舗受取';
-  let payment = 'カード決済（デモ）';
+  let payment = 'カード決済';
   let time = '指定なし';
   if (details.timeSlot !== 'ANY') time = details.timeSlot + '時';
   if (details.fulfillmentMethod === 'DELIVERY') method = '自宅配送';
-  if (details.paymentMethod === 'STORE') payment = '店頭払い（デモ）';
-  if (details.paymentMethod === 'DEMO_WALLET') payment = 'ウォレット決済（デモ）';
+  if (details.paymentMethod === 'STORE') payment = '店頭払い';
+  if (details.paymentMethod === 'DEMO_WALLET') payment = 'ウォレット決済';
   return (
     <div className="delivery-summary">
       <p>

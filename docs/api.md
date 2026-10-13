@@ -89,8 +89,7 @@
 3. 選択した `productId / quantity` をECのカートへ追加します。
 4. EC側で最新価格・在庫を確認し、注文確認画面で利用者が確定します。
 
-現在、Canvas試作から候補取得APIへの自動通信とカート連携は実装していません。現在の `/materials/quote` は材料コード・数量・単位を受け取り、デモ商品から候補を返します。単位は `piece` のみです。
-接続時には認証・許可Origin・Cookieの共有方針・改ざんや重複の扱いを定めます。
+Canvasは配置素材から本APIへ自動照合し、既存のカートAPIで追加・数量変更・削除を行います。Canvas許可Originは `KUSAKARI_EC_CANVAS_ORIGIN`（既定 `http://127.0.0.1:5173`）です。許可したOriginに限りCookie付きCORSとContent-Typeのプリフライトを許可します。既存のHttpOnly/SameSite=Strict Cookieを同一ホストのECとCanvasで共有します。EC ViteのCORSミドルウェアは無効とし、APIプロキシ先のLocalApiFilterで処理します。
 クライアントからの価格やownerIdは採用しません。
 
 ## エラー

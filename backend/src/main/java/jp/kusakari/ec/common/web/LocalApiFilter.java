@@ -11,9 +11,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class LocalApiFilter extends OncePerRequestFilter {
 
   private final String origin;
+  private final String canvasOrigin;
 
-  public LocalApiFilter(@Value("${kusakari.ec.web-origin}") String origin) {
+  public LocalApiFilter(
+    @Value("${kusakari.ec.web-origin}") String origin,
+    @Value("${kusakari.ec.canvas-origin}") String canvasOrigin
+  ) {
     this.origin = origin;
+    this.canvasOrigin = canvasOrigin;
   }
 
   @Override
@@ -26,12 +31,23 @@ public class LocalApiFilter extends OncePerRequestFilter {
     String requestOrigin = request.getHeader("Origin");
     if (
       (!"127.0.0.1".equals(host) && !"localhost".equals(host)) ||
-      (requestOrigin != null && !origin.equals(requestOrigin))
+      (requestOrigin != null && !origin.equals(requestOrigin) && !canvasOrigin.equals(requestOrigin))
     ) {
       response.setStatus(403);
       response.setContentType("application/json;charset=UTF-8");
       response.getWriter().write("{\"code\":\"ORIGIN_REJECTED\",\"message\":\"許可されていない接続元です。\"}");
       return;
+    }
+    if (requestOrigin != null) {
+      response.setHeader("Vary", "Origin");
+      response.setHeader("Access-Control-Allow-Origin", requestOrigin);
+      response.setHeader("Access-Control-Allow-Credentials", "true");
+      if ("OPTIONS".equals(request.getMethod())) {
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        response.setStatus(204);
+        return;
+      }
     }
     chain.doFilter(request, response);
   }

@@ -1,3 +1,4 @@
+import { catalogText } from '../catalogText';
 import { ArrowUpRight, Plus } from 'lucide-react';
 import { yen } from '../api';
 
@@ -26,8 +27,8 @@ export function ProductCard({ product, onOpen, onAdd, disabled }) {
         {product.name}
       </button>
       <p className="latin">{product.latinName}</p>
-      <p className="product-nursery">{product.nurseryName}</p>
-      <p className="product-excerpt">{product.description}</p>
+      <p className="product-nursery">{catalogText(product.nurseryName)}</p>
+      <p className="product-excerpt">{catalogText(product.description)}</p>
       <div className="product-bottom">
         <span className="price">
           {yen(product.priceYen)} <small>税込</small>

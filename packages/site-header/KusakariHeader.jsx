@@ -1,13 +1,13 @@
-import { History, ShoppingCart, UserRound } from 'lucide-react';
+import { History, LogIn, ShoppingCart, UserRound } from 'lucide-react';
 
 /**
  * @param {{ecUrl:string,canvasUrl:string,logoUrl:string,activeSection?:string,
- * cartCount?:number|null,disabled?:boolean,onPanel?:(panel:string)=>void,
+ * cartCount?:number|null,cartText?:string,disabled?:boolean,onPanel?:(panel:string)=>void,
  * onNavigate?:(url:string)=>void}} props
  */
 export function KusakariHeader({
   ecUrl, canvasUrl, logoUrl, activeSection = '', cartCount = null,
-  disabled = false, onPanel, onNavigate,
+  disabled = false, onPanel, onNavigate, cartText = 'カート',
 }) {
   /** @param {string} path @param {string} [panel] */
   function shopUrl(path, panel) {
@@ -31,7 +31,7 @@ export function KusakariHeader({
     return <a className={className} href={shopUrl('/', panel)} onClick={follow}>{content}</a>;
   }
 
-  let cartLabel = 'カートを開く';
+  let cartLabel = cartText === 'カート' ? 'カートを開く' : cartText;
   let countText = '—';
   let countTitle = 'カートの商品数はECで確認できます';
   if (cartCount !== null) cartLabel += `（${cartCount}点）`;
@@ -41,7 +41,7 @@ export function KusakariHeader({
   }
 
   return (
-    <div className="kusakari-site-chrome" data-header-version="0.1.3">
+    <div className="kusakari-site-chrome" data-header-version="0.1.5">
       <div className="announcement">
         <span>GREEN FOR YOUR EVERYDAY</span>
         <span>ひと鉢からはじまる、緑のある暮らし。</span>
@@ -60,6 +60,7 @@ export function KusakariHeader({
           <a href={shopUrl('/seller')} onClick={follow}>出店者</a>
         </nav>
         <div className="workspace-entry-links">
+          {panelAction('login', <><LogIn size={16} aria-hidden="true" />ログイン</>, 'login-entry')}
           <a className="account-entry" href={shopUrl('/account')} onClick={follow}>
             <span className="account-entry-avatar"><UserRound size={17} aria-hidden="true" /></span>
             <span>アカウント</span>
@@ -70,7 +71,7 @@ export function KusakariHeader({
           {panelAction('orders', <><History size={18} aria-hidden="true" />注文履歴</>, 'history-button')}
           <a className="bag-button" href={shopUrl('/cart')} aria-label={cartLabel} onClick={follow}>
             <ShoppingCart size={20} aria-hidden="true" />
-            <span className="bag-text">カート</span>
+            <span className="bag-text">{cartText}</span>
             <span className="bag-count" title={countTitle}>{countText}</span>
           </a>
         </div>

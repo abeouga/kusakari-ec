@@ -1,3 +1,4 @@
+import { catalogText } from '../catalogText';
 import { PageLink } from '../workspace/Common';
 import { useState } from 'react';
 import { ShoppingBag, Sun, Ruler, MapPin, Eye, ArrowUpRight } from 'lucide-react';
@@ -49,8 +50,8 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             <div>
               <small>出店者・生産者</small>
               <PageLink href={`/store/${storeId}`}>販売店舗の紹介を見る</PageLink>
-              <strong>{product.nurseryName || '未設定'}</strong>
-              <small>{product.nurseryAddress}</small>
+              <strong>{catalogText(product.nurseryName) || '未設定'}</strong>
+              <small>{catalogText(product.nurseryAddress)}</small>
             </div>
             <div>
               <small>樹齢目安</small>
@@ -59,7 +60,7 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             </div>
             <div>
               <small>サイズ</small>
-              <strong>{product.sizeLabel}</strong>
+              <strong>{catalogText(product.sizeLabel)}</strong>
             </div>
           </div>
           <section className="spec-sheet">
@@ -116,10 +117,10 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
           </p>
           <h3>{product.name}</h3>
           <p className="latin">{product.latinName}</p>
-          <p className="detail-description">{product.description}</p>
+          <p className="detail-description">{catalogText(product.description)}</p>
           <p className="detail-fact">
             <Ruler size={18} />
-            {product.sizeLabel}
+            {catalogText(product.sizeLabel)}
           </p>
           <p className="detail-price">
             {yen(product.priceYen)} <small>税込</small>
@@ -158,7 +159,7 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
               <span>Canvasでイメージする</span>
               <ArrowUpRight size={15} />
             </a>
-            <p>Canvasの試作画面へ移動します。商品情報は引き継がれません。</p>
+            <p>商品情報は引き継がれません。</p>
           </div>
           {notice && (
             <p className="success-text" role="status">
@@ -172,9 +173,8 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
           )}
           <div className="nursery-profile">
             <p className="eyebrow">PARTNER NURSERY</p>
-            <h4>{product.nurseryName || '生産者未設定'}</h4>
-            <p>{product.nurseryAddress}</p>
-            <p>生産者・商品スペックはデモ用の登録情報です。</p>
+            <h4>{catalogText(product.nurseryName) || '生産者未設定'}</h4>
+            <p>{catalogText(product.nurseryAddress)}</p>
           </div>
           <div className="care-accordions">
             <details open>
@@ -187,7 +187,7 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             </details>
             <details>
               <summary>受取・配送のご案内</summary>
-              <p>このサイトはモックアップです。入力内容を保存しますが、実際の発送・決済・取り置きは行いません。</p>
+              <p>受取方法と配送先はカートで指定できます。</p>
             </details>
           </div>
           <p className="fine-print">画像はAI生成イメージです。</p>

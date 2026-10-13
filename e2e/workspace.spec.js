@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 
 test('account mock validates input, shares state and resets on reload', async ({ page }) => {
   await page.goto('/account');
-  await page.getByRole('button', { name: '新規登録', exact: true }).click();
+  await page.getByRole('link', { name: '新規登録', exact: true }).click();
   await page.getByLabel('お名前・担当者名').fill('モック確認利用者');
   await page.getByLabel('メールアドレス', { exact: true }).fill('workspace-test@example.jp');
   await page.getByLabel('パスワード（8文字以上）').fill('short');
@@ -12,9 +12,9 @@ test('account mock validates input, shares state and resets on reload', async ({
   await page.getByLabel('パスワード（8文字以上）').fill('mock-only-password');
   await page.getByRole('button', { name: '内容を送信' }).click();
   await expect(page.getByRole('status')).toContainText('作成しました');
-  await page.getByRole('link', { name: '購入者サイトへ戻る', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   await page.getByRole('link', { name: '管理者画面', exact: true }).click();
-  await expect(page.locator('.workspace-header')).toContainText('管理者画面');
+  await expect(page.locator('.kusakari-site-header')).toContainText('管理者画面');
   await page.getByRole('link', { name: '会員管理', exact: true }).click();
   await expect(page.locator('table')).toContainText('workspace-test@example.jp');
   await page.reload();
@@ -30,9 +30,9 @@ test('seller application, review, shipment and buyer notifications share mock st
   await page.getByLabel('電話番号').fill('045-000-0000');
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: '出店を申請', exact: true }).click();
-  await page.getByRole('link', { name: '購入者サイトへ戻る', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   await page.getByRole('link', { name: '管理者画面', exact: true }).click();
-  await expect(page.locator('.workspace-header')).toContainText('管理者画面');
+  await expect(page.locator('.kusakari-site-header')).toContainText('管理者画面');
   await page.getByRole('link', { name: '出店審査', exact: true }).click();
   const row = page.getByRole('row').filter({ hasText: 'モック申請園芸店' });
   await row.getByRole('button', { name: '却下', exact: true }).click();
@@ -40,7 +40,7 @@ test('seller application, review, shipment and buyer notifications share mock st
   await page.getByLabel('審査コメント・却下理由').fill('入力内容を確認しました');
   await row.getByRole('button', { name: '承認', exact: true }).click();
   await expect(row).toContainText('承認済み');
-  await page.getByRole('link', { name: '購入者サイトへ戻る', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   await page
     .getByRole('navigation', { name: 'メインナビゲーション' })
     .getByRole('link', { name: '出店者', exact: true })
@@ -55,16 +55,16 @@ test('seller application, review, shipment and buyer notifications share mock st
   await expect(page.getByRole('table')).toContainText('発送済み');
   await mkdir('artifacts/e2e', { recursive: true });
   await page.screenshot({ path: 'artifacts/e2e/workspace-seller-orders.png', fullPage: true });
-  await page.getByRole('link', { name: 'アカウント管理', exact: true }).click();
+  await page.getByRole('link', { name: 'アカウント', exact: true }).click();
   await page.getByRole('link', { name: '通知一覧', exact: true }).click();
   await page.getByRole('button', { name: /SAMPLE-1001を発送しました/ }).click();
   await expect(page.locator('.workspace-main')).toContainText('MOCK-TRACK-1001');
-  await page.getByRole('link', { name: '注文状況（サンプル）' }).click();
+  await page.getByRole('link', { name: '注文状況' }).click();
   await expect(page.locator('.workspace-main')).toContainText('発送済み');
   await expect(page.locator('.workspace-main')).toContainText('発送済み・取消済みの注文は申請できません');
 });
 
-test('operator category CRUD, settlement and responsive navigation', async ({ page }) => {
+test('operator category CRUD and responsive navigation', async ({ page }) => {
   await page.goto('/operator/categories');
   await page.getByLabel('カテゴリ名').fill('確認用カテゴリ');
   await page.getByRole('button', { name: 'カテゴリを追加' }).click();
@@ -79,15 +79,10 @@ test('operator category CRUD, settlement and responsive navigation', async ({ pa
     .click();
   await page.getByRole('button', { name: '削除を確定' }).click();
   await expect(page.locator('table')).not.toContainText('変更済みカテゴリ');
-  await page.getByRole('link', { name: '手数料・精算管理', exact: true }).click();
-  await page.getByLabel('手数料率（%）').fill('8');
-  await page.getByRole('button', { name: '手数料を更新' }).click();
-  await page.getByRole('button', { name: '精算済みにする' }).click();
-  await expect(page.getByRole('button', { name: '精算済みにする' })).toBeDisabled();
   await page.screenshot({ path: 'artifacts/e2e/workspace-operator.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByLabel('デモ画面の切り替え')).toHaveCount(0);
-  await expect(page.locator('.workspace-header')).toContainText('管理者画面');
+  await expect(page.locator('.kusakari-site-header')).toContainText('管理者画面');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'artifacts/e2e/workspace-mobile.png', fullPage: true });
 });
@@ -130,7 +125,6 @@ test('buyer, seller and operator routes render without script errors', async ({ 
     '/seller/orders',
     '/seller/sales',
     '/seller/profile',
-    '/seller/messages',
     '/seller/application',
     '/seller/notifications',
     '/operator',
@@ -140,7 +134,6 @@ test('buyer, seller and operator routes render without script errors', async ({ 
     '/operator/products',
     '/operator/categories',
     '/operator/orders',
-    '/operator/settlements',
   ];
   for (const route of routes) {
     await page.goto(route);
@@ -153,11 +146,13 @@ test('buyer, seller and operator routes render without script errors', async ({ 
   const sidebar = await page.locator('.workspace-sidebar').boundingBox();
   expect(sidebar.x).toBe(0);
   await expect(page.locator('.workspace-header select')).toHaveCount(0);
-  await expect(page.locator('.workspace-sidebar nav a svg')).toHaveCount(9);
+  await expect(page.locator('.workspace-sidebar nav a svg')).toHaveCount(8);
   await page.screenshot({ path: 'artifacts/e2e/workspace-dashboard.png', fullPage: true });
-  await page.getByRole('link', { name: '購入者サイトへ戻る', exact: true }).click();
+  await page.getByRole('button', { name: '戻る', exact: true }).click();
   const navigation = page.getByRole('navigation', { name: 'メインナビゲーション' });
-  await expect(navigation.locator('button + a')).toHaveText('出店者');
+  await expect(navigation.locator('button').filter({ hasText: 'Kusakariについて' }).locator('+ a')).toHaveText(
+    '出店者',
+  );
   await expect(page.locator('.history-button svg')).toHaveCount(1);
   await expect(page.locator('.account-entry svg')).toHaveCount(1);
   await expect(page.locator('.site-header .bag-text')).toHaveText('カート');
@@ -177,6 +172,6 @@ test('buyer, seller and operator routes render without script errors', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'artifacts/e2e/ec-header-mobile.png', fullPage: false });
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
-  await expect(page.locator('.workspace-main h1')).toHaveText('アカウント');
+  await expect(page.locator('.workspace-main h1')).toHaveText('ユーザーアカウント');
   expect(errors).toEqual([]);
 });

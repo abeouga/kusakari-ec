@@ -55,6 +55,17 @@ function Get-JavaExecutable {
     return $executable
 }
 
+function Get-NormalizedCommandPaths([string]$commandLine) {
+    # Compare complete path arguments after resolving . and ..; never match a
+    # checkout name as a substring of another project's command line.
+    foreach ($argument in [regex]::Matches($commandLine, '"[^"\r\n]*"|[^\s"]+')) {
+        $path = $argument.Value.Trim('"')
+        if (-not [IO.Path]::IsPathRooted($path)) { continue }
+        try { [IO.Path]::GetFullPath($path).ToLowerInvariant() }
+        catch { continue }
+    }
+}
+
 function Get-OwnedServiceProcesses {
     $apiMarkers = @(
         (Join-Path $projectRoot 'backend\target\kusakari-ec-api-0.1.0.jar'),
@@ -63,10 +74,10 @@ function Get-OwnedServiceProcesses {
     ) | ForEach-Object { $_.Replace('/', '\').ToLowerInvariant() }
     $webMarker = (Join-Path $projectRoot 'node_modules\vite\bin\vite.js').ToLowerInvariant()
     @(Get-CimInstance Win32_Process -Filter "Name='java.exe' OR Name='node.exe'" | ForEach-Object {
-        $command = ([string]$_.CommandLine).Replace('/', '\').ToLowerInvariant()
-        $apiOwned = @($apiMarkers | Where-Object { $command.Contains($_) }).Count -gt 0
+        $commandPaths = @(Get-NormalizedCommandPaths ([string]$_.CommandLine))
+        $apiOwned = @($apiMarkers | Where-Object { $commandPaths -contains $_ }).Count -gt 0
         $kind = if ($_.Name -ieq 'java.exe' -and $apiOwned) { 'Api' }
-            elseif ($_.Name -ieq 'node.exe' -and $command.Contains($webMarker)) { 'Web' }
+            elseif ($_.Name -ieq 'node.exe' -and ($commandPaths -contains $webMarker)) { 'Web' }
             else { $null }
         if ($kind) {
             [pscustomobject]@{

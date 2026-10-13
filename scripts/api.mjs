@@ -14,11 +14,12 @@ if (mode === 'e2e') {
   process.env.KUSAKARI_EC_DB_URL = url;
   process.env.KUSAKARI_EC_API_PORT = '18086';
   process.env.KUSAKARI_EC_WEB_ORIGIN = 'http://127.0.0.1:15186';
+  process.env.KUSAKARI_EC_CANVAS_ORIGIN = 'http://127.0.0.1:15173';
 }
 const build = mode === 'build';
 const windowsBuild = build && process.platform === 'win32';
 let command = 'java';
-let args = ['-jar', 'target/kusakari-ec-api-0.1.0.jar'];
+let args = ['-jar', resolve(root, 'backend', 'target', 'kusakari-ec-api-0.1.0.jar')];
 if (build) {
   command = './mvnw';
   args = ['-B', '-ntp', 'package', '-DskipTests'];

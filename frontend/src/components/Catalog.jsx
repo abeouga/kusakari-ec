@@ -1,3 +1,4 @@
+import { catalogText } from '../catalogText';
 import { useState } from 'react';
 import { Leaf, Search, X } from 'lucide-react';
 import { ProductCard } from './ProductCard';
@@ -143,7 +144,9 @@ export function Catalog({ shop, onDetail }) {
             <select aria-label="出店者・ナーセリー" value={nursery} onChange={(e) => setNursery(e.target.value)}>
               <option value="">すべて</option>
               {nurseries.map((name) => (
-                <option key={name}>{name}</option>
+                <option key={name} value={name}>
+                  {catalogText(name)}
+                </option>
               ))}
             </select>
           </label>
@@ -162,7 +165,6 @@ export function Catalog({ shop, onDetail }) {
           <button className="text-button" onClick={reset}>
             絞り込みを解除
           </button>
-          <p className="fine-print">商品・生産者・植物スペックはデモ用です。</p>
         </aside>
         <div className="catalog-results">
           {shop.error && (
@@ -202,7 +204,6 @@ export function Catalog({ shop, onDetail }) {
           )}
         </div>
       </div>
-      <p className="catalog-note">画像はAI生成です。掲載商品・価格・在庫・店舗は、このサイトのデモ用データです。</p>
     </section>
   );
 }

@@ -57,7 +57,7 @@ export function ProductInventory({ shop }) {
   return (
     <section className="workspace-card">
       <h2>在庫・販売状態の管理</h2>
-      <p className="api-note">実API・MySQLに保存します。店舗：{shop.cart?.storeName}</p>
+
       {(error || shop.error) && (
         <p className="error" role="alert">
           {error || shop.error}

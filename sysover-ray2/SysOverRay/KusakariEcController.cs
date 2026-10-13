@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 
 namespace KusakariEcSysOverRay;
@@ -70,27 +71,66 @@ public sealed class KusakariEcController
     private async Task RunScriptAsync(string script, params string[] arguments)
     {
         if (!File.Exists(script)) throw new FileNotFoundException("起動スクリプトがありません。", script);
-        var start = new ProcessStartInfo("powershell.exe")
+        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell", "v1.0", "powershell.exe");
+        var start = new ProcessStartInfo(powershell)
         {
             WorkingDirectory = _settings.ProjectRoot,
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
-        foreach (var part in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script }.Concat(arguments))
+        // PowerShell 5.1 otherwise uses the local console code page for redirected text.
+        var invocation = "& " + QuotePowerShell(script);
+        // These are the fixed switch names supplied by StartAsync, not user input.
+        foreach (var argument in arguments) invocation += " " + argument;
+        var command = "$ProgressPreference = 'SilentlyContinue'; $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); "
+            + invocation;
+        foreach (var part in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                     "-OutputFormat", "Text", "-Command", command })
             start.ArgumentList.Add(part);
+        AppLog.Write($"Starting {Path.GetFileName(script)}.");
         using var process = Process.Start(start) ?? throw new InvalidOperationException("操作を開始できませんでした。");
+        using var outputCancellation = new CancellationTokenSource();
+        var stdout = RecordOutputAsync(process.StandardOutput, Path.GetFileName(script), "stdout", outputCancellation.Token);
+        var stderr = RecordOutputAsync(process.StandardError, Path.GetFileName(script), "stderr", outputCancellation.Token);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         try { await process.WaitForExitAsync(timeout.Token); }
         catch (OperationCanceledException)
         {
-            process.Kill(entireProcessTree: true);
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+            AppLog.Write($"{Path.GetFileName(script)} timed out after 90 seconds.");
             throw new TimeoutException("Kusakari の操作が90秒以内に完了しませんでした。");
+        }
+        finally
+        {
+            // Started services may inherit pipe handles. Drain buffered output,
+            // but do not wait for the lifetime of the API/Web processes.
+            try { await Task.WhenAll(stdout, stderr).WaitAsync(TimeSpan.FromSeconds(2)); }
+            catch (TimeoutException) { outputCancellation.Cancel(); }
         }
         AppLog.Write($"{Path.GetFileName(script)} exit={process.ExitCode}");
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"{Path.GetFileName(script)} が失敗しました。 .runtime のログを確認してください。");
+            throw new InvalidOperationException($"{Path.GetFileName(script)} が失敗しました。「ログを開く」から overlay.log を確認してください。");
         }
+    }
+    private static string QuotePowerShell(string value) => "'" + value.Replace("'", "''") + "'";
+
+    private static async Task RecordOutputAsync(StreamReader reader, string script, string stream, CancellationToken cancellation)
+    {
+        try
+        {
+            while (await reader.ReadLineAsync(cancellation) is { } line)
+                AppLog.Write($"{script} {stream}: {line}");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (ObjectDisposedException) when (cancellation.IsCancellationRequested) { }
+        catch (IOException) when (cancellation.IsCancellationRequested) { }
     }
 }
 

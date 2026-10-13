@@ -56,12 +56,3 @@ export function DataTable({ headers, rows }) {
 export function text(data, name) {
   return String(data.get(name) || '').trim();
 }
-
-/** @param {{children:import('react').ReactNode}} props */
-export function MockNote({ children }) {
-  return (
-    <p className="mock-note">
-      <strong>画面モック</strong> {children} 再読み込みで初期化されます。
-    </p>
-  );
-}

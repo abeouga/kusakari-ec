@@ -1,3 +1,4 @@
+import { catalogText } from '../catalogText';
 import { ImagePreview } from '../workspace/ImagePreview';
 import { formText, formNumber, numberValue } from '../forms';
 
@@ -126,15 +127,15 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
         </label>
         <label>
           生産者名
-          <input name="nurseryName" defaultValue={p.nurseryName} maxLength={100} />
+          <input name="nurseryName" defaultValue={catalogText(p.nurseryName)} maxLength={100} />
         </label>
         <label>
           生産者所在地
-          <input name="nurseryAddress" defaultValue={p.nurseryAddress} maxLength={200} />
+          <input name="nurseryAddress" defaultValue={catalogText(p.nurseryAddress)} maxLength={200} />
         </label>
         <label>
           サイズ表記
-          <input name="sizeLabel" defaultValue={p.sizeLabel} maxLength={80} />
+          <input name="sizeLabel" defaultValue={catalogText(p.sizeLabel)} maxLength={80} />
         </label>
         <label>
           商品ラベル
@@ -197,7 +198,7 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
         </label>
         <label className="form-full">
           商品説明
-          <textarea name="description" defaultValue={p.description} required rows={3} maxLength={5000} />
+          <textarea name="description" defaultValue={catalogText(p.description)} required rows={3} maxLength={5000} />
         </label>
         <label className="form-full">
           水やり・育て方

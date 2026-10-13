@@ -2,24 +2,18 @@ import { useState } from 'react';
 import { formText } from '../forms';
 
 /** @param {{details:import('../types').DeliveryDetails,busy:boolean,onSave:(details:import('../types').DeliveryDetails)=>Promise<boolean|undefined>,onReset?:()=>void,lockedMethod?:boolean}} props */
-export function DeliveryForm({
-  details,
-  busy,
-  onSave,
-  onReset,
-  lockedMethod = false,
-}) {
+export function DeliveryForm({ details, busy, onSave, onReset, lockedMethod = false }) {
   const safeDetails = details ?? {
-    fulfillmentMethod: "PICKUP",
-    paymentMethod: "",
-    recipientName: "",
-    recipientPhone: "",
-    contactEmail: "",
-    postalCode: "",
-    addressLine1: "",
-    addressLine2: "",
-    requestedDate: "",
-    timeSlot: "",
+    fulfillmentMethod: 'PICKUP',
+    paymentMethod: '',
+    recipientName: '',
+    recipientPhone: '',
+    contactEmail: '',
+    postalCode: '',
+    addressLine1: '',
+    addressLine2: '',
+    requestedDate: '',
+    timeSlot: '',
   };
 
   const [method, setMethod] = useState(safeDetails.fulfillmentMethod);
@@ -52,7 +46,6 @@ export function DeliveryForm({
     <form className="basic-form delivery-form" onSubmit={save}>
       <p className="eyebrow">RECEIVING & PAYMENT</p>
       <h3>受取・配送とお支払い</h3>
-      <p className="fine-print">デモ情報を入力してください。実際の決済・配送・メール送信は行いません。</p>
       <div className="form-grid">
         <label>
           受取方法
@@ -64,11 +57,11 @@ export function DeliveryForm({
         <label>
           支払方法
           <select name="paymentMethod" value={payment} onChange={(e) => setPayment(e.target.value)} disabled={busy}>
-            <option value="DEMO_CARD">カード決済（デモ）</option>
+            <option value="DEMO_CARD">カード決済</option>
             <option value="STORE" disabled={method === 'DELIVERY'}>
-              店頭払い（デモ）
+              店頭払い
             </option>
-            <option value="DEMO_WALLET">ウォレット決済（デモ）</option>
+            <option value="DEMO_WALLET">ウォレット決済</option>
           </select>
         </label>
         <label>

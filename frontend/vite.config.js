@@ -11,6 +11,8 @@ export default defineConfig({
   envDir: fileURLToPath(new URL('..', import.meta.url)),
   server: {
     host: '127.0.0.1',
+    // API CORS (including preflight and credentials) is handled by LocalApiFilter.
+    cors: false,
     port: 5186,
     strictPort: true,
     proxy: { '/api': { target: process.env.KUSAKARI_EC_API_TARGET || 'http://127.0.0.1:8086' } },
