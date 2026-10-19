@@ -484,6 +484,9 @@ function Initialize-Database([string]$mode, [switch]$reconfigure) {
         $null = Invoke-MySql $user $password $port 'USE kusakari; SELECT 1; USE kusakari_e2e; SELECT 1;'
         if (Test-Path -LiteralPath $settings) { Set-PrivateFile (Join-Path $runtimeDir 'env.previous') ([IO.File]::ReadAllText($settings)) }
         $lines = @("KUSAKARI_EC_DATABASE_MODE=$mode", "KUSAKARI_EC_DB_PORT=$port", "KUSAKARI_EC_DB_USER=$user", "KUSAKARI_EC_DB_PASSWORD='$password'", "KUSAKARI_EC_DB_URL=jdbc:mysql://127.0.0.1:$port/kusakari?connectionTimeZone=UTC", "KUSAKARI_EC_E2E_DB_URL=jdbc:mysql://127.0.0.1:$port/kusakari_e2e?connectionTimeZone=UTC")
+        if (Test-Path -LiteralPath $settings) {
+            $lines += @(Get-Content -LiteralPath $settings | Where-Object { $_ -match '^(VITE_KUSAKARI_CANVAS_URL|KUSAKARI_CANVAS_API_URL)=' })
+        }
         Set-PrivateFile $settings (($lines -join "`n") + "`n")
         Import-LocalSettings
     }

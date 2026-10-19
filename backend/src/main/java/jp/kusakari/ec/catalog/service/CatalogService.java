@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Comparator;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +14,7 @@ import jp.kusakari.ec.catalog.dto.CatalogDtos.MaterialMatch;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.MaterialRequest;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.StoreView;
+import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.mapper.ProductMapper;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryId;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
@@ -41,14 +43,37 @@ public class CatalogService {
     return allProducts(storeId).stream().filter(ProductView::active).toList();
   }
 
+  public List<ProductImageReference> imageReferences(List<String> ids) {
+    if (Set.copyOf(ids).size() != ids.size()) {
+      throw new ApiException(400, "DUPLICATE_PRODUCT", "参照する商品IDが重複しています。");
+    }
+    var found = products.findImageReferences(ids).stream()
+      .collect(java.util.stream.Collectors.toMap(ProductImageReference::id, item -> item));
+    if (found.size() != ids.size()) {
+      throw new ApiException(404, "PRODUCT_NOT_FOUND", "配置に紐づく商品の登録情報が見つかりません。");
+    }
+    return ids.stream().map(found::get).toList();
+  }
+
   public List<ProductView> allProducts(long storeId) {
     requireStore(storeId);
+    return views(products.findAll(), storeId);
+  }
+
+  // Purchase flows must not deserialize every product's potentially large 3D manifest.
+  public List<ProductView> productsByIds(long storeId, Collection<String> ids) {
+    requireStore(storeId);
+    return ids.isEmpty() ? List.of() : views(products.findByIdIn(ids), storeId);
+  }
+
+  private List<ProductView> views(List<ProductEntity> selected, long storeId) {
     Map<String, Integer> stockByProduct = inventory
       .findAllAtStore(storeId)
       .stream()
       .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row.getQuantity()));
-    return products
-      .findAllByOrderByIdAsc()
+    return selected
+      // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
+      // The comparator below already provides the complete, deterministic display order.
       .stream()
       .sorted(
         Comparator.comparingInt((ProductEntity product) -> displayOrder(product.getId())).thenComparing(
@@ -116,8 +141,10 @@ public class CatalogService {
       )
       .stream()
       .collect(groupingBy(row -> row.getId().getMaterialCode(), mapping(row -> row.getId().getProductId(), toSet())));
-    Map<String, ProductView> productsById = products(request.storeId())
+    Set<String> matchedIds = productIdsByCode.values().stream().flatMap(Set::stream).collect(toSet());
+    Map<String, ProductView> productsById = productsByIds(request.storeId(), matchedIds)
       .stream()
+      .filter(ProductView::active)
       .collect(java.util.stream.Collectors.toMap(ProductView::id, product -> product));
 
     return request

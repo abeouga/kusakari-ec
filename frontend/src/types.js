@@ -34,6 +34,9 @@
  * @property {string} publishedAt
  * @property {boolean} active
  * @property {string[]} images
+ * @property {PlantModelProfile|null} [plantModelProfile]
+ * @property {object|null} [modelComposition]
+ * @property {string|null} [canvasMaterialCode]
  *
  * @typedef {{id:number, name:string, address:string, hours:string, distanceKm:number|null}} Store
  * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean}} CartLine
@@ -41,9 +44,18 @@
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number}} OrderLine
  * @typedef {{id:string, status:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Order
  * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
- * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'floweringDescription'|'seasonalCare'|'styleDescription'> & {storeId:number,floweringDescription:string,seasonalCare:string,styleDescription:string}} ProductInput
+ * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'floweringDescription'|'seasonalCare'|'styleDescription'|'modelComposition'|'canvasMaterialCode'> & {storeId:number,floweringDescription:string,seasonalCare:string,styleDescription:string}} ProductInput
+ * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number}} PlantModelProfile
  * @typedef {{requestId:string, revision:number, expectedTotalYen:number}} Checkout
  * @typedef {{materialCode:string, quantity:number, unit:string}} MaterialItem
  * @typedef {{materialCode:string, status:string, candidates:{product:Product, purchaseQuantity:number, lineTotalYen:number, available:boolean}[]}} MaterialMatch
+ * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,productCount:number,itemCount:number,thumbnailVersion:string}} ShoppingSummary
+ * @typedef {{id:string,name:string,imageUrl:string,priceYen:number,stock:number,active:boolean}} ShoppingProduct
+ * @typedef {{key:string,name:string,quantity:number,unit:string,products:ShoppingProduct[]}} ShoppingLine
+ * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,storeId:number,storeName:string,items:ShoppingLine[]}} ShoppingDetail
+ * @typedef {{key:string,productId:string}} ShoppingSelection
+ * @typedef {{gardenRevision:number,cartRevision:number,items:ShoppingSelection[]}} ShoppingTransferInput
+ * @typedef {{productId:string,name:string,quantity:number,code:string,message:string}} ShoppingOutcome
+ * @typedef {{cart:Cart,gardenId:string,gardenName:string,added:ShoppingOutcome[],skipped:ShoppingOutcome[]}} ShoppingTransfer
  */
 export {};

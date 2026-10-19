@@ -15,6 +15,8 @@ try {
     Initialize-Toolchain
     Initialize-Database $DatabaseMode -reconfigure:$Reconfigure
     if (-not $SkipInstall) {
+        # Windows locks a running JAR. Only stop this checkout's verified processes.
+        Stop-OwnedServices
         foreach ($command in @(@('ci'), @('run','build:api'), @('run','build:web'))) {
             & npm.cmd @command
             if ($LASTEXITCODE -ne 0) { throw '依存復元またはビルドに失敗しました。上の診断を確認してください。' }

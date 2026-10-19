@@ -17,4 +17,8 @@ public class MaterialProductEntity {
 
   @EmbeddedId
   private MaterialProductId id;
+
+  public MaterialProductEntity(String code, String productId) {
+    id = new MaterialProductId(code, productId);
+  }
 }

@@ -29,6 +29,12 @@ async function request(path, method = 'GET', body) {
 }
 
 export const api = {
+  /** @returns {Promise<import('./types').ShoppingSummary[]>} */
+  shoppingLists: () => request('/shopping-lists'),
+  /** @param {string} id @returns {Promise<import('./types').ShoppingDetail>} */
+  shoppingList: (id) => request(`/shopping-lists/${encodeURIComponent(id)}`),
+  /** @param {string} id @param {import('./types').ShoppingTransferInput} input @returns {Promise<import('./types').ShoppingTransfer>} */
+  transferShoppingList: (id, input) => request(`/cart/shopping-lists/${encodeURIComponent(id)}/items`, 'POST', JSON.stringify(input)),
   /** @returns {Promise<import('./types').Cart>} */
   cart: () => request('/cart'),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */

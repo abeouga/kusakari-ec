@@ -1,0 +1,63 @@
+{
+  "family": "kusakari-private-preview",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "2048",
+  "memory": "4096",
+  "runtimePlatform": {"cpuArchitecture": "X86_64", "operatingSystemFamily": "LINUX"},
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "volumes": [{"name": "ec-tmp"}, {"name": "canvas-tmp"}],
+  "containerDefinitions": [
+    {
+      "name": "canvas",
+      "cpu": 1024,
+      "memory": 1536,
+      "image": "${CANVAS_IMAGE_DIGEST}",
+      "essential": true,
+      "user": "10001:10001",
+      "readonlyRootFilesystem": true,
+      "portMappings": [{"containerPort": 8080, "protocol": "tcp"}],
+      "mountPoints": [{"sourceVolume": "canvas-tmp", "containerPath": "/tmp", "readOnly": false}],
+      "stopTimeout": 60,
+      "environment": [
+        {"name": "KUSAKARI_PRIVATE_PREVIEW", "value": "true"},
+        {"name": "KUSAKARI_PUBLIC_ORIGIN", "value": "${PUBLIC_ORIGIN}"},
+        {"name": "KUSAKARI_CANVAS_DB_URL", "value": "mysql://${RDS_HOST}:3306/kusakari_canvas"},
+        {"name": "KUSAKARI_CANVAS_DB_USER", "value": "${CANVAS_DB_USER}"},
+        {"name": "KUSAKARI_CANVAS_MEDIA_STORAGE", "value": "s3"},
+        {"name": "KUSAKARI_CANVAS_MEDIA_BUCKET", "value": "${MEDIA_BUCKET}"},
+        {"name": "KUSAKARI_CANVAS_MEDIA_PREFIX", "value": "canvas-media/v1"},
+        {"name": "KUSAKARI_CANVAS_EC_URL", "value": "http://127.0.0.1:8086"},
+        {"name": "KUSAKARI_CANVAS_EC_IMAGE_ORIGIN", "value": "${PUBLIC_ORIGIN}"},
+        {"name": "AWS_DEFAULT_REGION", "value": "${AWS_REGION}"}
+      ],
+      "secrets": [{"name": "KUSAKARI_CANVAS_DB_PASSWORD", "valueFrom": "${CANVAS_DB_PASSWORD_SECRET_ARN}"}],
+      "healthCheck": {"command": ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health/ready || exit 1"], "interval": 30, "timeout": 5, "retries": 3, "startPeriod": 60},
+      "logConfiguration": {"logDriver": "awslogs", "options": {"awslogs-group": "${LOG_GROUP}", "awslogs-region": "${AWS_REGION}", "awslogs-stream-prefix": "canvas"}}
+    },
+    {
+      "name": "ec",
+      "cpu": 1024,
+      "memory": 2560,
+      "image": "${EC_IMAGE_DIGEST}",
+      "essential": true,
+      "user": "10001:10001",
+      "readonlyRootFilesystem": true,
+      "portMappings": [{"containerPort": 8086, "protocol": "tcp"}],
+      "mountPoints": [{"sourceVolume": "ec-tmp", "containerPath": "/tmp", "readOnly": false}],
+      "stopTimeout": 60,
+      "environment": [
+        {"name": "SPRING_PROFILES_ACTIVE", "value": "container"},
+        {"name": "KUSAKARI_PRIVATE_PREVIEW", "value": "true"},
+        {"name": "KUSAKARI_PUBLIC_ORIGIN", "value": "${PUBLIC_ORIGIN}"},
+        {"name": "KUSAKARI_EC_DB_URL", "value": "jdbc:mysql://${RDS_HOST}:3306/kusakari?connectionTimeZone=UTC"},
+        {"name": "KUSAKARI_EC_DB_USER", "value": "${EC_DB_USER}"},
+        {"name": "JAVA_TOOL_OPTIONS", "value": "-XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError"}
+      ],
+      "secrets": [{"name": "KUSAKARI_EC_DB_PASSWORD", "valueFrom": "${EC_DB_PASSWORD_SECRET_ARN}"}],
+      "healthCheck": {"command": ["CMD-SHELL", "curl -fsS http://127.0.0.1:8086/api/health/ready || exit 1"], "interval": 30, "timeout": 5, "retries": 3, "startPeriod": 90},
+      "logConfiguration": {"logDriver": "awslogs", "options": {"awslogs-group": "${LOG_GROUP}", "awslogs-region": "${AWS_REGION}", "awslogs-stream-prefix": "ec"}}
+    }
+  ]
+}

@@ -10,7 +10,7 @@ Import-Toolchain
 function Import-LocalSettings {
     $settingsFile = Join-Path $projectRoot '.env'
     if (-not (Test-Path -LiteralPath $settingsFile)) { throw '.env がありません。.env.example から作成してください。' }
-    $allowed = @('KUSAKARI_EC_DB_USER','KUSAKARI_EC_DB_PASSWORD','KUSAKARI_EC_DB_URL','KUSAKARI_EC_E2E_DB_URL','KUSAKARI_EC_DB_PORT','KUSAKARI_EC_DATABASE_MODE')
+    $allowed = @('KUSAKARI_EC_DB_USER','KUSAKARI_EC_DB_PASSWORD','KUSAKARI_EC_DB_URL','KUSAKARI_EC_E2E_DB_URL','KUSAKARI_EC_DB_PORT','KUSAKARI_EC_DATABASE_MODE','VITE_KUSAKARI_CANVAS_URL','KUSAKARI_CANVAS_API_URL')
     foreach ($key in $allowed) { [Environment]::SetEnvironmentVariable($key, $null, 'Process') }
     $seen = @{}
     foreach ($line in Get-Content -LiteralPath $settingsFile) {
@@ -26,6 +26,12 @@ function Import-LocalSettings {
     }
     if (-not $env:KUSAKARI_EC_DB_PORT) { $env:KUSAKARI_EC_DB_PORT = '3306' }
     if (-not $env:KUSAKARI_EC_DATABASE_MODE) { $env:KUSAKARI_EC_DATABASE_MODE = 'existing' }
+    foreach ($key in @('VITE_KUSAKARI_CANVAS_URL','KUSAKARI_CANVAS_API_URL')) {
+        $value = [Environment]::GetEnvironmentVariable($key, 'Process')
+        if ($value -and $value -notmatch '^http://127\.0\.0\.1:\d{1,5}/?$') {
+            throw 'Windows起動のCanvas連携先は127.0.0.1のHTTP URLで指定してください。'
+        }
+    }
     if ($env:KUSAKARI_EC_DB_USER -notmatch '^[A-Za-z0-9_]{1,32}$' -or $env:KUSAKARI_EC_DB_USER -eq 'root') { throw 'アプリ用DBユーザー設定が不正です。setup.bat -Reconfigureで設定してください。' }
     if ($env:KUSAKARI_EC_DB_PORT -notmatch '^\d{1,5}$' -or [int]$env:KUSAKARI_EC_DB_PORT -lt 1 -or [int]$env:KUSAKARI_EC_DB_PORT -gt 65535) { throw 'DBポート設定が不正です。' }
     if ($env:KUSAKARI_EC_DATABASE_MODE -notin @('existing','managed')) { throw 'MySQL方式の設定が不正です。' }

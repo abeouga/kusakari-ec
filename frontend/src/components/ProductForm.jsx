@@ -1,6 +1,8 @@
 import { catalogText } from '../catalogText';
 import { ImagePreview } from '../workspace/ImagePreview';
 import { formText, formNumber, numberValue } from '../forms';
+import { useState } from 'react';
+import { PlantModelFields, readPlantProfile } from './PlantModelFields';
 
 /** @type {import('../types').Product} */
 const emptyProduct = {
@@ -41,6 +43,7 @@ const emptyProduct = {
 
 /** @param {{product:import('../types').Product|null,storeId:number,busy:boolean,onSave:(id:string,input:import('../types').ProductInput)=>Promise<boolean|undefined>,onDone:()=>void}} props */
 export function ProductForm({ product, storeId, busy, onSave, onDone }) {
+  const [formError, setFormError] = useState('');
   let p = emptyProduct;
   let title = '商品を追加';
   if (product) {
@@ -51,6 +54,10 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
   async function save(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    setFormError('');
+    let plantModelProfile;
+    try { plantModelProfile = readPlantProfile(form); }
+    catch (reason) { setFormError(reason instanceof Error ? reason.message : '植物情報を確認してください。'); return; }
     const images = [];
     for (const line of formText(form, 'images').split('\n')) {
       const image = line.trim();
@@ -58,6 +65,7 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
     }
     const saved = await onSave(p.id, {
       storeId,
+      plantModelProfile,
       sku: formText(form, 'sku'),
       name: formText(form, 'name'),
       latinName: formText(form, 'latinName'),
@@ -91,7 +99,7 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
   return (
     <form className="basic-form product-form" onSubmit={save}>
       <h3>{title}</h3>
-      <div className="form-grid">
+      <fieldset disabled={busy} className="product-form-content"><div className="form-grid">
         <label>
           商品名
           <input name="name" defaultValue={p.name} required maxLength={120} />
@@ -216,6 +224,7 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
           相性のよい庭・空間
           <textarea name="styleDescription" defaultValue={p.styleDescription || ''} rows={2} maxLength={5000} />
         </label>
+        <PlantModelFields profile={p.plantModelProfile}/>
         <ImagePreview />
         <label className="form-full">
           メイン画像URL
@@ -225,10 +234,11 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
           追加画像URL（1行に1つ、最大4枚）
           <textarea name="images" defaultValue={p.images.join('\n')} rows={3} />
         </label>
-      </div>
+      </div></fieldset>
       <p className="fine-print">
         画像は /images/ 内のファイル、または https:// のURLを指定します。在庫は上で選択した店舗のみを更新します。
       </p>
+      {formError && <p className="error" role="alert">{formError}</p>}
       <button className="primary-button" type="submit" disabled={busy}>
         商品を保存
       </button>

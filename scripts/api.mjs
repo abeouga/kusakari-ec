@@ -12,9 +12,9 @@ if (mode === 'e2e') {
   const url = process.env.KUSAKARI_EC_E2E_DB_URL;
   e2eDatabasePort();
   process.env.KUSAKARI_EC_DB_URL = url;
-  process.env.KUSAKARI_EC_API_PORT = '18086';
-  process.env.KUSAKARI_EC_WEB_ORIGIN = 'http://127.0.0.1:15186';
-  process.env.KUSAKARI_EC_CANVAS_ORIGIN = 'http://127.0.0.1:15173';
+  process.env.KUSAKARI_EC_API_PORT = process.env.KUSAKARI_EC_E2E_API_PORT || '18086';
+  process.env.KUSAKARI_EC_WEB_ORIGIN = process.env.KUSAKARI_EC_E2E_WEB_ORIGIN || 'http://127.0.0.1:15186';
+  process.env.KUSAKARI_EC_CANVAS_ORIGIN = process.env.KUSAKARI_EC_E2E_CANVAS_ORIGIN || 'http://127.0.0.1:15173';
 }
 const build = mode === 'build';
 const windowsBuild = build && process.platform === 'win32';

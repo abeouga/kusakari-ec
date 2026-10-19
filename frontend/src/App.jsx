@@ -18,12 +18,13 @@ import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
 import { AuthDialog } from './components/AuthDialog';
 
-const canvasUrl = import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/';
+const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin).href;
 
 /** @param {string} url */
 function navigateFromHeader(url) {
   const target = new URL(url);
-  if (target.origin !== window.location.origin) {
+  const canvas = new URL(canvasUrl);
+  if (target.origin !== window.location.origin || (target.origin === canvas.origin && target.pathname.startsWith(canvas.pathname))) {
     window.location.assign(url);
     return;
   }
@@ -70,10 +71,11 @@ export default function App() {
     setPanel(next);
   }
 
-  const workspace = path !== '/' && path !== '/cart';
+  const gardenCart = path.match(/^\/cart\/gardens\/([^/]+)\/?$/);
+  const workspace = path !== '/' && path !== '/cart' && !gardenCart;
   /** @param {string} next */
   function openHeaderPanel(next) {
-    if (workspace) navigate('/');
+    if (workspace || next === 'guide') navigate('/');
     open(next);
   }
   const header = (
@@ -81,7 +83,7 @@ export default function App() {
       ecUrl={window.location.origin}
       canvasUrl={canvasUrl}
       logoUrl="/icon/kusakari_ico.png"
-      activeSection={workspace ? '' : 'plants'}
+      activeSection={path === '/' ? 'plants' : ''}
       cartCount={itemCount}
       onPanel={openHeaderPanel}
       onNavigate={navigateFromHeader}
@@ -91,11 +93,12 @@ export default function App() {
     return <Workspace shop={shop} demo={demo} path={path} header={header} />;
   }
 
-  if (path === '/cart') {
+  if (path === '/cart' || gardenCart) {
     return (
       <>
-        <CartPage shop={shop} onOrders={() => open('orders')} onStores={() => open('stores')} />
+        <CartPage shop={shop} gardenId={gardenCart?.[1]} showGardens={location.includes('#garden-shopping-lists')} header={header} onStores={() => open('stores')} />
         {panel === 'stores' && <Stores shop={shop} onClose={close} />}
+        {panel === 'login' && <AuthDialog onClose={close} />}
         {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
       </>
     );

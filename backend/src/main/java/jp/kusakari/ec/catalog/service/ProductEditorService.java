@@ -8,6 +8,8 @@ import jp.kusakari.ec.catalog.mapper.ProductMapper;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryId;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
+import jp.kusakari.ec.catalog.persistence.entity.MaterialProductEntity;
+import jp.kusakari.ec.catalog.persistence.repository.MaterialProductRepository;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.common.web.ApiException;
@@ -26,46 +28,76 @@ public class ProductEditorService {
   private final CatalogService catalog;
   private final ProductMapper mapper;
   private final EntityManager entityManager;
+  private final CanvasModelClient models;
+  private final MaterialProductRepository materials;
 
   public ProductView create(ProductRequest input) {
-    catalog.requireStore(input.storeId());
+    catalog.requireStore(input.getStoreId());
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
     if (products.existsBySku(product.getSku())) throw duplicateSku();
+    resolveModel(product, input, null, true);
     saveProduct(product, true);
     catalog
       .storeIds()
       .forEach(storeId ->
         inventory.save(
-          new InventoryEntity(new InventoryId(storeId, product.getId()), storeId == input.storeId() ? input.stock() : 0)
+          new InventoryEntity(new InventoryId(storeId, product.getId()), storeId.equals(input.getStoreId()) ? input.getStock() : 0)
         )
       );
-    return catalog.product(product.getId(), input.storeId());
+    linkMaterial(product);
+    return catalog.product(product.getId(), input.getStoreId());
   }
 
   public ProductView update(String id, ProductRequest input) {
-    catalog.requireStore(input.storeId());
+    catalog.requireStore(input.getStoreId());
     ProductEntity product = products
       .findLocked(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
     if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
-    if (products.existsBySkuAndIdNot(input.sku(), id)) throw duplicateSku();
+    if (products.existsBySkuAndIdNot(input.getSku(), id)) throw duplicateSku();
+    var previousProfile = product.getPlantModelProfile();
+    boolean profileProvided = input.isPlantModelProfileProvided();
+    if (!input.isPlantModelProfileProvided()) input.setPlantModelProfile(previousProfile);
     mapper.updateEntity(input, product);
+    resolveModel(product, input, previousProfile, profileProvided);
     saveProduct(product, false);
 
     InventoryEntity stock = inventory
-      .findById(new InventoryId(input.storeId(), id))
-      .orElseGet(() -> new InventoryEntity(new InventoryId(input.storeId(), id), 0));
-    stock.setQuantity(input.stock());
+      .findById(new InventoryId(input.getStoreId(), id))
+      .orElseGet(() -> new InventoryEntity(new InventoryId(input.getStoreId(), id), 0));
+    stock.setQuantity(input.getStock());
     inventory.save(stock);
-    return catalog.product(id, input.storeId());
+    linkMaterial(product);
+    return catalog.product(id, input.getStoreId());
+  }
+
+  private void resolveModel(ProductEntity product, ProductRequest input,
+                            jp.kusakari.ec.catalog.dto.PlantModelProfile previous, boolean profileProvided) {
+    var profile = input.getPlantModelProfile();
+    if (profile == null) {
+      product.setModelComposition(null);
+      return;
+    }
+    if (input.getHeightCm() == null || Double.compare(profile.getHeightCm(), input.getHeightCm()) != 0) {
+      throw new ApiException(400, "PLANT_HEIGHT_MISMATCH", "商品の高さと植物モデルの高さを一致させてください。");
+    }
+    if (!profile.equals(previous) || product.getModelComposition() == null
+        || (profileProvided && product.getModelComposition().path("version").asInt() < 4)) {
+      product.setModelComposition(models.resolve(profile));
+    }
+  }
+
+  private void linkMaterial(ProductEntity product) {
+    if (product.getModelComposition() != null) {
+      materials.save(new MaterialProductEntity("product." + product.getId(), product.getId()));
+    }
   }
 
   public void delete(String id) {
-    ProductEntity product = products
-      .findLocked(id)
-      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    product.setActive(false);
+    if (products.archiveById(id) == 0 && !products.existsById(id)) {
+      throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
+    }
   }
 
   private void saveProduct(ProductEntity product, boolean isNew) {

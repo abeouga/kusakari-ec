@@ -7,6 +7,7 @@ export function useShop() {
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
   const [lastOrder, setLastOrder] = useState(/** @type {import('./types').Order|null} */ (null));
+  const [shoppingTransfer, setShoppingTransfer] = useState(/** @type {import('./types').ShoppingTransfer|null} */ (null));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -193,7 +194,22 @@ export function useShop() {
     });
   }
 
+  /** @param {string} gardenId @param {import('./types').ShoppingTransferInput} input */
+  async function transferShoppingList(gardenId, input) {
+    let result = /** @type {import('./types').ShoppingTransfer|null} */ (null);
+    await run(async () => {
+      result = await api.transferShoppingList(gardenId, input);
+      setCart(result.cart);
+      setShoppingTransfer(result);
+      checkoutRequest.current = null;
+    });
+    return result;
+  }
+
   return {
+    transferShoppingList,
+    shoppingTransfer,
+    setShoppingTransfer,
     saveProduct,
     deleteProduct,
     saveDetails,

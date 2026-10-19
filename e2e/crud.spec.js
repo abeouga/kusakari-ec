@@ -149,7 +149,7 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     await expect(page.getByRole('button', { name: '編集を閉じる' })).toHaveCount(0);
     const history = await page.request.get('/api/orders');
     const updated = (await history.json())[0];
-    const other = await playwright.request.newContext({ baseURL: 'http://127.0.0.1:15186' });
+    const other = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
     try {
       expect((await other.put(`/api/orders/${order.id}`, { data: updated.details })).status()).toBe(404);
       expect((await other.delete(`/api/orders/${order.id}`)).status()).toBe(404);

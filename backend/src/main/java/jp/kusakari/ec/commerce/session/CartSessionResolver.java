@@ -8,6 +8,7 @@ import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,6 +17,8 @@ public class CartSessionResolver {
 
   private static final String COOKIE = "kusakari_cart";
   private final CartRepository carts;
+  @Value("${kusakari.ec.secure-cookie:false}")
+  private boolean secureCookie;
 
   public String resolve(HttpServletRequest request, HttpServletResponse response) {
     if (request.getCookies() != null) {
@@ -31,6 +34,7 @@ public class CartSessionResolver {
       "Set-Cookie",
       ResponseCookie.from(COOKIE, id)
         .httpOnly(true)
+        .secure(secureCookie)
         .sameSite("Strict")
         .path("/api")
         .maxAge(Duration.ofDays(30))

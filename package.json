@@ -16,6 +16,7 @@
     "lint": "eslint frontend/src packages/site-header scripts e2e *.js",
     "check": "npm run typecheck && npm run lint && npm run build:web && npm run build:api",
     "test:e2e": "playwright test",
+    "test:shopping-regression": "playwright test --config playwright.shopping-regression.config.js",
     "format": "prettier --write frontend/src backend/src/main/java scripts/*.mjs e2e/*.js *.js",
     "format:check": "prettier --check frontend/src backend/src/main/java scripts/*.mjs e2e/*.js *.js"
   },

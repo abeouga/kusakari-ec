@@ -11,7 +11,7 @@ export function Cart({ shop, onStores }) {
   if (shop.lastOrder) {
     return (
       <section className="cart-content cart-complete">
-        <h1>注文を保存しました</h1>
+        <h2>注文を保存しました</h2>
         <div className="order-success">
           <CheckCircle2 size={42} />
           <h3>植物を迎える準備ができました。</h3>
@@ -26,8 +26,7 @@ export function Cart({ shop, onStores }) {
   if (!cart) {
     return (
       <section className="cart-content cart-empty-state">
-        <p className="eyebrow">YOUR SHOPPING CART</p>
-        <h1>ショッピングカート</h1>
+        <h2>ショッピングカート</h2>
         {shop.error && (
           <>
             <p className="error" role="alert">
@@ -45,8 +44,7 @@ export function Cart({ shop, onStores }) {
   if (cart.items.length === 0) {
     return (
       <section className="cart-content cart-empty-state">
-        <p className="eyebrow">YOUR SHOPPING CART</p>
-        <h1>ショッピングカート</h1>
+        <h2>ショッピングカート</h2>
         {shop.error && (
           <p className="error" role="alert">
             {shop.error}
@@ -69,8 +67,7 @@ export function Cart({ shop, onStores }) {
   if (shop.busy) checkoutLabel = '保存中…';
   return (
     <section className="cart-content">
-      <p className="eyebrow">YOUR SHOPPING CART</p>
-      <h1>{title}</h1>
+      <h2>{title}</h2>
       <p className="cart-page-lead">商品と受取方法をご確認ください。</p>
       <ol className="step-list">
         <li>1 カート確認</li>

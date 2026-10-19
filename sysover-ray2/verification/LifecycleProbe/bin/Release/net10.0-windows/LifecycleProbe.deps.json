@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "LifecycleProbe/1.0.0": {
+        "dependencies": {
+          "KusakariEcSysOverRay": "1.0.0"
+        },
+        "runtime": {
+          "LifecycleProbe.dll": {}
+        }
+      },
+      "KusakariEcSysOverRay/1.0.0": {
+        "runtime": {
+          "KusakariEcSysOverRay.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "LifecycleProbe/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "KusakariEcSysOverRay/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

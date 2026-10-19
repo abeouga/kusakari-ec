@@ -1,56 +1,46 @@
-import { History, ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Sprout } from 'lucide-react';
 import { BrandIcon } from './BrandIcon';
 import { Cart } from './Cart';
+import { ShoppingListDetail, ShoppingListOverview, ShoppingTransferNotice } from './ShoppingLists';
+import { navigate } from '../workspace/navigation';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onOrders:()=>void,onStores:()=>void}} props */
-export function CartPage({ shop, onOrders, onStores }) {
-  let itemCount = 0;
-  if (shop.cart) itemCount = shop.cart.itemCount;
-
-  return (
-    <>
-      <div className="announcement">
-        <span>GREEN FOR YOUR EVERYDAY</span>
-        <span>ひと鉢からはじまる、緑のある暮らし。</span>
-        <span>植物のオンラインストア</span>
+/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,gardenId?:string,showGardens:boolean,header:import('react').ReactNode}} props */
+export function CartPage({ shop, onStores, gardenId = '', showGardens, header }) {
+  const gardens = showGardens || !!gardenId;
+  function switchTab() {
+    navigate(gardens ? '/cart' : '/cart#garden-shopping-lists');
+    requestAnimationFrame(() => document.getElementById(gardens ? 'cart-tab' : 'gardens-tab')?.focus());
+  }
+  /** @param {import('react').KeyboardEvent} event */
+  function moveTab(event) {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      if ((event.key === 'Home' && !gardens) || (event.key === 'End' && gardens)) return;
+      switchTab();
+    }
+  }
+  return <>
+    {header}
+    <main className="standalone-cart-main">
+      <div className="shopping-page-intro">
+        <div><p className="eyebrow">FROM YOUR GARDEN TO YOUR HOME</p><h1>庭の計画を、暮らしの中へ。</h1></div>
+        <a className="text-link" href="/#plants">植物を探す →</a>
       </div>
-      <header className="site-header cart-page-header">
-        <a className="brand" href="/" aria-label="Kusakari トップへ">
-          <BrandIcon />
-          <span>
-            kusakari<span className="brand-dot">.</span>
-          </span>
-        </a>
-        <nav aria-label="メインナビゲーション">
-          <a href="/#plants">植物を探す</a>
-        </nav>
-        <div className="header-actions">
-          <button className="history-button" onClick={onOrders}>
-            <History size={18} aria-hidden="true" />
-            注文履歴
-          </button>
-          <a className="bag-button active-bag" href="/cart" aria-current="page" aria-label={`カート（${itemCount}点）`}>
-            <ShoppingCart size={20} />
-            <span className="bag-text">カート</span>
-            <span className="bag-count">{itemCount}</span>
-          </a>
-        </div>
-      </header>
-      <main className="standalone-cart-main">
-        <Cart shop={shop} onStores={onStores} />
-      </main>
-      <footer className="site-footer cart-page-footer">
-        <div>
-          <a className="brand footer-brand" href="/">
-            <BrandIcon />
-            <span>kusakari.</span>
-          </a>
-          <p>植物と、暮らす。</p>
-        </div>
-        <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} Kusakari</span>
-        </div>
-      </footer>
-    </>
-  );
+      <div className="shopping-segments" role="tablist" aria-label="お買い物の表示" onKeyDown={moveTab}>
+        <button type="button" role="tab" id="cart-tab" aria-controls="cart-panel" aria-selected={!gardens} tabIndex={gardens ? -1 : 0}
+          onClick={() => navigate('/cart')}><ShoppingCart size={18} aria-hidden="true"/>カート<span>{shop.cart?.itemCount ?? 0}</span></button>
+        <button type="button" role="tab" id="gardens-tab" aria-controls="gardens-panel" aria-selected={gardens} tabIndex={gardens ? 0 : -1}
+          onClick={() => navigate('/cart#garden-shopping-lists')}><Sprout size={18} aria-hidden="true"/>庭の買い物リスト</button>
+      </div>
+      <div role="tabpanel" id={gardens ? 'gardens-panel' : 'cart-panel'} aria-labelledby={gardens ? 'gardens-tab' : 'cart-tab'}>
+        {gardens ? (gardenId ? <ShoppingListDetail key={gardenId + ':' + shop.cart?.storeId} shop={shop} gardenId={gardenId}/> : <ShoppingListOverview/>) : <>
+          <ShoppingTransferNotice shop={shop}/><Cart shop={shop} onStores={onStores}/>
+        </>}
+      </div>
+    </main>
+    <footer className="site-footer cart-page-footer">
+      <div><a className="brand footer-brand" href="/"><BrandIcon/><span>kusakari.</span></a><p>植物と、暮らす。</p></div>
+      <div className="footer-bottom"><span>© {new Date().getFullYear()} Kusakari</span></div>
+    </footer>
+  </>;
 }

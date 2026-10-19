@@ -6,6 +6,7 @@ import { yen } from '../api';
 function inventoryInput(product, storeId) {
   return {
     storeId,
+    plantModelProfile: product.plantModelProfile ?? null,
     sku: product.sku,
     name: product.name,
     latinName: product.latinName,

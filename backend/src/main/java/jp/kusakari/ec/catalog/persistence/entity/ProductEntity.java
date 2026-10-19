@@ -1,5 +1,10 @@
 package jp.kusakari.ec.catalog.persistence.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jp.kusakari.ec.catalog.dto.PlantModelProfile;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -23,6 +28,18 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class ProductEntity {
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "plant_model_profile", columnDefinition = "json")
+  private PlantModelProfile plantModelProfile;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "model_composition", columnDefinition = "json")
+  private JsonNode modelComposition;
+
+  public String getCanvasMaterialCode() {
+    return modelComposition == null ? null : "product." + id;
+  }
 
   @Id
   @Column(length = 40)

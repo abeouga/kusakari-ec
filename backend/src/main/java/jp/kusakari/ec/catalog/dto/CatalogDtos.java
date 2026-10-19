@@ -3,6 +3,7 @@ package jp.kusakari.ec.catalog.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public final class CatalogDtos {
 
@@ -41,10 +42,17 @@ public final class CatalogDtos {
     String styleDescription,
     String publishedAt,
     boolean active,
-    List<String> images
+    List<String> images,
+    PlantModelProfile plantModelProfile,
+    JsonNode modelComposition,
+    String canvasMaterialCode
   ) {}
 
   public record StoreView(long id, String name, String address, String hours, Double distanceKm) {}
+
+  public record ProductReferenceRequest(
+    @NotEmpty @Size(max = 200) List<@NotBlank @Size(max = 40) String> productIds
+  ) {}
 
   public record MaterialItem(
     @NotBlank @Size(max = 80) String materialCode,

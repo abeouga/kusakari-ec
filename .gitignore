@@ -1,4 +1,8 @@
 node_modules/
+artifacts/shopping-regression-report/
+artifacts/shopping-regression-results/
+artifacts/shopping-integration-report/
+artifacts/shopping-integration-results/
 backend/target/
 frontend/dist/
 .env

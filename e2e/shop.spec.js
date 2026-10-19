@@ -39,7 +39,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await expect(page.locator('.quantity-control')).toHaveText('2');
     await expect(page.locator('.grand-total')).toContainText('13,600');
     await page.reload();
-    await expect(page.getByRole('link', { name: 'カート（2点）' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'カートを開く（2点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
     await expect(page.getByRole('heading', { name: '注文内容の確認' })).toBeVisible();
     const saved = page.waitForResponse(
@@ -52,7 +52,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     expect(order.totalYen).toBe(13600);
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
-    await expect(page.getByRole('link', { name: 'カート（0点）' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'カートを開く（0点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toContainText(order.id);
     const history = await page.request.get('/api/orders');
@@ -110,8 +110,10 @@ test('mobile layout, images, keyboard dialog and empty search', async ({ page })
   await page.goto('/');
   await expect(page.getByTestId('product-olive')).toBeVisible();
   await page.evaluate(async () => {
-    await document.fonts.ready;
-    await Promise.all([...document.images].map((image) => image.decode()));
+    // Optional external fonts must not block checks of the actual local product images.
+    const images = [...document.images];
+    for (const image of images) image.loading = 'eager';
+    await Promise.all(images.map((image) => image.decode()));
   });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByLabel('植物を検索').fill('存在しない植物');
@@ -172,7 +174,7 @@ test('checkout retry after an explicitly lost response keeps the same order', as
     expect(payloads).toHaveLength(2);
     expect(payloads[1]).toEqual(payloads[0]);
     await page.reload();
-    await expect(page.getByRole('link', { name: 'カート（0点）' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'カートを開く（0点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
     await expect(page.getByRole('dialog')).toContainText(order.id);
     const historyResponse = await page.request.get('/api/orders');
