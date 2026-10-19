@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "exportedAtJst": "2026-10-19T11:39:52+09:00",
+  "sourceRepository": "C:\\Users\\t_abe\\Desktop\\kusakari-ec",
+  "sourceApi": "http://127.0.0.1:8086/api/products?storeId=1",
+  "storeId": 1,
+  "productCount": 31,
+  "listingImageCount": 30,
+  "modelPreviewImageCount": 30,
+  "uploadedDatabaseImageCount": 0,
+  "includesSecrets": false,
+  "includesOrders": false,
+  "includesCarts": false
+}

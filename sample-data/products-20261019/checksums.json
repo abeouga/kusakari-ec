@@ -1,0 +1,262 @@
+[
+  {
+    "path": "sample-data/products-20261019/export-metadata.json",
+    "sha256": "50f413328646e87df1daab8a8f38c7a5c2b5bb648b1d064617cce33e93ff3194"
+  },
+  {
+    "path": "sample-data/products-20261019/image-map.json",
+    "sha256": "a02903692b8e4098992d0fd256ad58e1b76a9be5d2750d3de080071aea0c1ceb"
+  },
+  {
+    "path": "sample-data/products-20261019/inventory-store-1.json",
+    "sha256": "259a2eb7021189c151c192e2d6b899a101e775fa9b6ac05b34656a57f58fdf34"
+  },
+  {
+    "path": "sample-data/products-20261019/material-links.json",
+    "sha256": "734c117baab0beefeaaa4641a945f354af655fd111e4ab5ee40c7fd0a528207b"
+  },
+  {
+    "path": "sample-data/products-20261019/products-store-1.json",
+    "sha256": "b1cfff31eb038549adaf23991a34aa19c17d7e3aaae43e3de14a599f2b3c7f2a"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-blue-bell.png",
+    "sha256": "2eb7c9ae79de6aa81dbe1a515539869088c29120a7edc4b279434361d7f1fffe"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-blue-conifer.png",
+    "sha256": "ee3211058b3c50f9517ec0df0692b87b72fea1448e1df08a5e3d0efc31397805"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-cluster-shrub.png",
+    "sha256": "2d6c7fefbdaa53c0e2d7989dd92d0c6ca0626c2134a6451d990d5ae937229d65"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-compact-conifer.png",
+    "sha256": "4e65126e928e2115a2aa84e63aeeac0c91971c99432d7a7cea44f8f330a689dd"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-compact-palm.png",
+    "sha256": "6057d2c0a56c27632e6ce5a7ab255b141e1cd6bf7bbb4ae7f9b58be7e51aab39"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-compound-tree.png",
+    "sha256": "e7dd04cba4c33204d1a51e59c300c7ab053ebd1b80b3c309995015bb9a210076"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-gold-conifer.png",
+    "sha256": "3039e1e0257eac05505edffff06fbdecfa8f0036cea45026ce25d04b19efc4a8"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-gold-spread.png",
+    "sha256": "f32ff3bda49944c55af5d643da19913358834d356f6c974e9958a5e8a030a3b6"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-green-rosette.png",
+    "sha256": "ab2df00126a88fd26628cb729b94f4c2535dac01b77263447002edf94a9bc994"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-grove-cane.png",
+    "sha256": "b8354fd9475f586c0398d8c7b7a7e76c786e789fd47ad58b21468947aff940d5"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-grove-oval.png",
+    "sha256": "1742cf079b85838a49ce08c20bfbf7c43832618f74ebab638d76c621bea4549a"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-grove-round.png",
+    "sha256": "8bd5b078e0e15ffb892fe5cbdd58a6f341aea551b3aa3198865bdb2b218593bc"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-heart-vine.png",
+    "sha256": "1617e6665d7604b737f532f96909fd4a97457c93cc6e4d8d6d8dc07904f11f7d"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-maple-tree.png",
+    "sha256": "7fd52252d4c47e0a028249dee17f1dba7202907768eeec8407b827e1be03428f"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-narrow-tree.png",
+    "sha256": "ff829894534af4c219b61201773f8843d4fcc43a9a358744b8a0845b65551901"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-palmate-vine.png",
+    "sha256": "d6e368a70b3229ff185389a063175859be07b70c180591436c1ce8e188bbe002"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-pink-shrub.png",
+    "sha256": "3030c316b4f55eaf42a724c7442847973942ff3e832e9dbb191d2f5af41a23c9"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-plume-grass.png",
+    "sha256": "d0a3a6938478dcf5d46b0e3875a677a9609d3146d8ff606ae2e5461532a219fc"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-purple-rosette.png",
+    "sha256": "cc208ba81daddf25bc84459e0629de4f5dfaffb867fb41936fa640d3da408fb7"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-purple-spike.png",
+    "sha256": "cde33de618d62e01aaa64ea95297c508e063c8ce7de0a5567bb921dedfa4be01"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-red-grass.png",
+    "sha256": "717b3f02f51769aa46d1c431b61a82ee6ec54ad4876f7967dc4e18f510df7f66"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-round-shrub.png",
+    "sha256": "4a27f5b82ddf5c0e243a52f5a5a8dd68d652558f31cc4d28a2d2d12d9e6056a8"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-round-tree.png",
+    "sha256": "6da9f06e5bc82c98c798f193f95756324e847c515a168be3d03740be6d4fd24e"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-silver-spread.png",
+    "sha256": "7a11467f1bf5d0bca2480b943486dac93c23377e3669fa437696033eaaf29bf4"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-soft-grass.png",
+    "sha256": "8dd36a8d904af22c94fe2f19f1ee69c06d07e62936f53a0a9e4afa474fef04df"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-split-leaf.png",
+    "sha256": "b1315ce583b4170b7f941f9fcd9459bd59b8ad887292a715e04803123a03dcf7"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-sword-rosette.png",
+    "sha256": "ff2206eb09ef98d138108ce76767c135a60d20cb1b3791abe36caf9e95e4e7cc"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-tall-palm.png",
+    "sha256": "4308ee96a8405b2a4088b66cfa71bfc75a31786fd1d8086259732a68559565da"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-white-daisy.png",
+    "sha256": "b49904c34c06a882a7393c8b3fe3ec63a84d8540c5731d540c1fceab7e9722d3"
+  },
+  {
+    "path": "frontend/public/images/plant-photo-white-spread.png",
+    "sha256": "df449a46f3d2bf273db750a77ef7aa4b448359676beec6ebb8c6ed58151d7fe7"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-blue-bell.png",
+    "sha256": "bb77e21b41f9d73723671516dec387f4c8ca816ff739bb5bee3ccdd4f445dfd3"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-blue-conifer.png",
+    "sha256": "b32a109c37f08b605939c8d4dd0e7b599b364934f6b8612e3b7dd06332f98143"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-cluster-shrub.png",
+    "sha256": "af97f1dc604729982029370e658b95760fe4a91dfaa55b9a59219ffd354d63ab"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-compact-conifer.png",
+    "sha256": "f8d795d104c0aea3d78c2ea35baa58b65c36b3b946b7d6e8f503e833009d6019"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-compact-palm.png",
+    "sha256": "d46fa69c2d4cd0ed11bb0e3e0e25deb00a22a5695ca4731a7df62c5c3317beaa"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-compound-tree.png",
+    "sha256": "d218787e94370aae254f6f1a306c66c7645749a1cba6f7463cc889a261877989"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-gold-conifer.png",
+    "sha256": "66737bb4bc7210fa63efc604d663cf8d10ec57caae0aac3224fa89297f0d107e"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-gold-spread.png",
+    "sha256": "52b98538214f139a54db014faacd26905dfc55c1e2a372f62d1a172697057bc1"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-green-rosette.png",
+    "sha256": "ecbd654d9d0614224de4575ad3d3fb4c889e69eec7a2a6c89feb1dfedcba064a"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-grove-cane.png",
+    "sha256": "ac9d66bf8cc8e3346f3536e5a2000cb952e7bd81f89f391c649a78e937d74d5f"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-grove-oval.png",
+    "sha256": "44c52c3ce9c927041227474b98c003ec2a358c9ba1ad96909f637b08e86096a1"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-grove-round.png",
+    "sha256": "33af2fedd35713db4f2b73e976cf8e90c3f468f150ec1acbd4a92c579923cd2b"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-heart-vine.png",
+    "sha256": "57f0bfac79a731bacc5136022fafb3ebcab8a9f907c1e4a3925c02a8abce6c02"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-maple-tree.png",
+    "sha256": "0eb63157510c8c41ec0447e78725744fe2b3d826d5496b6e1caa29293f92a641"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-narrow-tree.png",
+    "sha256": "3300c3e0576d9b3686a6909f3bc021360feec79ba390a69f95a0db0519673d3f"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-palmate-vine.png",
+    "sha256": "27f357e9da69f6fe0a32d8bb135a5af5b4dbc411b440a5b4cae94755c537c6e9"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-pink-shrub.png",
+    "sha256": "74e33f4fc5d418c1fb647ddc0174aa478c24ab40e4aa1581aa6bd11a251a8b42"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-plume-grass.png",
+    "sha256": "12b01d2fa168adeb8f46e1f53fccb2d953accc9cd69878a66c020eed6c6b8fe5"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-purple-rosette.png",
+    "sha256": "e02ea5bf03bd758a2a3f308ee6e219dbbc8730adde1e2f74be2adfe83b1c3275"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-purple-spike.png",
+    "sha256": "f314994a91430a493372dc44b1440041cc73bf05d1cba382ed2e929dd0d8ecb4"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-red-grass.png",
+    "sha256": "f45d85c3172ac59a0df18821b95957eb6f6430460179c5441b66ab4a401789db"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-round-shrub.png",
+    "sha256": "a96c4b0e39b881757fd81e4a5dc5b6662404107e8fb050c80895789e88140e96"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-round-tree.png",
+    "sha256": "a744cdb7985152eca4dbaa589749da33d2da1cff05671e15c9c720bd8990b31d"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-silver-spread.png",
+    "sha256": "cdd93e0ff0181b20b4b06051fbc1b8c1dbc5b5305fe6d9eb1b41785a72915805"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-soft-grass.png",
+    "sha256": "b17f4d71b2029fd29c2b132b7a13fe47c02ff75f8087c78a729e9607872cb6df"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-split-leaf.png",
+    "sha256": "0513d6b696d4eb58d877366e8ba1488ecee7f5ad1be7ad6f669250fddf2ad46d"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-sword-rosette.png",
+    "sha256": "b8724fc1559012cc2e3cb31b8c6aa8db2dfebf46ef63cdd0727b95595c27bd38"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-tall-palm.png",
+    "sha256": "ec6462d3604f909e498a9981160e60ad20d68e9b63f32f8e71acad81c0ab68a4"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-white-daisy.png",
+    "sha256": "4a6b063bc886d0057aa74e85fc4dc4d3fe5bd00ae7889b4cf72928e2e48f4b3f"
+  },
+  {
+    "path": "frontend/public/images/plant-v2-white-spread.png",
+    "sha256": "a97b7979474a5374956f2e13b02e168c4ed620145156db9bf0da2c2292255065"
+  }
+]
