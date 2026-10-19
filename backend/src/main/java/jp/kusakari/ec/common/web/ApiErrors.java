@@ -28,6 +28,11 @@ public class ApiErrors {
     );
   }
 
+  @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+  public ResponseEntity<ErrorView> imageTooLarge(Exception error) {
+    return ResponseEntity.status(413).body(new ErrorView("IMAGE_TOO_LARGE", "画像は1枚5MB以下にしてください。"));
+  }
+
   @ExceptionHandler(DataAccessException.class)
   public ResponseEntity<ErrorView> database(DataAccessException error) {
     return ResponseEntity.status(503).body(

@@ -1,30 +1,58 @@
+import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { replenishOrder, sql } from './database.js';
 
 test('product CRUD, plant filters, gallery and archived cart through real MySQL', async ({ page }) => {
+  test.setTimeout(90000);
   let product;
   const sku = `CRUD-${randomUUID().slice(0, 8)}`;
   try {
     await page.goto('/');
     await expect(page.getByTestId('product-olive')).toBeVisible();
     await page.getByRole('button', { name: '商品管理', exact: true }).click();
-    const manager = page.getByRole('dialog');
+    await page.getByRole('dialog').getByRole('button', { name: '新しい商品', exact: true }).click();
+    await expect(page).toHaveURL(/\/seller\/products\/new$/);
+    const manager = page.locator('.workspace-main');
+    await addImages(manager, [
+      'frontend/public/images/olive.png',
+      'frontend/public/images/rosemary.png',
+      'frontend/public/images/lavender.png',
+    ]);
     await manager.getByLabel('商品名', { exact: true }).fill('CRUDデモ植物');
     await manager.getByLabel('商品番号', { exact: true }).fill(sku);
     await manager.getByRole('combobox', { name: 'カテゴリー', exact: true }).selectOption('ハーブ');
     await manager.getByLabel('税込価格（円）').fill('3200');
     await manager.getByLabel('選択店舗の在庫').fill('5');
+    await manager.locator('summary').getByText('詳しい情報', { exact: true }).click();
     await manager.getByLabel('生産者名', { exact: true }).fill('CRUDデモ農園');
-    await manager.getByRole('combobox', { name: '日照条件', exact: true }).selectOption('半日陰');
-    await manager.getByRole('combobox', { name: '手入れレベル', exact: true }).selectOption('3');
-    await manager.getByLabel('用途・植栽場所', { exact: true }).fill('室内インテリア');
     await manager.getByLabel('商品説明', { exact: true }).fill('専用DBだけに保存するテスト用の商品です。');
-    await manager.getByLabel('季節の育て方', { exact: true }).fill('春に剪定します。');
-    await manager.getByLabel('追加画像URL', { exact: false }).fill('/images/rosemary.png\n/images/lavender.png');
+    const existingProducts = await page.request.get('/api/products?storeId=1').then((r) => r.json());
+    await manager.locator('summary').getByText('サイズ', { exact: true }).click();
+    await manager.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('275');
+    await manager
+      .getByLabel('商品番号', { exact: true })
+      .fill(existingProducts.find((item) => item.id === 'olive').sku);
+    await manager.getByRole('button', { name: '次へ', exact: true }).click();
+    await manager.getByRole('button', { name: '手動で設定', exact: true }).click();
+    await manager.getByRole('button', { name: '次へ', exact: true }).click();
+    const rejected = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
+    await manager.getByRole('button', { name: '出品する', exact: true }).click();
+    const rejectedResponse = await rejected;
+    expect(rejectedResponse.status()).toBe(409);
+    const rejectedInput = rejectedResponse.request().postDataJSON();
+    expect(rejectedInput.heightCm).toBe(275);
+    expect(rejectedInput.plantModelProfile.heightCm).toBe(rejectedInput.heightCm);
+    await expect(page).toHaveURL(/\/seller\/products\/new$/);
+    await expect(manager.getByRole('alert')).toBeVisible();
+    await expect(manager.getByLabel('商品名', { exact: true })).toHaveValue('CRUDデモ植物');
+    await manager.getByRole('button', { name: '商品情報を修正', exact: true }).click();
+    await manager.getByLabel('商品番号', { exact: true }).fill(sku);
+    await manager.getByRole('button', { name: '次へ', exact: true }).click();
+    await manager.getByRole('button', { name: '設定せず次へ', exact: true }).click();
     const created = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
-    await manager.getByRole('button', { name: '商品を保存', exact: true }).click();
+    await manager.getByRole('button', { name: '出品する', exact: true }).click();
     const response = await created;
     expect(response.status()).toBe(200);
     product = await response.json();
@@ -38,7 +66,19 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       400,
     );
     await expect(manager.getByRole('status')).toContainText('商品を保存');
+    await expect(page).toHaveURL(/\/seller\/products$/);
+    await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: 'Tipsを編集', exact: true }).click();
+    const tips = page.locator('.tips-editor');
+    await tips.getByLabel('季節の育て方', { exact: true }).fill('春に剪定します。');
+    await tips.locator('summary').getByText('温度・植栽条件', { exact: true }).click();
+    await tips.getByRole('combobox', { name: '日照条件', exact: true }).selectOption('半日陰');
+    await tips.getByRole('slider', { name: '手入れレベル', exact: true }).fill('2');
+    await tips.getByLabel('用途・植栽場所', { exact: true }).fill('室内インテリア');
+    await tips.getByRole('button', { name: 'Tipsを保存', exact: true }).click();
+    await expect(tips).toHaveCount(0);
     await page.reload();
+    await expect(page.getByTestId(`manage-${product.id}`)).toBeVisible();
+    await page.goto('/');
     await expect(page.getByTestId(`product-${product.id}`)).toBeVisible();
     await page.getByRole('combobox', { name: '日照条件', exact: true }).selectOption('半日陰');
     await page.getByRole('combobox', { name: '手入れレベル', exact: true }).selectOption('3');
@@ -46,13 +86,14 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await page.getByRole('button', { name: 'CRUDデモ植物の詳細', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('春に剪定');
     await page.getByRole('button', { name: '商品画像2', exact: true }).click();
-    await expect(page.locator('.detail-main-image')).toHaveAttribute('src', '/images/rosemary.png');
+    await expect(page.locator('.detail-main-image')).toHaveAttribute('src', product.images[0]);
     await mkdir('artifacts/e2e', { recursive: true });
     await page.screenshot({ path: 'artifacts/e2e/crud-detail-after-reload.png', fullPage: true });
     const catalog = await page.request.get('/api/products?storeId=1');
     const savedProduct = (await catalog.json()).find((item) => item.id === product.id);
-    expect(savedProduct.images).toEqual(['/images/rosemary.png', '/images/lavender.png']);
+    expect(savedProduct.images).toEqual(product.images);
     expect(savedProduct.careLevel).toBe(3);
+    expect(savedProduct.heightCm).toBe(275);
     await writeFile('artifacts/e2e/crud-product-after-reload.json', JSON.stringify(savedProduct, null, 2));
     await page.getByLabel('購入数量').fill('2');
     await page.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
@@ -63,7 +104,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await page.screenshot({ path: 'artifacts/e2e/crud-product-manager.png', fullPage: true });
     await page.getByRole('dialog').getByLabel('税込価格（円）').fill('3500');
     await page.getByRole('dialog').getByLabel('選択店舗の在庫').fill('2');
-    await page.getByRole('button', { name: '商品を保存', exact: true }).click();
+    await page.getByRole('button', { name: '変更を保存', exact: true }).click();
     await expect(page.getByTestId(`manage-${product.id}`)).toContainText('3,500');
     await page.reload();
     await page.getByRole('link', { name: /カートを開く/ }).click();

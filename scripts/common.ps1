@@ -10,7 +10,7 @@ Import-Toolchain
 function Import-LocalSettings {
     $settingsFile = Join-Path $projectRoot '.env'
     if (-not (Test-Path -LiteralPath $settingsFile)) { throw '.env がありません。.env.example から作成してください。' }
-    $allowed = @('KUSAKARI_EC_DB_USER','KUSAKARI_EC_DB_PASSWORD','KUSAKARI_EC_DB_URL','KUSAKARI_EC_E2E_DB_URL','KUSAKARI_EC_DB_PORT','KUSAKARI_EC_DATABASE_MODE','VITE_KUSAKARI_CANVAS_URL','KUSAKARI_CANVAS_API_URL')
+    $allowed = @('KUSAKARI_EC_DB_USER','KUSAKARI_EC_DB_PASSWORD','KUSAKARI_EC_DB_URL','KUSAKARI_EC_E2E_DB_URL','KUSAKARI_EC_DB_PORT','KUSAKARI_EC_DATABASE_MODE','VITE_KUSAKARI_CANVAS_URL','KUSAKARI_CANVAS_API_URL','KUSAKARI_EC_OPENAI_API_KEY','KUSAKARI_EC_PLANT_SUGGESTION_MODEL','KUSAKARI_EC_E2E_OPENAI_API_KEY')
     foreach ($key in $allowed) { [Environment]::SetEnvironmentVariable($key, $null, 'Process') }
     $seen = @{}
     foreach ($line in Get-Content -LiteralPath $settingsFile) {

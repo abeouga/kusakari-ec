@@ -9,6 +9,8 @@ importRuntimeTools(root);
 if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
 const mode = process.argv[2] || 'dev';
 if (mode === 'e2e') {
+  // Paid AI verification is opt-in and never inherits the development credential.
+  process.env.KUSAKARI_EC_OPENAI_API_KEY = process.env.KUSAKARI_EC_E2E_OPENAI_API_KEY || '';
   const url = process.env.KUSAKARI_EC_E2E_DB_URL;
   e2eDatabasePort();
   process.env.KUSAKARI_EC_DB_URL = url;

@@ -46,6 +46,8 @@
  * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
  * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'floweringDescription'|'seasonalCare'|'styleDescription'|'modelComposition'|'canvasMaterialCode'> & {storeId:number,floweringDescription:string,seasonalCare:string,styleDescription:string}} ProductInput
  * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number}} PlantModelProfile
+ * @typedef {{name:string,latinName:string,category:string,description:string,heightCm:number|null,currentProfile:PlantModelProfile,imageUrl:string|null,imageDataUrl:string|null}} PlantSuggestionInput
+ * @typedef {{profile:PlantModelProfile,estimatedFields:string[],warnings:string[]}} PlantSuggestion
  * @typedef {{requestId:string, revision:number, expectedTotalYen:number}} Checkout
  * @typedef {{materialCode:string, quantity:number, unit:string}} MaterialItem
  * @typedef {{materialCode:string, status:string, candidates:{product:Product, purchaseQuantity:number, lineTotalYen:number, available:boolean}[]}} MaterialMatch
@@ -59,3 +61,5 @@
  * @typedef {{cart:Cart,gardenId:string,gardenName:string,added:ShoppingOutcome[],skipped:ShoppingOutcome[]}} ShoppingTransfer
  */
 export {};
+
+/** @typedef {Pick<Product,'care'|'seasonalCare'|'styleDescription'|'minTemperatureC'|'sunlight'|'careLevel'|'heatTolerant'|'droughtTolerant'|'useCase'|'floweringDescription'>} ProductTips */

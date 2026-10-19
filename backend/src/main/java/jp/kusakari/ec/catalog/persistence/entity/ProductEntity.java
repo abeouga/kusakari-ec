@@ -1,10 +1,6 @@
 package jp.kusakari.ec.catalog.persistence.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import jp.kusakari.ec.catalog.dto.PlantModelProfile;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -17,10 +13,13 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import jp.kusakari.ec.catalog.dto.PlantModelProfile;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "products")
@@ -64,7 +63,7 @@ public class ProductEntity {
   private String sizeLabel;
 
   @Column(nullable = false, columnDefinition = "TEXT")
-  private String care;
+  private String care = "";
 
   @Column(name = "price_yen", nullable = false)
   private int priceYen;

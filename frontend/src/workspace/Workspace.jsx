@@ -26,6 +26,7 @@ import { ApplicationPage, ProfilePage } from './PartnerForms';
 import { SampleOrders, SalesPage, CancelRequest } from './OrderPages';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { ProductInventory } from './ProductInventory';
+import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
 import { Materials } from '../components/Materials';
 import { PageLink } from './Common';
@@ -184,6 +185,7 @@ export function Workspace({ shop, demo, path, header }) {
     if (item[0] === path) title = item[1];
   }
   if (account) title = 'ユーザーアカウント';
+  if (path === '/seller/products/new') title = '商品追加';
   let content;
   if (account) content = <AccountPage key={accountTab} demo={demo} tab={accountTab} />;
   else if (path === '/purchases')
@@ -209,6 +211,7 @@ export function Workspace({ shop, demo, path, header }) {
   else if (path.endsWith('/notifications')) content = <Notices demo={demo} audience={seller ? 'seller' : 'buyer'} />;
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller')} embedded />;
+  else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
   else if (path === '/seller/inventory') content = <ProductInventory shop={shop} />;
   else if (path === '/seller/profile') content = <ProfilePage demo={demo} />;
   else if (path === '/seller/application') content = <ApplicationPage demo={demo} />;
@@ -272,7 +275,13 @@ export function Workspace({ shop, demo, path, header }) {
                   <Fragment key={item[0]}>
                     <PageLink
                       href={item[0]}
-                      className={path === item[0] || (item[0] === '/account' && account) ? 'is-active' : ''}
+                      className={
+                        path === item[0] ||
+                        (item[0] === '/account' && account) ||
+                        (item[0] === '/seller/products' && path === '/seller/products/new')
+                          ? 'is-active'
+                          : ''
+                      }
                     >
                       {Icon && <Icon size={18} aria-hidden="true" />}
                       {item[1]}

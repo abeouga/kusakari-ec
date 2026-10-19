@@ -29,12 +29,34 @@ async function request(path, method = 'GET', body) {
 }
 
 export const api = {
+  /** @param {File} file @returns {Promise<{imageUrl:string}>} */
+  uploadProductImage: async (file) => {
+    const body = new FormData();
+    body.append('file', file);
+    let response;
+    try {
+      response = await fetch('/api/product-images', { method: 'POST', body, credentials: 'same-origin' });
+    } catch {
+      throw new ApiError('画像を保存できません。接続を確認して再試行してください。', 0);
+    }
+    const result = await response.json();
+    if (!response.ok) throw new ApiError(result.message || '画像を保存できませんでした。', response.status);
+    return result;
+  },
+  /** @param {string} id @returns {Promise<import('./types').ProductTips>} */
+  productTips: (id) => request(`/products/${encodeURIComponent(id)}/tips`),
+  /** @param {string} id @param {import('./types').ProductTips} tips @returns {Promise<import('./types').ProductTips>} */
+  saveProductTips: (id, tips) => request(`/products/${encodeURIComponent(id)}/tips`, 'PUT', JSON.stringify(tips)),
+
+  /** @param {import('./types').PlantSuggestionInput} input @returns {Promise<import('./types').PlantSuggestion>} */
+  suggestPlantModel: (input) => request('/products/plant-model-suggestions', 'POST', JSON.stringify(input)),
   /** @returns {Promise<import('./types').ShoppingSummary[]>} */
   shoppingLists: () => request('/shopping-lists'),
   /** @param {string} id @returns {Promise<import('./types').ShoppingDetail>} */
   shoppingList: (id) => request(`/shopping-lists/${encodeURIComponent(id)}`),
   /** @param {string} id @param {import('./types').ShoppingTransferInput} input @returns {Promise<import('./types').ShoppingTransfer>} */
-  transferShoppingList: (id, input) => request(`/cart/shopping-lists/${encodeURIComponent(id)}/items`, 'POST', JSON.stringify(input)),
+  transferShoppingList: (id, input) =>
+    request(`/cart/shopping-lists/${encodeURIComponent(id)}/items`, 'POST', JSON.stringify(input)),
   /** @returns {Promise<import('./types').Cart>} */
   cart: () => request('/cart'),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
