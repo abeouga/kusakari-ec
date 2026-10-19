@@ -66,9 +66,12 @@ function Get-NormalizedCommandPaths([string]$commandLine) {
     # checkout name as a substring of another project's command line.
     foreach ($argument in [regex]::Matches($commandLine, '"[^"\r\n]*"|[^\s"]+')) {
         $path = $argument.Value.Trim('"')
-        if (-not [IO.Path]::IsPathRooted($path)) { continue }
-        try { [IO.Path]::GetFullPath($path).ToLowerInvariant() }
-        catch { continue }
+        try {
+            # Windows PowerShell 5.1 rejects invalid path characters even in IsPathRooted.
+            # Command lines also contain options and inline code, not only file paths.
+            if (-not [IO.Path]::IsPathRooted($path)) { continue }
+            [IO.Path]::GetFullPath($path).ToLowerInvariant()
+        } catch { continue }
     }
 }
 
