@@ -382,13 +382,6 @@
   background: #f4f6ef;
   color: #596253;
 }
-.tips-editor .form-grid {
-  margin: 16px 0;
-}
-.tips-editor summary {
-  cursor: pointer;
-  padding: 12px 0;
-}
 
 .seller-ui-icon {
   display: inline-block;

@@ -3,8 +3,8 @@ import { navigate } from './navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>}} props */
 export function ProductCreatePage({ shop }) {
-  const storeId = shop.cart?.storeId ?? 1;
-  const disabled = shop.busy || !shop.cart;
+  const storeId = shop.sellerStoreId;
+  const disabled = shop.busy;
   return (
     <section className="workspace-card">
       <button className="text-button" onClick={() => navigate('/seller/products')} disabled={shop.busy}>
@@ -25,7 +25,7 @@ export function ProductCreatePage({ shop }) {
                 aria-label="在庫を登録する店舗"
                 value={storeId}
                 disabled={disabled}
-                onChange={(event) => shop.selectStore(Number(event.target.value))}
+                onChange={(event) => shop.setSellerStoreId(Number(event.target.value))}
               >
                 {shop.stores.map((store) => (
                   <option key={store.id} value={store.id}>

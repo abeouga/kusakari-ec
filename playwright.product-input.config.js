@@ -8,7 +8,7 @@ export default defineConfig({
     'product-input.spec.js',
     'plant-ai.spec.js',
     'crud.spec.js',
-    'product-media-tips.spec.js',
+    'product-media.spec.js',
   ],
   grep: /product|plant/,
   reporter: [

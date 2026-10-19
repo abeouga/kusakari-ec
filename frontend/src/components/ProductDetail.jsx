@@ -3,7 +3,6 @@ import { PageLink } from '../workspace/Common';
 import { useState } from 'react';
 import { ShoppingBag, MapPin, Eye, ArrowUpRight } from 'lucide-react';
 import { Dialog } from './Dialog';
-import { ProductTipsView } from './ProductTipsView';
 import { yen } from '../api';
 
 /** @param {{product:import('../types').Product,storeName:string,storeId?:number,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
@@ -142,7 +141,6 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             <h4>{catalogText(product.nurseryName) || '生産者未設定'}</h4>
             <p>{catalogText(product.nurseryAddress)}</p>
           </div>
-          <ProductTipsView product={product} />
           <div className="care-accordions">
             <details>
               <summary>受取・配送のご案内</summary>

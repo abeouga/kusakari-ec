@@ -8,25 +8,28 @@ export function SampleOrders({ demo, operator = false }) {
   const [filter, setFilter] = useState('すべて');
   const order = demo.state.orders.find((entry) => entry.id === selectedId);
   const visible = demo.state.orders.filter((entry) => filter === 'すべて' || entry.status === filter);
-  /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function ship(event) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
+  /** @param {boolean} complete */
+  function updatePickup(complete) {
+    const expected = complete ? '受取準備完了' : '注文受付';
+    const status = complete ? '引き渡し完了' : '受取準備完了';
+    const timestamp = new Date().toISOString();
+    const noticeId = crypto.randomUUID();
     demo.update((draft) => {
       const target = draft.orders.find((entry) => entry.id === selectedId);
-      if (!target || target.status === 'キャンセル') return;
-      target.carrier = text(data, 'carrier');
-      target.tracking = text(data, 'tracking');
-      target.shippedAt = text(data, 'shippedAt');
-      target.status = '発送済み';
+      if (!target || target.status !== expected) return;
+      target.status = status;
+      if (complete) target.pickedUpAt = timestamp;
+      else target.readyAt = timestamp;
       draft.notices.unshift({
-        id: crypto.randomUUID(),
+        id: noticeId,
         audience: 'buyer',
-        title: `${target.id}を発送しました`,
-        body: `${target.carrier} / 追跡番号 ${target.tracking}`,
+        title: `${target.id}の${status}`,
+        body: complete
+          ? `${target.pickupStore}で商品をお渡ししました。`
+          : `商品をご用意しました。${target.pickupStore}（${target.pickupAddress}）へお越しください。営業時間：${target.pickupHours}`,
         read: false,
       });
-    }, '発送情報と購入者通知を更新しました。');
+    }, `${status}と購入者通知を更新しました。`);
   }
   return (
     <>
@@ -37,7 +40,8 @@ export function SampleOrders({ demo, operator = false }) {
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option>すべて</option>
             <option>注文受付</option>
-            <option>発送済み</option>
+            <option>受取準備完了</option>
+            <option>引き渡し完了</option>
             <option>キャンセル</option>
           </select>
         </label>
@@ -64,16 +68,24 @@ export function SampleOrders({ demo, operator = false }) {
           <p>
             {order.product} × {order.quantity} / {yen(order.total)}
           </p>
-          <p>配送先：{order.address}</p>
+          <PickupDetails order={order} />
           <p>状態：{order.status}</p>
-          <form className="workspace-form" key={order.id} onSubmit={ship}>
-            <Field label="発送日" name="shippedAt" type="date" value={order.shippedAt} />
-            <Field label="配送会社" name="carrier" value={order.carrier} />
-            <Field label="追跡番号" name="tracking" value={order.tracking} />
-            <button className="primary-button" disabled={order.status === 'キャンセル'}>
-              発送情報を登録
+          <div className="workspace-form">
+            <button
+              className="primary-button"
+              disabled={order.status !== '注文受付'}
+              onClick={() => updatePickup(false)}
+            >
+              受取準備完了にする
             </button>
-          </form>
+            <button
+              className="primary-button"
+              disabled={order.status !== '受取準備完了'}
+              onClick={() => updatePickup(true)}
+            >
+              引き渡し完了にする
+            </button>
+          </div>
         </section>
       )}
     </>
@@ -96,7 +108,7 @@ export function CancelRequest({ demo, orderId, eligible = true }) {
   return (
     <div className="mock-cancel">
       {existing && <p>キャンセル：{existing.status}</p>}
-      {!eligible && <p>発送済み・取消済みの注文は申請できません。</p>}
+      {!eligible && <p>受取準備完了・引き渡し完了・キャンセル済みの注文は申請できません。</p>}
       {!existing && eligible && (
         <button className="text-button" onClick={() => setOpen(!open)}>
           キャンセルを申請
@@ -152,6 +164,19 @@ export function SalesPage({ demo }) {
           rows={demo.state.settlements.map((entry) => [entry.id, yen(sales - fee), entry.status])}
         />
       </section>
+    </>
+  );
+}
+
+/** @param {{order:import('./demoData').DemoState['orders'][number]}} props */
+export function PickupDetails({ order }) {
+  return (
+    <>
+      <p>受取店舗：{order.pickupStore}</p>
+      <p>所在地：{order.pickupAddress}</p>
+      <p>営業時間：{order.pickupHours}</p>
+      <p>準備完了日時：{order.readyAt ? new Date(order.readyAt).toLocaleString('ja-JP') : '未完了'}</p>
+      <p>引き渡し完了日時：{order.pickedUpAt ? new Date(order.pickedUpAt).toLocaleString('ja-JP') : '未完了'}</p>
     </>
   );
 }

@@ -60,7 +60,7 @@ public class LocalApiFilter extends OncePerRequestFilter {
       response.setHeader("Access-Control-Allow-Origin", requestOrigin);
       response.setHeader("Access-Control-Allow-Credentials", "true");
       if ("OPTIONS".equals(request.getMethod())) {
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
         response.setHeader("Access-Control-Allow-Headers", "Content-Type");
         response.setStatus(204);
         return;

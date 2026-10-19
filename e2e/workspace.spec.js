@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 test('account mock validates input, shares state and resets on reload', async ({ page }) => {
   await page.goto('/account');
@@ -21,7 +21,7 @@ test('account mock validates input, shares state and resets on reload', async ({
   await expect(page.locator('table')).not.toContainText('workspace-test@example.jp');
 });
 
-test('seller application, review, shipment and buyer notifications share mock state', async ({ page }) => {
+test('seller application, review, store pickup and buyer notifications share mock state', async ({ page }) => {
   await page.goto('/seller/application');
   await page.getByLabel('会社・事業者名').fill('モック申請園芸店');
   await page.getByLabel('担当者名', { exact: true }).fill('確認 担当者');
@@ -47,21 +47,54 @@ test('seller application, review, shipment and buyer notifications share mock st
     .click();
   await page.getByRole('link', { name: '出店者通知', exact: true }).click();
   await expect(page.locator('.workspace-main')).toContainText('出店審査：承認済み');
-  await page.getByRole('link', { name: '受注・発送', exact: true }).click();
-  await page.getByLabel('発送日').fill('2026-10-11');
-  await page.getByLabel('配送会社').fill('デモ配送会社');
-  await page.getByLabel('追跡番号').fill('MOCK-TRACK-1001');
-  await page.getByRole('button', { name: '発送情報を登録', exact: true }).click();
-  await expect(page.getByRole('table')).toContainText('発送済み');
+  await page.getByRole('link', { name: '受注・店舗受け取り', exact: true }).click();
+  await expect(page.getByText('受取店舗：湘南オリーブ園', { exact: true })).toBeVisible();
+  await expect(page.getByText(/配送先|発送日|配送会社|追跡番号/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '受取準備完了にする', exact: true }).click();
+  await expect(page.getByRole('button', { name: '受取準備完了にする', exact: true })).toBeDisabled();
+  await expect(page.getByRole('table')).toContainText('受取準備完了');
+  await page.getByRole('combobox', { name: '注文状態', exact: true }).selectOption('受取準備完了');
+  await expect(page.getByRole('table')).toContainText('SAMPLE-1001');
+  await expect(page.getByRole('table')).not.toContainText('SAMPLE-1002');
+  await page.getByRole('link', { name: 'アカウント', exact: true }).click();
+  await page.getByRole('link', { name: '注文状況' }).click();
+  const preparingOrder = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'SAMPLE-1001', exact: true }) });
+  await expect(preparingOrder).toContainText('受取準備完了');
+  await expect(preparingOrder.getByRole('button', { name: 'キャンセルを申請', exact: true })).toHaveCount(0);
+  await page
+    .getByRole('navigation', { name: 'メインナビゲーション' })
+    .getByRole('link', { name: '出店者', exact: true })
+    .click();
+  await page.getByRole('link', { name: '受注・店舗受け取り', exact: true }).click();
+  await page.getByRole('button', { name: '引き渡し完了にする', exact: true }).click();
+  await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
+  await page.getByRole('combobox', { name: '注文状態', exact: true }).selectOption('引き渡し完了');
+  await expect(page.getByRole('table')).toContainText('SAMPLE-1001');
   await mkdir('artifacts/e2e', { recursive: true });
   await page.screenshot({ path: 'artifacts/e2e/workspace-seller-orders.png', fullPage: true });
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
   await page.getByRole('link', { name: '通知一覧', exact: true }).click();
-  await page.getByRole('button', { name: /SAMPLE-1001を発送しました/ }).click();
-  await expect(page.locator('.workspace-main')).toContainText('MOCK-TRACK-1001');
+  await expect(page.getByRole('button', { name: /SAMPLE-1001の受取準備完了/ })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /SAMPLE-1001の引き渡し完了/ })).toHaveCount(1);
+  await page.getByRole('button', { name: /SAMPLE-1001の受取準備完了/ }).click();
+  await expect(page.locator('.workspace-main')).toContainText('営業時間：10:00〜18:00');
   await page.getByRole('link', { name: '注文状況' }).click();
-  await expect(page.locator('.workspace-main')).toContainText('発送済み');
-  await expect(page.locator('.workspace-main')).toContainText('発送済み・取消済みの注文は申請できません');
+  await expect(page.locator('.workspace-main')).toContainText('引き渡し完了');
+  await expect(page.locator('.workspace-main')).toContainText(
+    '受取準備完了・引き渡し完了・キャンセル済みの注文は申請できません',
+  );
+  await page.getByRole('link', { name: '管理者画面', exact: true }).click();
+  await page.getByRole('link', { name: '全注文管理', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'SAMPLE-1001' })).toContainText('引き渡し完了');
+  await page.reload();
+  await expect(page.getByRole('row').filter({ hasText: 'SAMPLE-1001' })).toContainText('注文受付');
+  await page.screenshot({ path: 'artifacts/e2e/pickup-after-reload.png', fullPage: true });
+  const health = await page.request.get('/api/health');
+  expect(health.ok()).toBeTruthy();
+  await writeFile('artifacts/e2e/pickup-api-health.json', JSON.stringify(await health.json(), null, 2));
 });
 
 test('operator category CRUD and responsive navigation', async ({ page }) => {

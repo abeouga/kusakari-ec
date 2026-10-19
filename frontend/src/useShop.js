@@ -3,6 +3,7 @@ import { api, ApiError } from './api';
 
 export function useShop() {
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
+  const [sellerStoreId, setSellerStoreId] = useState(1);
   const [products, setProducts] = useState(/** @type {import('./types').Product[]} */ ([]));
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
@@ -209,6 +210,8 @@ export function useShop() {
   }
 
   return {
+    sellerStoreId,
+    setSellerStoreId,
     refreshProducts: refresh,
     transferShoppingList,
     shoppingTransfer,

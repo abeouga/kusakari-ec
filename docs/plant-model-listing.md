@@ -203,7 +203,7 @@ CRUD、Luna実APIによる写真推定・取り消し・手動修正の検証も
 - 最終集計は `artifacts/e2e/wizard-verification-summary.json`。モデル画像は
   `wizard-ai-preview.png`（Canvasのpreview-loadedを待って撮影）。
 
-## 商品画像と出品後Tips（2026-10-19）
+## 商品画像（2026-10-19）
 
 ### Context / Decision
 
@@ -217,10 +217,15 @@ CRUD、Luna実APIによる写真推定・取り消し・手動修正の検証も
 
 削除は商品の画像参照を外す操作であり、保存済み画像本体の物理削除は行わない。出品を中断したアップロードも残る。自動回収は未実装。商品下書きの復元は追加していない。
 
-出品時の詳しい情報は生産者名・学名・科名とする。栽培情報は既存のDB列を保持し、GET/PUT /api/products/{id}/tips を通じて出品後に編集する。通常の商品保存マッパーはTips列を更新せず、古いフォームや在庫更新による上書きを防ぐ。既存Tipsも移行なしで表示する。
+出品時の詳しい情報は生産者名・学名・科名とする。
 
-画像とTipsのAPIは既存のローカル限定Host/Origin制限に従う。既存アプリ同様、出品者認証と所有権確認は未実装であり、公開サービス向け認可を実装したものではない。
+### 出品者Tipsの撤去（2026-10-19）
 
-検証: product-media-tips.spec.jsで画像バイト列の取得、並び替え・削除・再読み込み、Tips保存と商品更新の独立性、不正ファイル・サイズ・Origin・入力値の拒否を実APIと専用MySQLで確認する。画面証跡はartifacts/e2e/product-images-*.png、product-tips-editor.png、product-tips-public.png。
+Context: 利用者の依頼により、出品者Tipsを廃止する。
+Decision: 編集画面、購入者表示、専用GET/PUT APIとDTO/サービス、専用CSSを削除する。専用文章項目（季節の育て方・空間との相性・開花案内）は商品APIの入出力からも除外する。
+Alternatives: 編集ボタンだけを隠す対応は採用しない。
+Consequences: 日照・耐寒等の検索用属性と商品写真は維持する。保存済みDB列とデータは物理削除せず、専用文章列はJPAマッピングから外して商品更新時にも上書きしない。旧専用APIは404になる。
 
-実施結果: 型確認・lint・Web/APIビルド成功。初回7件中6件成功後、Tips再表示のテスト選択子をロール指定に修正し、画像/Tipsの2件を再実行して成功。計7種類のシナリオを確認（単一実行の7件成功ではない）。Luna実API、1440/390/320px、画像のバイト一致と再読み込み、Tipsの上書き防止、購入者画面への表示を確認。初回失敗のtraceはartifacts/media-first-resultsに保持。集計はartifacts/e2e/media-tips-verification-summary.json。
+画像APIは既存のローカル限定Host/Origin制限に従う。出品者認証と所有権確認は未実装であり、公開サービス向け認可を実装したものではない。
+
+検証: product-media.spec.jsで画像バイト列、並び替え・削除・再読み込み、商品編集、旧専用APIの404、編集ボタンと購入者表示が存在しないことを実APIと専用MySQLで確認する。画面証跡はartifacts/e2e/product-images-*.png、product-images-public.png。

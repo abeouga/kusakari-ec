@@ -13,7 +13,7 @@ test('buyer sidebar has one back button and preserves the originating page', asy
   await page.reload();
   await page.getByRole('button', { name: '戻る', exact: true }).click();
   await expect(page).toHaveURL(/\/seller\/orders$/);
-  await expect(page.locator('.workspace-main h1')).toHaveText('受注・発送');
+  await expect(page.locator('.workspace-main h1')).toHaveText('受注・店舗受け取り');
   await page.getByRole('button', { name: '戻る', exact: true }).click();
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
   await page.getByRole('button', { name: '戻る', exact: true }).click();

@@ -43,10 +43,6 @@ export const api = {
     if (!response.ok) throw new ApiError(result.message || '画像を保存できませんでした。', response.status);
     return result;
   },
-  /** @param {string} id @returns {Promise<import('./types').ProductTips>} */
-  productTips: (id) => request(`/products/${encodeURIComponent(id)}/tips`),
-  /** @param {string} id @param {import('./types').ProductTips} tips @returns {Promise<import('./types').ProductTips>} */
-  saveProductTips: (id, tips) => request(`/products/${encodeURIComponent(id)}/tips`, 'PUT', JSON.stringify(tips)),
 
   /** @param {import('./types').PlantSuggestionInput} input @returns {Promise<import('./types').PlantSuggestion>} */
   suggestPlantModel: (input) => request('/products/plant-model-suggestions', 'POST', JSON.stringify(input)),
@@ -61,6 +57,11 @@ export const api = {
   cart: () => request('/cart'),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
   products: (storeId) => request(`/products?storeId=${storeId}`),
+  /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
+  sellerProducts: (storeId) => request(`/seller/products?storeId=${storeId}`),
+  /** @param {number} storeId @param {string[]} productIds @param {string} status */
+  setProductStatus: (storeId, productIds, status) =>
+    request('/seller/products/status', 'PATCH', JSON.stringify({ storeId, productIds, status })),
   /** @param {number} latitude @param {number} longitude @returns {Promise<import('./types').Store[]>} */
   stores: (latitude, longitude) => request(`/stores?latitude=${latitude}&longitude=${longitude}`),
   /** @param {string} id @param {number} quantity @param {number} revision @returns {Promise<import('./types').Cart>} */

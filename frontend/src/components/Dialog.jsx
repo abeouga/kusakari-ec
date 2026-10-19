@@ -1,26 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-/** @param {{title:string, onClose:()=>void, children:import('react').ReactNode, wide?:boolean}} props */
-export function Dialog({ title, onClose, children, wide = false }) {
+/** @param {{title:string, onClose:()=>void, children:import('react').ReactNode, wide?:boolean,role?:"dialog"|"alertdialog"}} props */
+export function Dialog({ title, onClose, children, wide = false, role = 'dialog' }) {
   const ref = useRef(/** @type {HTMLDialogElement|null} */ (null));
   let className = 'dialog';
   if (wide) className = 'dialog dialog-wide';
   useEffect(() => {
     const element = ref.current;
     const previous = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
     if (!element) return;
     element.showModal();
     document.body.style.overflow = 'hidden';
     return () => {
       element.close();
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
       if (previous instanceof HTMLElement) previous.focus();
     };
   }, []);
   return (
     <dialog
       ref={ref}
+      role={role}
       className={className}
       aria-label={title}
       onCancel={(event) => {

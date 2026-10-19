@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { AccountPage, accountActions } from './AccountPage';
 import { ApplicationPage, ProfilePage } from './PartnerForms';
-import { SampleOrders, SalesPage, CancelRequest } from './OrderPages';
+import { SampleOrders, SalesPage, CancelRequest, PickupDetails } from './OrderPages';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { ProductInventory } from './ProductInventory';
 import { ProductCreatePage } from './ProductCreatePage';
@@ -37,7 +37,7 @@ const sellerMenu = [
   ['/seller/application', '出店申請'],
   ['/seller/products', '商品一覧・登録'],
   ['/seller/inventory', '在庫・販売状態'],
-  ['/seller/orders', '受注・発送'],
+  ['/seller/orders', '受注・店舗受け取り'],
   ['/seller/sales', '売上・精算'],
   ['/seller/profile', '店舗プロフィール'],
   ['/seller/notifications', '出店者通知'],
@@ -200,9 +200,7 @@ export function Workspace({ shop, demo, path, header }) {
             <p>
               支払状態：{order.payment} / 注文状態：{order.status}
             </p>
-            <p>
-              配送会社：{order.carrier || '未登録'} / 追跡番号：{order.tracking || '未登録'}
-            </p>
+            <PickupDetails order={order} />
             <CancelRequest demo={demo} orderId={order.id} eligible={order.status === '注文受付'} />
           </section>
         ))}

@@ -28,11 +28,9 @@
  * @property {number|null} heightCm
  * @property {number|null} potDiameterCm
  * @property {string} familyName
- * @property {string|null} floweringDescription
- * @property {string|null} seasonalCare
- * @property {string|null} styleDescription
  * @property {string} publishedAt
  * @property {boolean} active
+ * @property {string} publicationStatus
  * @property {string[]} images
  * @property {PlantModelProfile|null} [plantModelProfile]
  * @property {object|null} [modelComposition]
@@ -44,7 +42,7 @@
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number}} OrderLine
  * @typedef {{id:string, status:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Order
  * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
- * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'floweringDescription'|'seasonalCare'|'styleDescription'|'modelComposition'|'canvasMaterialCode'> & {storeId:number,floweringDescription:string,seasonalCare:string,styleDescription:string}} ProductInput
+ * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'> & {storeId:number}} ProductInput
  * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number}} PlantModelProfile
  * @typedef {{name:string,latinName:string,category:string,description:string,heightCm:number|null,currentProfile:PlantModelProfile,imageUrl:string|null,imageDataUrl:string|null}} PlantSuggestionInput
  * @typedef {{profile:PlantModelProfile,estimatedFields:string[],warnings:string[]}} PlantSuggestion
@@ -61,5 +59,3 @@
  * @typedef {{cart:Cart,gardenId:string,gardenName:string,added:ShoppingOutcome[],skipped:ShoppingOutcome[]}} ShoppingTransfer
  */
 export {};
-
-/** @typedef {Pick<Product,'care'|'seasonalCare'|'styleDescription'|'minTemperatureC'|'sunlight'|'careLevel'|'heatTolerant'|'droughtTolerant'|'useCase'|'floweringDescription'>} ProductTips */

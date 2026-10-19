@@ -28,11 +28,9 @@ export const emptyProduct = {
   heightCm: null,
   potDiameterCm: null,
   familyName: '',
-  floweringDescription: '',
-  seasonalCare: '',
-  styleDescription: '',
   publishedAt: '',
   active: true,
+  publicationStatus: 'PUBLISHED',
   images: [],
 };
 
@@ -68,9 +66,6 @@ export function productInput(draft, storeId, plantModelProfile) {
     'sunlight',
     'useCase',
     'familyName',
-    'floweringDescription',
-    'seasonalCare',
-    'styleDescription',
   ])
     result[key] = String(draft[key]).trim();
   for (const key of ['priceYen', 'stock', 'careLevel']) result[key] = Number(draft[key]);

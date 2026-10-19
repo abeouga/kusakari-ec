@@ -22,6 +22,9 @@ public class InventoryEntity {
   @Column(nullable = false)
   private int quantity;
 
+  @Column(name = "publication_status", nullable = false, length = 16)
+  private String publicationStatus = "PUBLISHED";
+
   public InventoryEntity(InventoryId id, int quantity) {
     this.id = id;
     this.quantity = quantity;

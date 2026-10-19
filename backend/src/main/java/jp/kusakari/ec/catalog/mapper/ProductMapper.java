@@ -15,7 +15,13 @@ import org.mapstruct.ReportingPolicy;
 public interface ProductMapper {
   @Mapping(target = "stock", source = "stock")
   @Mapping(target = "modelComposition", source = "product.modelComposition", qualifiedByName = "compositionView")
-  ProductView toView(ProductEntity product, int stock);
+  @Mapping(target = "active", expression = "java(product.isActive() && publicationStatus.equals(\"PUBLISHED\"))")
+  @Mapping(target = "publicationStatus", expression = "java(product.isActive() ? publicationStatus : \"DELETED\")")
+  ProductView toView(ProductEntity product, int stock, String publicationStatus);
+
+  // Seller forms edit the profile, not the generated geometry. Avoid sending large meshes in list responses.
+  @Mapping(target = "modelComposition", ignore = true)
+  ProductView toSellerView(ProductView product);
 
   @Named("compositionView")
   default JsonNode compositionView(JsonNode source) {
@@ -35,15 +41,12 @@ public interface ProductMapper {
   }
 
   @Mapping(target = "care", ignore = true)
-  @Mapping(target = "seasonalCare", ignore = true)
-  @Mapping(target = "styleDescription", ignore = true)
   @Mapping(target = "minTemperatureC", ignore = true)
   @Mapping(target = "sunlight", ignore = true)
   @Mapping(target = "careLevel", ignore = true)
   @Mapping(target = "heatTolerant", ignore = true)
   @Mapping(target = "droughtTolerant", ignore = true)
   @Mapping(target = "useCase", ignore = true)
-  @Mapping(target = "floweringDescription", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "unit", ignore = true)
   @Mapping(target = "source", ignore = true)
@@ -54,15 +57,12 @@ public interface ProductMapper {
   ProductEntity toEntity(ProductRequest input);
 
   @Mapping(target = "care", ignore = true)
-  @Mapping(target = "seasonalCare", ignore = true)
-  @Mapping(target = "styleDescription", ignore = true)
   @Mapping(target = "minTemperatureC", ignore = true)
   @Mapping(target = "sunlight", ignore = true)
   @Mapping(target = "careLevel", ignore = true)
   @Mapping(target = "heatTolerant", ignore = true)
   @Mapping(target = "droughtTolerant", ignore = true)
   @Mapping(target = "useCase", ignore = true)
-  @Mapping(target = "floweringDescription", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "unit", ignore = true)
   @Mapping(target = "source", ignore = true)

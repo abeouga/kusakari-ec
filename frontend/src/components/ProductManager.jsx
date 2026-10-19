@@ -1,49 +1,26 @@
-import { Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
-import { ProductTipsEditor } from './ProductTipsEditor';
-import { yen } from '../api';
+import { SellerProductList } from './SellerProductList';
+import { useSellerCatalog } from './useSellerCatalog';
 import { navigate } from '../workspace/navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
 export function ProductManager({ shop, onClose, embedded = false }) {
+  const catalog = useSellerCatalog(shop);
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
-  const [tipsProduct, setTipsProduct] = useState(/** @type {import('../types').Product|null} */ (null));
-  const [formKey, setFormKey] = useState(0);
-  const [deleting, setDeleting] = useState('');
-  let storeId = 1;
-  if (shop.cart) storeId = shop.cart.storeId;
+  const storeName = shop.stores.find((s) => s.id === catalog.storeId)?.name ?? '';
   function resetEditor() {
     setEditing(null);
-    setTipsProduct(null);
-    setFormKey(formKey + 1);
-  }
-  function newProduct() {
-    shop.setError('');
-    shop.setNotice('');
-    if (!embedded) onClose();
-    navigate('/seller/products/new');
-  }
-  /** @param {import('../types').Product} product */
-  function edit(product) {
-    setEditing(product);
-    setFormKey(formKey + 1);
-  }
-  /** @param {string} id */
-  async function remove(id) {
-    const saved = await shop.deleteProduct(id);
-    if (saved) {
-      setDeleting('');
-      resetEditor();
-    }
   }
   return (
     <ManagerFrame embedded={embedded} onClose={onClose}>
-      <p className="muted">商品と店舗別在庫を登録・編集します。削除した商品は販売一覧から非表示になります。</p>
-      {shop.error && (
+      <p className="muted">
+        在庫・非表示・削除は選択店舗だけに反映されます。商品名・価格などの商品情報は全店舗共通です。
+      </p>
+      {(catalog.error || shop.error) && (
         <p className="error" role="alert">
-          {shop.error}
+          {catalog.error || shop.error}
         </p>
       )}
       {shop.notice && (
@@ -53,93 +30,65 @@ export function ProductManager({ shop, onClose, embedded = false }) {
       )}
       <div className="manager-toolbar">
         <label>
-          在庫を編集する店舗
+          管理する店舗
           <select
-            aria-label="在庫を編集する店舗"
-            value={storeId}
-            disabled={shop.busy}
+            aria-label="管理する店舗"
+            value={catalog.storeId}
+            disabled={catalog.busy || !!editing}
             onChange={(e) => {
               resetEditor();
-              shop.selectStore(Number(e.target.value));
+              shop.setSellerStoreId(Number(e.target.value));
             }}
           >
-            {shop.stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
+            {shop.stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>
         </label>
-        <button className="secondary-button" onClick={newProduct} disabled={shop.busy}>
+        <button
+          className="secondary-button"
+          disabled={catalog.busy}
+          onClick={() => {
+            shop.setError('');
+            shop.setNotice('');
+            if (!embedded) onClose();
+            navigate('/seller/products/new');
+          }}
+        >
           新しい商品
         </button>
       </div>
-      <div>
-        {!editing && !tipsProduct && (
-          <div className="manager-list">
-            {shop.products.map((product) => (
-              <article key={product.id} data-testid={`manage-${product.id}`}>
-                <img src={product.imageUrl} alt="" />
-                <div>
-                  <strong>{product.name}</strong>
-                  <small>{product.sku}</small>
-                  <p>
-                    {yen(product.priceYen)} / 在庫 {product.stock}
-                  </p>
-                  <div className="form-actions">
-                    <button className="text-button" onClick={() => edit(product)} disabled={shop.busy}>
-                      編集
-                    </button>
-                    <button className="text-button" disabled={shop.busy} onClick={() => setTipsProduct(product)}>
-                      <Lightbulb className="seller-ui-icon" size={16} aria-hidden="true" />
-                      Tipsを編集
-                    </button>
-                    <button
-                      className="text-button danger-text"
-                      onClick={() => setDeleting(product.id)}
-                      disabled={shop.busy}
-                    >
-                      削除
-                    </button>
-                  </div>
-                  {deleting === product.id && (
-                    <div className="delete-confirm">
-                      <p>この商品を一覧から削除します。</p>
-                      <button className="secondary-button" disabled={shop.busy} onClick={() => remove(product.id)}>
-                        削除を確定
-                      </button>
-                      <button className="text-button" onClick={() => setDeleting('')}>
-                        戻る
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-        {editing && (
-          <button type="button" className="text-button" disabled={shop.busy} onClick={resetEditor}>
-            商品一覧へ戻る
-          </button>
-        )}
-        {tipsProduct && <ProductTipsEditor product={tipsProduct} onDone={resetEditor} onSaved={shop.refreshProducts} />}
-        {editing && (
-          <ProductForm
-            key={formKey}
-            product={editing}
-            storeName={shop.stores.find((store) => store.id === storeId)?.name}
-            storeId={storeId}
-            busy={shop.busy}
-            onSave={shop.saveProduct}
-            onDone={resetEditor}
-          />
-        )}
+      <div hidden={!!editing}>
+        <SellerProductList
+          key={catalog.storeId}
+          products={catalog.products}
+          storeName={storeName}
+          busy={catalog.busy}
+          onEdit={setEditing}
+          onStatus={catalog.changeStatus}
+        />
       </div>
+      {editing && (
+        <button className="text-button" disabled={catalog.busy} onClick={resetEditor}>
+          商品一覧へ戻る
+        </button>
+      )}
+      {editing && (
+        <ProductForm
+          key={`${editing.id}-${catalog.storeId}`}
+          product={editing}
+          storeName={storeName}
+          storeId={catalog.storeId}
+          busy={catalog.busy}
+          onSave={catalog.save}
+          onDone={resetEditor}
+        />
+      )}
     </ManagerFrame>
   );
 }
-
 /** @param {{embedded:boolean,onClose:()=>void,children:import('react').ReactNode}} props */
 function ManagerFrame({ embedded, onClose, children }) {
   if (embedded)

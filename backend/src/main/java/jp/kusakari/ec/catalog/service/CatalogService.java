@@ -67,10 +67,10 @@ public class CatalogService {
   }
 
   private List<ProductView> views(List<ProductEntity> selected, long storeId) {
-    Map<String, Integer> stockByProduct = inventory
+    Map<String, jp.kusakari.ec.catalog.persistence.entity.InventoryEntity> stockByProduct = inventory
       .findAllAtStore(storeId)
       .stream()
-      .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row.getQuantity()));
+      .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row));
     return selected
       // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
       // The comparator below already provides the complete, deterministic display order.
@@ -80,7 +80,11 @@ public class CatalogService {
           ProductEntity::getId
         )
       )
-      .map(product -> mapper.toView(product, stockByProduct.getOrDefault(product.getId(), 0)))
+      .map(product -> {
+        var stock = stockByProduct.get(product.getId());
+        return mapper.toView(product, stock == null ? 0 : stock.getQuantity(),
+          stock == null ? "DELETED" : stock.getPublicationStatus());
+      })
       .toList();
   }
 
@@ -89,11 +93,9 @@ public class CatalogService {
     ProductEntity product = products
       .findById(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    int stock = inventory
-      .findById(new InventoryId(storeId, id))
-      .map(row -> row.getQuantity())
-      .orElse(0);
-    return mapper.toView(product, stock);
+    var stock = inventory.findById(new InventoryId(storeId, id)).orElse(null);
+    return mapper.toView(product, stock == null ? 0 : stock.getQuantity(),
+      stock == null ? "DELETED" : stock.getPublicationStatus());
   }
 
   public void requireStore(long id) {

@@ -95,7 +95,7 @@ public class CheckoutService {
 
     for (CartLine line : current.items()) {
       InventoryEntity stock = lockedStock.get(line.product().id());
-      if (stock == null || stock.getQuantity() < line.quantity()) {
+      if (stock == null || !stock.getPublicationStatus().equals("PUBLISHED") || stock.getQuantity() < line.quantity()) {
         throw new ApiException(409, "OUT_OF_STOCK", "在庫が変更されました。もう一度確認してください。");
       }
       stock.setQuantity(stock.getQuantity() - line.quantity());

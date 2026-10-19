@@ -67,15 +67,8 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     );
     await expect(manager.getByRole('status')).toContainText('商品を保存');
     await expect(page).toHaveURL(/\/seller\/products$/);
-    await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: 'Tipsを編集', exact: true }).click();
-    const tips = page.locator('.tips-editor');
-    await tips.getByLabel('季節の育て方', { exact: true }).fill('春に剪定します。');
-    await tips.locator('summary').getByText('温度・植栽条件', { exact: true }).click();
-    await tips.getByRole('combobox', { name: '日照条件', exact: true }).selectOption('半日陰');
-    await tips.getByRole('slider', { name: '手入れレベル', exact: true }).fill('2');
-    await tips.getByLabel('用途・植栽場所', { exact: true }).fill('室内インテリア');
-    await tips.getByRole('button', { name: 'Tipsを保存', exact: true }).click();
-    await expect(tips).toHaveCount(0);
+    // Set test-owned catalog attributes directly; the removed guidance editor is not a setup path.
+    sql(`UPDATE products SET sunlight='半日陰',care_level=3,use_case='室内インテリア' WHERE id='${product.id}';`);
     await page.reload();
     await expect(page.getByTestId(`manage-${product.id}`)).toBeVisible();
     await page.goto('/');
@@ -84,7 +77,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await page.getByRole('combobox', { name: '手入れレベル', exact: true }).selectOption('3');
     await expect(page.locator('.product-card')).toHaveCount(1);
     await page.getByRole('button', { name: 'CRUDデモ植物の詳細', exact: true }).click();
-    await expect(page.getByRole('dialog')).toContainText('春に剪定');
+    await expect(page.getByRole('dialog').getByRole('region', { name: '出品者Tips' })).toHaveCount(0);
     await page.getByRole('button', { name: '商品画像2', exact: true }).click();
     await expect(page.locator('.detail-main-image')).toHaveAttribute('src', product.images[0]);
     await mkdir('artifacts/e2e', { recursive: true });
@@ -122,7 +115,10 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await expect(page.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
     await page.getByRole('button', { name: 'CRUDデモ植物を削除', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'まだ植物が入っていません。' })).toBeVisible();
-    expect(sql(`SELECT active FROM products WHERE id='${product.id}';`)).toBe('0');
+    expect(sql(`SELECT active FROM products WHERE id='${product.id}';`)).toBe('1');
+    expect(sql(`SELECT publication_status FROM inventory WHERE product_id='${product.id}' AND store_id=1;`)).toBe(
+      'DELETED',
+    );
   } finally {
     if (product && /^[a-f0-9-]{36}$/.test(product.id)) {
       sql(

@@ -3,14 +3,14 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { addImages } from './product-images.js';
 
-test('product images upload persist and seller tips are independent from listing edits', async ({ page }) => {
+test('product images persist after editing and removed guidance is unavailable', async ({ page }) => {
   test.setTimeout(120000);
   await mkdir('artifacts/e2e', { recursive: true });
   await page.goto('/seller/products/new');
   const form = page.locator('.product-form');
-  await form.getByLabel('商品名', { exact: true }).fill('画像とTips検証用植物');
+  await form.getByLabel('商品名', { exact: true }).fill('商品画像検証用植物');
   await form.getByLabel('商品番号', { exact: true }).fill(`MEDIA-${randomUUID().slice(0, 8)}`);
-  await form.getByLabel('商品説明', { exact: true }).fill('画像選択と出品後Tipsの検証。');
+  await form.getByLabel('商品説明', { exact: true }).fill('画像選択と商品編集の検証。');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await expect(form.getByRole('alert')).toContainText('商品画像');
   await expect(form.locator('[name="imageUrl"],[name="images"],[name="care"],[name="minTemperatureC"]')).toHaveCount(0);
@@ -63,47 +63,35 @@ test('product images upload persist and seller tips are independent from listing
   expect(product.minTemperatureC).toBeNull();
   await expect(page).toHaveURL(/\/seller\/products$/);
   await page.reload();
-  await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: 'Tipsを編集', exact: true }).click();
-  const tips = page.locator('.tips-editor');
-  await tips.getByLabel('水やり・育て方', { exact: true }).fill('土の表面が乾いたら水を与えます。');
-  await tips.getByLabel('季節の育て方', { exact: true }).fill('冬は水やりを控えます。');
-  await tips.getByLabel('相性のよい庭・空間', { exact: true }).fill('明るい室内に向きます。');
-  await tips.locator('summary').getByText('温度・植栽条件', { exact: true }).click();
-  await tips.getByLabel('耐寒温度（℃）', { exact: true }).fill('5');
-  await page.screenshot({ path: 'artifacts/e2e/product-tips-editor.png', fullPage: true });
-  await tips.getByRole('button', { name: 'Tipsを保存', exact: true }).click();
-  await expect(tips).toHaveCount(0);
-  // A stale product form must not erase newer tips.
+  await expect(page.getByRole('button', { name: /Tips/ })).toHaveCount(0);
+  expect((await page.request.get(`/api/products/${product.id}/tips`)).status()).toBe(404);
+  expect((await page.request.put(`/api/products/${product.id}/tips`, { data: { care: 'removed' } })).status()).toBe(
+    404,
+  );
   expect((await page.request.put(`/api/products/${product.id}`, { data: { ...stale, priceYen: 4200 } })).status()).toBe(
     200,
   );
   await page.reload();
-  await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: 'Tipsを編集', exact: true }).click();
-  await expect(tips.getByRole('textbox', { name: '季節の育て方', exact: true })).toHaveValue('冬は水やりを控えます。');
-  const persisted = await page.request.get(`/api/products/${product.id}/tips`).then((r) => r.json());
-  expect(persisted.minTemperatureC).toBe(5);
+  await expect(page.getByTestId(`manage-${product.id}`)).toContainText('4,200');
+  const persisted = (await page.request.get('/api/products?storeId=1').then((r) => r.json())).find(
+    (p) => p.id === product.id,
+  );
+  for (const key of ['floweringDescription', 'seasonalCare', 'styleDescription'])
+    expect(persisted).not.toHaveProperty(key);
   await page.goto('/');
   await page
     .getByTestId(`product-${product.id}`)
-    .getByRole('button', { name: '画像とTips検証用植物の詳細', exact: true })
+    .getByRole('button', { name: '商品画像検証用植物の詳細', exact: true })
     .click();
   const detail = page.getByRole('dialog');
   await detail.getByRole('button', { name: '商品画像2', exact: true }).click();
   await expect(detail.locator('.detail-main-image')).toHaveAttribute('src', finalImages[1]);
-  const visibleTips = detail.getByRole('region', { name: '出品者Tips' });
-  await visibleTips.locator('summary').getByText('水やり・育て方', { exact: true }).click();
-  await expect(visibleTips).toContainText(persisted.care);
-  await page.screenshot({ path: 'artifacts/e2e/product-tips-public.png', fullPage: true });
+  await expect(detail.getByRole('region', { name: '出品者Tips' })).toHaveCount(0);
+  await page.screenshot({ path: 'artifacts/e2e/product-images-public.png', fullPage: true });
   await writeFile(
-    'artifacts/e2e/product-media-tips-after-reload.json',
+    'artifacts/e2e/product-media-after-reload.json',
     JSON.stringify({ product, persisted, finalImages }, null, 2),
   );
-  expect(
-    (
-      await page.request.put(`/api/products/${product.id}/tips`, { data: { ...persisted, minTemperatureC: 80 } })
-    ).status(),
-  ).toBe(400);
-  expect((await page.request.get('/api/products/nonexistent/tips')).status()).toBe(404);
 });
 
 test('product image API rejects unsupported files, oversized uploads and foreign origins', async ({ request }) => {

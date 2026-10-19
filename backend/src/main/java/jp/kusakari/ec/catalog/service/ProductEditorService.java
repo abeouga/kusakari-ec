@@ -64,8 +64,11 @@ public class ProductEditorService {
     saveProduct(product, false);
 
     InventoryEntity stock = inventory
-      .findById(new InventoryId(input.getStoreId(), id))
+      .lockAtStore(input.getStoreId(), id)
       .orElseGet(() -> new InventoryEntity(new InventoryId(input.getStoreId(), id), 0));
+    if (stock.getPublicationStatus().equals("DELETED")) {
+      throw new ApiException(409, "PRODUCT_ARCHIVED", "この店舗では取り扱いを終了しています。");
+    }
     stock.setQuantity(input.getStock());
     inventory.save(stock);
     linkMaterial(product);

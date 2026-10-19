@@ -1,0 +1,178 @@
+.seller-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin: 20px 0;
+}
+.seller-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.seller-filters input,
+.seller-filters select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cad6cd;
+  border-radius: 6px;
+  background: white;
+}
+.seller-bulk,
+.seller-pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.seller-product-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.seller-product-table th,
+.seller-product-table td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8e3;
+}
+.seller-product-table th {
+  background: #f2f6f1;
+  white-space: nowrap;
+}
+.seller-product-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+}
+.seller-product-identity img {
+  width: 48px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.seller-product-identity small {
+  display: block;
+  color: #647267;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.seller-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seller-row-actions button,
+.seller-bulk button,
+.seller-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #cad6cd;
+  border-radius: 6px;
+  background: white;
+}
+.seller-product-table .seller-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid #83ab80;
+  border-radius: 20px;
+  background: #e1f0df;
+  color: #235321;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.seller-product-table .seller-status.is-hidden {
+  background: #f0f2f3;
+  border-color: #a9b0b5;
+  color: #4c555c;
+}
+.seller-status:not(:disabled):hover {
+  filter: brightness(0.94);
+}
+.seller-status:focus-visible {
+  outline: 3px solid #326b9a;
+  outline-offset: 3px;
+}
+.seller-status:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.seller-product-table button svg,
+.seller-bulk button svg {
+  flex-shrink: 0;
+}
+.seller-confirm {
+  border: 2px solid #65785c;
+  padding: 20px;
+  margin-top: 18px;
+  border-radius: 8px;
+  background: #fafcf8;
+}
+.seller-confirm button {
+  margin-right: 10px;
+}
+@media (max-width: 1000px) {
+  .seller-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  .seller-product-table,
+  .seller-product-table tbody,
+  .seller-product-table tr,
+  .seller-product-table td {
+    display: block;
+  }
+  .seller-product-table thead {
+    display: block;
+  }
+  .seller-product-table thead tr {
+    display: flex;
+  }
+  .seller-product-table thead th:not(:first-child) {
+    display: none;
+  }
+  .seller-product-table thead th:first-child::after {
+    content: ' このページをすべて選択';
+  }
+  .seller-product-table tbody tr {
+    border: 1px solid #dce5db;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 10px;
+  }
+  .seller-product-table td {
+    border: 0;
+    padding: 6px;
+  }
+  .seller-product-table td[data-label]::before {
+    content: attr(data-label) '：';
+    color: #647267;
+    margin-right: 8px;
+  }
+  .seller-product-identity {
+    min-width: 0;
+  }
+}
+@media (max-width: 700px) {
+  .seller-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.seller-confirm ul {
+  max-height: 180px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}

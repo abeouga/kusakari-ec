@@ -122,15 +122,6 @@ public class ProductEntity {
   @Column(name = "family_name", nullable = false, length = 100)
   private String familyName = "";
 
-  @Column(name = "flowering_description", columnDefinition = "TEXT")
-  private String floweringDescription = "";
-
-  @Column(name = "seasonal_care", columnDefinition = "TEXT")
-  private String seasonalCare = "";
-
-  @Column(name = "style_description", columnDefinition = "TEXT")
-  private String styleDescription = "";
-
   @Column(name = "published_at", nullable = false)
   private Instant publishedAt = Instant.now();
 

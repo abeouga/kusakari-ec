@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /** A bean allows older clients to omit the optional plantModelProfile field. */
-@Getter
-@Setter
+  @Getter
+  @Setter
 public class ProductRequest {
 
   @NotNull
@@ -109,18 +109,6 @@ public class ProductRequest {
   @NotNull
   @Size(max = 100)
   private String familyName;
-
-  @NotNull
-  @Size(max = 5000)
-  private String floweringDescription;
-
-  @NotNull
-  @Size(max = 5000)
-  private String seasonalCare;
-
-  @NotNull
-  @Size(max = 5000)
-  private String styleDescription;
 
   @NotNull
   @Size(max = 4)
