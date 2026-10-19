@@ -1,7 +1,82 @@
-.plant-model-fields { padding: 18px; border: 1px solid #d6e0d0; border-radius: 8px; background: #f8faf5; min-width: 0; }
-.plant-model-fields legend { font-weight: 600; font-size: 14px; padding: 0 8px; }
-.plant-model-fields .form-grid { margin: 16px 0; }
-.plant-model-fields [hidden] { display: none; }
-.plant-model-fields input[type='color'] { min-height: 36px; width: 100%; }
-.plant-model-preview { width: 100%; height: 340px; border: 1px solid #d6e0d0; border-radius: 7px; margin-top: 16px; background: #eef1e7; }
-.product-form-content { margin: 0; padding: 0; border: 0; min-width: 0; }
+.plant-model-fields {
+  padding: 18px;
+  border: 1px solid #d6e0d0;
+  border-radius: 8px;
+  background: #f8faf5;
+  min-width: 0;
+}
+.plant-model-fields legend {
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 8px;
+}
+.plant-model-fields .form-grid {
+  margin: 16px 0;
+}
+.plant-model-fields [hidden] {
+  display: none;
+}
+.plant-model-fields input[type='color'] {
+  min-height: 36px;
+  width: 100%;
+}
+.plant-model-preview {
+  width: 100%;
+  height: 340px;
+  border: 1px solid #d6e0d0;
+  border-radius: 7px;
+  margin-top: 16px;
+  background: #eef1e7;
+}
+.product-form-content {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.product-form-content > fieldset {
+  margin: 28px 0 0;
+}
+.product-form-section {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  background: white;
+}
+.product-form-section > legend,
+.plant-model-fields > legend {
+  padding: 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.product-form-section > .fine-print,
+.plant-model-fields > .fine-print {
+  margin: 0 0 20px;
+}
+.plant-model-group {
+  margin: 24px 0;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid #d6e0d0;
+  min-width: 0;
+}
+.plant-model-group > legend {
+  padding: 0 10px 0 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.plant-model-group .form-grid {
+  margin: 10px 0 0;
+}
+@media (max-width: 650px) {
+  .product-form-section,
+  .plant-model-fields {
+    padding: 16px 12px;
+  }
+  .product-form-section > legend,
+  .plant-model-fields > legend {
+    font-size: 16px;
+  }
+}

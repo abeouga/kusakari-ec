@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
 import { yen } from '../api';
+import { navigate } from '../workspace/navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
 export function ProductManager({ shop, onClose, embedded = false }) {
@@ -10,9 +11,15 @@ export function ProductManager({ shop, onClose, embedded = false }) {
   const [deleting, setDeleting] = useState('');
   let storeId = 1;
   if (shop.cart) storeId = shop.cart.storeId;
-  function newProduct() {
+  function resetEditor() {
     setEditing(null);
     setFormKey(formKey + 1);
+  }
+  function newProduct() {
+    shop.setError('');
+    shop.setNotice('');
+    if (!embedded) onClose();
+    navigate('/seller/products/new');
   }
   /** @param {import('../types').Product} product */
   function edit(product) {
@@ -24,7 +31,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
     const saved = await shop.deleteProduct(id);
     if (saved) {
       setDeleting('');
-      newProduct();
+      resetEditor();
     }
   }
   return (
@@ -48,7 +55,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
             value={storeId}
             disabled={shop.busy}
             onChange={(e) => {
-              newProduct();
+              resetEditor();
               shop.selectStore(Number(e.target.value));
             }}
           >
@@ -63,7 +70,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           新しい商品
         </button>
       </div>
-      <div className="manager-layout">
+      <div className={editing ? 'manager-layout' : ''}>
         <div className="manager-list">
           {shop.products.map((product) => (
             <article key={product.id} data-testid={`manage-${product.id}`}>
@@ -101,14 +108,16 @@ export function ProductManager({ shop, onClose, embedded = false }) {
             </article>
           ))}
         </div>
-        <ProductForm
-          key={formKey}
-          product={editing}
-          storeId={storeId}
-          busy={shop.busy}
-          onSave={shop.saveProduct}
-          onDone={newProduct}
-        />
+        {editing && (
+          <ProductForm
+            key={formKey}
+            product={editing}
+            storeId={storeId}
+            busy={shop.busy}
+            onSave={shop.saveProduct}
+            onDone={resetEditor}
+          />
+        )}
       </div>
     </ManagerFrame>
   );

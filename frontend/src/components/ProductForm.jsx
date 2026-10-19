@@ -56,8 +56,12 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
     const form = new FormData(event.currentTarget);
     setFormError('');
     let plantModelProfile;
-    try { plantModelProfile = readPlantProfile(form); }
-    catch (reason) { setFormError(reason instanceof Error ? reason.message : '植物情報を確認してください。'); return; }
+    try {
+      plantModelProfile = readPlantProfile(form);
+    } catch (reason) {
+      setFormError(reason instanceof Error ? reason.message : '植物情報を確認してください。');
+      return;
+    }
     const images = [];
     for (const line of formText(form, 'images').split('\n')) {
       const image = line.trim();
@@ -99,146 +103,199 @@ export function ProductForm({ product, storeId, busy, onSave, onDone }) {
   return (
     <form className="basic-form product-form" onSubmit={save}>
       <h3>{title}</h3>
-      <fieldset disabled={busy} className="product-form-content"><div className="form-grid">
-        <label>
-          商品名
-          <input name="name" defaultValue={p.name} required maxLength={120} />
-        </label>
-        <label>
-          商品番号
-          <input name="sku" defaultValue={p.sku} required maxLength={50} />
-        </label>
-        <label>
-          学名
-          <input name="latinName" defaultValue={p.latinName} maxLength={120} />
-        </label>
-        <label>
-          カテゴリー
-          <select name="category" defaultValue={p.category}>
-            <option>庭木</option>
-            <option>草花</option>
-            <option>ハーブ</option>
-            <option>観葉植物</option>
-            <option>鉢・庭材</option>
-            <option>土・ケア用品</option>
-            <option>芝</option>
-            <option>道具</option>
-          </select>
-        </label>
-        <label>
-          税込価格（円）
-          <input name="priceYen" type="number" min="1" max="100000" step="1" required defaultValue={p.priceYen} />
-        </label>
-        <label>
-          選択店舗の在庫
-          <input name="stock" type="number" min="0" max="10000" step="1" required defaultValue={p.stock} />
-        </label>
-        <label>
-          生産者名
-          <input name="nurseryName" defaultValue={catalogText(p.nurseryName)} maxLength={100} />
-        </label>
-        <label>
-          生産者所在地
-          <input name="nurseryAddress" defaultValue={catalogText(p.nurseryAddress)} maxLength={200} />
-        </label>
-        <label>
-          サイズ表記
-          <input name="sizeLabel" defaultValue={catalogText(p.sizeLabel)} maxLength={80} />
-        </label>
-        <label>
-          商品ラベル
-          <input name="badge" defaultValue={p.badge} maxLength={30} />
-        </label>
-        <label>
-          日照条件
-          <select name="sunlight" defaultValue={p.sunlight}>
-            <option>未設定</option>
-            <option>日なた</option>
-            <option>半日陰</option>
-            <option>日陰</option>
-          </select>
-        </label>
-        <label>
-          手入れレベル
-          <select name="careLevel" defaultValue={p.careLevel}>
-            <option value="1">1：育てやすい</option>
-            <option value="2">2：定期的な手入れ</option>
-            <option value="3">3：こまめな手入れ</option>
-          </select>
-        </label>
-        <label>
-          用途・植栽場所
-          <input name="useCase" defaultValue={p.useCase} maxLength={80} />
-        </label>
-        <label>
-          耐寒温度（℃）
-          <input
-            name="minTemperatureC"
-            type="number"
-            min="-50"
-            max="50"
-            defaultValue={numberValue(p.minTemperatureC)}
-          />
-        </label>
-        <label>
-          樹齢目安（年）
-          <input name="ageYears" type="number" min="0" max="1000" defaultValue={numberValue(p.ageYears)} />
-        </label>
-        <label>
-          高さ（cm・鉢底から）
-          <input name="heightCm" type="number" min="1" max="3000" defaultValue={numberValue(p.heightCm)} />
-        </label>
-        <label>
-          鉢径（cm）
-          <input name="potDiameterCm" type="number" min="1" max="300" defaultValue={numberValue(p.potDiameterCm)} />
-        </label>
-        <label>
-          科名・属名
-          <input name="familyName" defaultValue={p.familyName} maxLength={100} />
-        </label>
-        <label className="checkbox-label">
-          <input name="heatTolerant" type="checkbox" defaultChecked={p.heatTolerant} />
-          耐暑性が高い
-        </label>
-        <label className="checkbox-label">
-          <input name="droughtTolerant" type="checkbox" defaultChecked={p.droughtTolerant} />
-          乾燥に強い
-        </label>
-        <label className="form-full">
-          商品説明
-          <textarea name="description" defaultValue={catalogText(p.description)} required rows={3} maxLength={5000} />
-        </label>
-        <label className="form-full">
-          水やり・育て方
-          <textarea name="care" defaultValue={p.care} rows={3} maxLength={5000} />
-        </label>
-        <label className="form-full">
-          開花・結実
-          <textarea name="floweringDescription" defaultValue={p.floweringDescription || ''} rows={2} maxLength={5000} />
-        </label>
-        <label className="form-full">
-          季節の育て方
-          <textarea name="seasonalCare" defaultValue={p.seasonalCare || ''} rows={3} maxLength={5000} />
-        </label>
-        <label className="form-full">
-          相性のよい庭・空間
-          <textarea name="styleDescription" defaultValue={p.styleDescription || ''} rows={2} maxLength={5000} />
-        </label>
-        <PlantModelFields profile={p.plantModelProfile}/>
-        <ImagePreview />
-        <label className="form-full">
-          メイン画像URL
-          <input name="imageUrl" defaultValue={p.imageUrl} required maxLength={250} />
-        </label>
-        <label className="form-full">
-          追加画像URL（1行に1つ、最大4枚）
-          <textarea name="images" defaultValue={p.images.join('\n')} rows={3} />
-        </label>
-      </div></fieldset>
+      <fieldset disabled={busy} className="product-form-content">
+        <fieldset className="product-form-section">
+          <legend>基本情報</legend>
+          <p className="fine-print">商品を識別する情報と、購入者に伝える説明を入力します。</p>
+          <div className="form-grid">
+            <label>
+              商品名
+              <input name="name" defaultValue={p.name} required maxLength={120} />
+            </label>
+            <label>
+              商品番号
+              <input name="sku" defaultValue={p.sku} required maxLength={50} />
+            </label>
+            <label>
+              カテゴリー
+              <select name="category" defaultValue={p.category}>
+                <option>庭木</option>
+                <option>草花</option>
+                <option>ハーブ</option>
+                <option>観葉植物</option>
+                <option>鉢・庭材</option>
+                <option>土・ケア用品</option>
+                <option>芝</option>
+                <option>道具</option>
+              </select>
+            </label>
+            <label>
+              商品ラベル
+              <input name="badge" defaultValue={p.badge} maxLength={30} />
+            </label>
+            <label className="form-full">
+              商品説明
+              <textarea
+                name="description"
+                defaultValue={catalogText(p.description)}
+                required
+                rows={3}
+                maxLength={5000}
+              />
+            </label>
+            <label>
+              生産者名
+              <input name="nurseryName" defaultValue={catalogText(p.nurseryName)} maxLength={100} />
+            </label>
+            <label>
+              生産者所在地
+              <input name="nurseryAddress" defaultValue={catalogText(p.nurseryAddress)} maxLength={200} />
+            </label>
+          </div>
+        </fieldset>
+        <fieldset className="product-form-section">
+          <legend>価格・在庫</legend>
+          <p className="fine-print">在庫は、この画面で選択した店舗に登録します。</p>
+          <div className="form-grid">
+            <label>
+              税込価格（円）
+              <input name="priceYen" type="number" min="1" max="100000" step="1" required defaultValue={p.priceYen} />
+            </label>
+            <label>
+              選択店舗の在庫
+              <input name="stock" type="number" min="0" max="10000" step="1" required defaultValue={p.stock} />
+            </label>
+          </div>
+        </fieldset>
+        <fieldset className="product-form-section">
+          <legend>植物の特徴</legend>
+          <p className="fine-print">
+            高さは庭オブジェクトにも共用します。サイズ表記には号数・セット数などの補足を入力してください。
+          </p>
+          <div className="form-grid">
+            <label>
+              学名
+              <input name="latinName" defaultValue={p.latinName} maxLength={120} />
+            </label>
+            <label>
+              科名・属名
+              <input name="familyName" defaultValue={p.familyName} maxLength={100} />
+            </label>
+            <label>
+              樹齢目安（年）
+              <input name="ageYears" type="number" min="0" max="1000" defaultValue={numberValue(p.ageYears)} />
+            </label>
+            <label>
+              植物の高さ（cm・土際から）
+              <input
+                name="heightCm"
+                type="number"
+                min="1"
+                max="3000"
+                defaultValue={numberValue(p.heightCm ?? p.plantModelProfile?.heightCm ?? null)}
+              />
+            </label>
+            <label>
+              鉢径（cm）
+              <input name="potDiameterCm" type="number" min="1" max="300" defaultValue={numberValue(p.potDiameterCm)} />
+            </label>
+            <label>
+              サイズ表記
+              <input name="sizeLabel" defaultValue={catalogText(p.sizeLabel)} maxLength={80} />
+            </label>
+            <label className="form-full">
+              開花・結実
+              <textarea
+                name="floweringDescription"
+                defaultValue={p.floweringDescription || ''}
+                rows={2}
+                maxLength={5000}
+              />
+            </label>
+          </div>
+        </fieldset>
+        <fieldset className="product-form-section">
+          <legend>育て方・植栽条件</legend>
+          <p className="fine-print">生育環境と、購入後の管理方法をまとめて入力します。</p>
+          <div className="form-grid">
+            <label>
+              日照条件
+              <select name="sunlight" defaultValue={p.sunlight}>
+                <option>未設定</option>
+                <option>日なた</option>
+                <option>半日陰</option>
+                <option>日陰</option>
+              </select>
+            </label>
+            <label>
+              手入れレベル
+              <select name="careLevel" defaultValue={p.careLevel}>
+                <option value="1">1：育てやすい</option>
+                <option value="2">2：定期的な手入れ</option>
+                <option value="3">3：こまめな手入れ</option>
+              </select>
+            </label>
+            <label>
+              耐寒温度（℃）
+              <input
+                name="minTemperatureC"
+                type="number"
+                min="-50"
+                max="50"
+                defaultValue={numberValue(p.minTemperatureC)}
+              />
+            </label>
+            <label>
+              用途・植栽場所
+              <input name="useCase" defaultValue={p.useCase} maxLength={80} />
+            </label>
+            <label className="checkbox-label">
+              <input name="heatTolerant" type="checkbox" defaultChecked={p.heatTolerant} />
+              耐暑性が高い
+            </label>
+            <label className="checkbox-label">
+              <input name="droughtTolerant" type="checkbox" defaultChecked={p.droughtTolerant} />
+              乾燥に強い
+            </label>
+            <label className="form-full">
+              水やり・育て方
+              <textarea name="care" defaultValue={p.care} rows={3} maxLength={5000} />
+            </label>
+            <label className="form-full">
+              季節の育て方
+              <textarea name="seasonalCare" defaultValue={p.seasonalCare || ''} rows={3} maxLength={5000} />
+            </label>
+            <label className="form-full">
+              相性のよい庭・空間
+              <textarea name="styleDescription" defaultValue={p.styleDescription || ''} rows={2} maxLength={5000} />
+            </label>
+          </div>
+        </fieldset>
+        <PlantModelFields profile={p.plantModelProfile} />
+        <fieldset className="product-form-section">
+          <legend>商品画像</legend>
+          <p className="fine-print">保存する画像URLを登録します。ファイル選択ではプレビューだけを確認できます。</p>
+          <ImagePreview />
+          <div className="form-grid">
+            <label className="form-full">
+              メイン画像URL
+              <input name="imageUrl" defaultValue={p.imageUrl} required maxLength={250} />
+            </label>
+            <label className="form-full">
+              追加画像URL（1行に1つ、最大4枚）
+              <textarea name="images" defaultValue={p.images.join('\n')} rows={3} />
+            </label>
+          </div>
+        </fieldset>
+      </fieldset>
       <p className="fine-print">
         画像は /images/ 内のファイル、または https:// のURLを指定します。在庫は上で選択した店舗のみを更新します。
       </p>
-      {formError && <p className="error" role="alert">{formError}</p>}
+      {formError && (
+        <p className="error" role="alert">
+          {formError}
+        </p>
+      )}
       <button className="primary-button" type="submit" disabled={busy}>
         商品を保存
       </button>

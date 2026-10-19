@@ -4,13 +4,16 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { replenishOrder, sql } from './database.js';
 
 test('product CRUD, plant filters, gallery and archived cart through real MySQL', async ({ page }) => {
+  test.setTimeout(90000);
   let product;
   const sku = `CRUD-${randomUUID().slice(0, 8)}`;
   try {
     await page.goto('/');
     await expect(page.getByTestId('product-olive')).toBeVisible();
     await page.getByRole('button', { name: '商品管理', exact: true }).click();
-    const manager = page.getByRole('dialog');
+    await page.getByRole('dialog').getByRole('button', { name: '新しい商品', exact: true }).click();
+    await expect(page).toHaveURL(/\/seller\/products\/new$/);
+    const manager = page.locator('.workspace-main');
     await manager.getByLabel('商品名', { exact: true }).fill('CRUDデモ植物');
     await manager.getByLabel('商品番号', { exact: true }).fill(sku);
     await manager.getByRole('combobox', { name: 'カテゴリー', exact: true }).selectOption('ハーブ');
@@ -23,6 +26,24 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await manager.getByLabel('商品説明', { exact: true }).fill('専用DBだけに保存するテスト用の商品です。');
     await manager.getByLabel('季節の育て方', { exact: true }).fill('春に剪定します。');
     await manager.getByLabel('追加画像URL', { exact: false }).fill('/images/rosemary.png\n/images/lavender.png');
+    const existingProducts = await page.request.get('/api/products?storeId=1').then((r) => r.json());
+    await manager.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('275');
+    await manager.getByLabel('この植物を庭に配置できるようにする', { exact: true }).check();
+    await manager
+      .getByLabel('商品番号', { exact: true })
+      .fill(existingProducts.find((item) => item.id === 'olive').sku);
+    const rejected = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
+    await manager.getByRole('button', { name: '商品を保存', exact: true }).click();
+    const rejectedResponse = await rejected;
+    expect(rejectedResponse.status()).toBe(409);
+    const rejectedInput = rejectedResponse.request().postDataJSON();
+    expect(rejectedInput.heightCm).toBe(275);
+    expect(rejectedInput.plantModelProfile.heightCm).toBe(rejectedInput.heightCm);
+    await expect(page).toHaveURL(/\/seller\/products\/new$/);
+    await expect(manager.getByRole('alert')).toBeVisible();
+    await expect(manager.getByLabel('商品名', { exact: true })).toHaveValue('CRUDデモ植物');
+    await manager.getByLabel('この植物を庭に配置できるようにする', { exact: true }).uncheck();
+    await manager.getByLabel('商品番号', { exact: true }).fill(sku);
     const created = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
     await manager.getByRole('button', { name: '商品を保存', exact: true }).click();
     const response = await created;
@@ -38,7 +59,10 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       400,
     );
     await expect(manager.getByRole('status')).toContainText('商品を保存');
+    await expect(page).toHaveURL(/\/seller\/products$/);
     await page.reload();
+    await expect(page.getByTestId(`manage-${product.id}`)).toBeVisible();
+    await page.goto('/');
     await expect(page.getByTestId(`product-${product.id}`)).toBeVisible();
     await page.getByRole('combobox', { name: '日照条件', exact: true }).selectOption('半日陰');
     await page.getByRole('combobox', { name: '手入れレベル', exact: true }).selectOption('3');
@@ -53,6 +77,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     const savedProduct = (await catalog.json()).find((item) => item.id === product.id);
     expect(savedProduct.images).toEqual(['/images/rosemary.png', '/images/lavender.png']);
     expect(savedProduct.careLevel).toBe(3);
+    expect(savedProduct.heightCm).toBe(275);
     await writeFile('artifacts/e2e/crud-product-after-reload.json', JSON.stringify(savedProduct, null, 2));
     await page.getByLabel('購入数量').fill('2');
     await page.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
