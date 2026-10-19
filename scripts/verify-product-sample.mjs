@@ -7,6 +7,14 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const directory = join(root, 'sample-data/products-20261019');
 const expected = JSON.parse(readFileSync(join(directory, 'products-store-1.json'), 'utf8'));
+// The snapshot retains the original export. These fields were removed from ProductView.
+const retiredFields = new Set(['floweringDescription', 'seasonalCare', 'styleDescription']);
+for (const product of expected) {
+  for (const field of retiredFields) delete product[field];
+  product.publicationStatus = 'PUBLISHED';
+  if (product.plantModelProfile) product.plantModelProfile.botanicalForm ??= null;
+  if (product.modelComposition?.profile) product.modelComposition.profile.botanicalForm ??= null;
+}
 const base = 'http://127.0.0.1:5186';
 const response = await fetch(`${base}/api/products?storeId=1`);
 assert.equal(response.status, 200);
@@ -42,4 +50,4 @@ const evidence = join(root, 'artifacts/product-import-verification');
 mkdirSync(evidence, { recursive: true });
 writeFileSync(join(evidence, 'products-api.json'), JSON.stringify(actual, null, 2));
 writeFileSync(join(evidence, 'material-quotes.json'), JSON.stringify(matches, null, 2));
-console.log('Verified 31 complete product records, 60 image hashes, and 31 Canvas material matches against the live API.');
+console.log('Verified 31 product records using the current API contract, 60 image hashes, and 31 Canvas material matches against the live API.');

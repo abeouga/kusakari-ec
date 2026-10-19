@@ -40,4 +40,8 @@ node scripts/import-product-sample.mjs --apply
 - Alternatives: 商品の日時自体を9時間ずらす回避は、保存値を壊すため採用しない。
 - Consequences: 接続再作成後はDBのOS設定に依存せず、商品・履歴のTIMESTAMPをUTCとして扱う。既存行の日時は書き換えない。
 
-取り込み後は `node scripts/verify-product-sample.mjs` で、実APIの31商品の全項目・画像60枚のSHA-256・素材候補31件を確認できます。
+取り込み後は `node scripts/verify-product-sample.mjs` で、現行APIの31商品・画像60枚のSHA-256・素材候補31件を確認できます。
+
+検証では元のJSONを変更せず、APIから廃止された `floweringDescription`、`seasonalCare`、`styleDescription` のみ比較対象から除外します。追加された `publicationStatus` は `PUBLISHED`、旧植物モデルの `botanicalForm` はAPIの既定値 `null` と比較します。それ以外の項目の欠落や値の相違は引き続きエラーです。
+
+旧検証スクリプトで `floweringDescription: undefined !== ''` が出る場合は、APIとの形式の不一致です。修正版を取得して検証を再実行してください。このエラーだけを理由に `--apply` を再実行する必要はありません（再取り込みは在庫も置き換えます）。
