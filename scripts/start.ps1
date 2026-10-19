@@ -52,7 +52,7 @@ try {
     }
 
     # Vite does not inherit database credentials.
-    Remove-Item Env:KUSAKARI_EC_DB_PASSWORD, Env:KUSAKARI_EC_DB_USER, Env:KUSAKARI_EC_DB_URL, Env:KUSAKARI_EC_E2E_DB_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:KUSAKARI_EC_OPENAI_API_KEY, Env:KUSAKARI_EC_E2E_OPENAI_API_KEY, Env:KUSAKARI_EC_DB_PASSWORD, Env:KUSAKARI_EC_DB_USER, Env:KUSAKARI_EC_DB_URL, Env:KUSAKARI_EC_E2E_DB_URL -ErrorAction SilentlyContinue
     $env:KUSAKARI_EC_API_TARGET = 'http://127.0.0.1:8086'
     $webProcess = Start-Process -FilePath 'node' -ArgumentList @("`"$vite`"", '--host', '127.0.0.1', '--port', '5186', '--strictPort') `
         -WorkingDirectory "$projectRoot\frontend" -WindowStyle Hidden -PassThru `

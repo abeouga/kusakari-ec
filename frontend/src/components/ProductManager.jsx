@@ -1,18 +1,22 @@
+import { Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
+import { ProductTipsEditor } from './ProductTipsEditor';
 import { yen } from '../api';
 import { navigate } from '../workspace/navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
 export function ProductManager({ shop, onClose, embedded = false }) {
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
+  const [tipsProduct, setTipsProduct] = useState(/** @type {import('../types').Product|null} */ (null));
   const [formKey, setFormKey] = useState(0);
   const [deleting, setDeleting] = useState('');
   let storeId = 1;
   if (shop.cart) storeId = shop.cart.storeId;
   function resetEditor() {
     setEditing(null);
+    setTipsProduct(null);
     setFormKey(formKey + 1);
   }
   function newProduct() {
@@ -70,48 +74,61 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           新しい商品
         </button>
       </div>
-      <div className={editing ? 'manager-layout' : ''}>
-        <div className="manager-list">
-          {shop.products.map((product) => (
-            <article key={product.id} data-testid={`manage-${product.id}`}>
-              <img src={product.imageUrl} alt="" />
-              <div>
-                <strong>{product.name}</strong>
-                <small>{product.sku}</small>
-                <p>
-                  {yen(product.priceYen)} / 在庫 {product.stock}
-                </p>
-                <div className="form-actions">
-                  <button className="text-button" onClick={() => edit(product)} disabled={shop.busy}>
-                    編集
-                  </button>
-                  <button
-                    className="text-button danger-text"
-                    onClick={() => setDeleting(product.id)}
-                    disabled={shop.busy}
-                  >
-                    削除
-                  </button>
-                </div>
-                {deleting === product.id && (
-                  <div className="delete-confirm">
-                    <p>この商品を一覧から削除します。</p>
-                    <button className="secondary-button" disabled={shop.busy} onClick={() => remove(product.id)}>
-                      削除を確定
+      <div>
+        {!editing && !tipsProduct && (
+          <div className="manager-list">
+            {shop.products.map((product) => (
+              <article key={product.id} data-testid={`manage-${product.id}`}>
+                <img src={product.imageUrl} alt="" />
+                <div>
+                  <strong>{product.name}</strong>
+                  <small>{product.sku}</small>
+                  <p>
+                    {yen(product.priceYen)} / 在庫 {product.stock}
+                  </p>
+                  <div className="form-actions">
+                    <button className="text-button" onClick={() => edit(product)} disabled={shop.busy}>
+                      編集
                     </button>
-                    <button className="text-button" onClick={() => setDeleting('')}>
-                      戻る
+                    <button className="text-button" disabled={shop.busy} onClick={() => setTipsProduct(product)}>
+                      <Lightbulb className="seller-ui-icon" size={16} aria-hidden="true" />
+                      Tipsを編集
+                    </button>
+                    <button
+                      className="text-button danger-text"
+                      onClick={() => setDeleting(product.id)}
+                      disabled={shop.busy}
+                    >
+                      削除
                     </button>
                   </div>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+                  {deleting === product.id && (
+                    <div className="delete-confirm">
+                      <p>この商品を一覧から削除します。</p>
+                      <button className="secondary-button" disabled={shop.busy} onClick={() => remove(product.id)}>
+                        削除を確定
+                      </button>
+                      <button className="text-button" onClick={() => setDeleting('')}>
+                        戻る
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {editing && (
+          <button type="button" className="text-button" disabled={shop.busy} onClick={resetEditor}>
+            商品一覧へ戻る
+          </button>
+        )}
+        {tipsProduct && <ProductTipsEditor product={tipsProduct} onDone={resetEditor} onSaved={shop.refreshProducts} />}
         {editing && (
           <ProductForm
             key={formKey}
             product={editing}
+            storeName={shop.stores.find((store) => store.id === storeId)?.name}
             storeId={storeId}
             busy={shop.busy}
             onSave={shop.saveProduct}

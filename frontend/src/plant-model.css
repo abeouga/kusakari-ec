@@ -16,6 +16,64 @@
 .plant-model-fields [hidden] {
   display: none;
 }
+.plant-model-inputs {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.range-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  align-content: start;
+}
+.range-field > label {
+  display: block;
+}
+.range-field-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  align-items: center;
+  gap: 12px;
+}
+.range-field input[type='range'] {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  height: 32px;
+  accent-color: #446735;
+  cursor: pointer;
+}
+.range-field input[type='number'] {
+  width: 100%;
+  min-width: 0;
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: #596253;
+}
+.range-field output {
+  font-size: 14px;
+}
+.plant-ai-controls {
+  padding: 14px;
+  margin-top: 16px;
+  border: 1px solid #c5d4bb;
+  border-radius: 8px;
+  background: white;
+  overflow-wrap: anywhere;
+}
+.plant-ai-controls .form-actions {
+  flex-wrap: wrap;
+}
+.ai-estimate {
+  color: #7b4e13;
+  font-size: 13px;
+}
 .plant-model-fields input[type='color'] {
   min-height: 36px;
   width: 100%;

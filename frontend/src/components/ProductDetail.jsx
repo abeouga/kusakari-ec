@@ -1,8 +1,9 @@
 import { catalogText } from '../catalogText';
 import { PageLink } from '../workspace/Common';
 import { useState } from 'react';
-import { ShoppingBag, Sun, Ruler, MapPin, Eye, ArrowUpRight } from 'lucide-react';
+import { ShoppingBag, MapPin, Eye, ArrowUpRight } from 'lucide-react';
 import { Dialog } from './Dialog';
+import { ProductTipsView } from './ProductTipsView';
 import { yen } from '../api';
 
 /** @param {{product:import('../types').Product,storeName:string,storeId?:number,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
@@ -58,10 +59,6 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
               {product.ageYears !== null && <strong>約 {product.ageYears} 年</strong>}
               {product.ageYears === null && <strong>未設定</strong>}
             </div>
-            <div>
-              <small>サイズ</small>
-              <strong>{catalogText(product.sizeLabel)}</strong>
-            </div>
           </div>
           <section className="spec-sheet">
             <p className="eyebrow">SPECIFICATION SHEET</p>
@@ -73,38 +70,11 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
                 <br />
                 {product.familyName}
               </dd>
-              <dt>日照条件</dt>
-              <dd>
-                <Sun size={16} /> {product.sunlight}
-              </dd>
-              <dt>手入れレベル</dt>
-              <dd>{product.careLevel} / 3</dd>
-              <dt>耐暑性・耐乾性</dt>
-              <dd>
-                {product.heatTolerant && <span>暑さに強い </span>}
-                {product.droughtTolerant && <span>乾燥に強い</span>}
-                {!product.heatTolerant && !product.droughtTolerant && '登録なし'}
-              </dd>
-              <dt>用途・植栽場所</dt>
-              <dd>{product.useCase || '未設定'}</dd>
-              <dt>耐寒性</dt>
-              <dd>
-                {product.minTemperatureC !== null && <span>{product.minTemperatureC}℃まで</span>}
-                {product.minTemperatureC === null && '未設定'}
-              </dd>
               <dt>高さ・鉢径</dt>
               <dd>
                 {product.heightCm !== null && <span>高さ 約{product.heightCm}cm </span>}
                 {product.potDiameterCm !== null && <span>/ 鉢径 {product.potDiameterCm}cm</span>}
               </dd>
-              <dt>水やり</dt>
-              <dd>{product.care}</dd>
-              {product.floweringDescription && (
-                <>
-                  <dt>開花・結実</dt>
-                  <dd>{product.floweringDescription}</dd>
-                </>
-              )}
             </dl>
           </section>
         </div>
@@ -118,10 +88,6 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
           <h3>{product.name}</h3>
           <p className="latin">{product.latinName}</p>
           <p className="detail-description">{catalogText(product.description)}</p>
-          <p className="detail-fact">
-            <Ruler size={18} />
-            {catalogText(product.sizeLabel)}
-          </p>
           <p className="detail-price">
             {yen(product.priceYen)} <small>税込</small>
           </p>
@@ -176,21 +142,13 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             <h4>{catalogText(product.nurseryName) || '生産者未設定'}</h4>
             <p>{catalogText(product.nurseryAddress)}</p>
           </div>
+          <ProductTipsView product={product} />
           <div className="care-accordions">
-            <details open>
-              <summary>季節の育て方</summary>
-              <p>{product.seasonalCare || product.care}</p>
-            </details>
-            <details>
-              <summary>相性のよい庭・空間</summary>
-              <p>{product.styleDescription || product.useCase || '個別の案内は未登録です。'}</p>
-            </details>
             <details>
               <summary>受取・配送のご案内</summary>
               <p>受取方法と配送先はカートで指定できます。</p>
             </details>
           </div>
-          <p className="fine-print">画像はAI生成イメージです。</p>
         </div>
       </div>
     </Dialog>

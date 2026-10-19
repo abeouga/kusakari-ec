@@ -7,7 +7,9 @@ export function useShop() {
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
   const [lastOrder, setLastOrder] = useState(/** @type {import('./types').Order|null} */ (null));
-  const [shoppingTransfer, setShoppingTransfer] = useState(/** @type {import('./types').ShoppingTransfer|null} */ (null));
+  const [shoppingTransfer, setShoppingTransfer] = useState(
+    /** @type {import('./types').ShoppingTransfer|null} */ (null),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -207,6 +209,7 @@ export function useShop() {
   }
 
   return {
+    refreshProducts: refresh,
     transferShoppingList,
     shoppingTransfer,
     setShoppingTransfer,

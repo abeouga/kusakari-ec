@@ -19,8 +19,11 @@ public interface ProductMapper {
 
   @Named("compositionView")
   default JsonNode compositionView(JsonNode source) {
-    if (source instanceof ObjectNode model && model.get("profile") instanceof ObjectNode profile
-        && !profile.has("botanicalForm")) {
+    if (
+      source instanceof ObjectNode model &&
+      model.get("profile") instanceof ObjectNode profile &&
+      !profile.has("botanicalForm")
+    ) {
       // Response-only default for old manifests; never mutate Hibernate-managed JSON or regenerate geometry.
       ObjectNode view = model.objectNode().setAll(model);
       ObjectNode profileView = profile.deepCopy();
@@ -31,6 +34,16 @@ public interface ProductMapper {
     return source;
   }
 
+  @Mapping(target = "care", ignore = true)
+  @Mapping(target = "seasonalCare", ignore = true)
+  @Mapping(target = "styleDescription", ignore = true)
+  @Mapping(target = "minTemperatureC", ignore = true)
+  @Mapping(target = "sunlight", ignore = true)
+  @Mapping(target = "careLevel", ignore = true)
+  @Mapping(target = "heatTolerant", ignore = true)
+  @Mapping(target = "droughtTolerant", ignore = true)
+  @Mapping(target = "useCase", ignore = true)
+  @Mapping(target = "floweringDescription", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "unit", ignore = true)
   @Mapping(target = "source", ignore = true)
@@ -40,6 +53,16 @@ public interface ProductMapper {
   @Mapping(target = "active", ignore = true)
   ProductEntity toEntity(ProductRequest input);
 
+  @Mapping(target = "care", ignore = true)
+  @Mapping(target = "seasonalCare", ignore = true)
+  @Mapping(target = "styleDescription", ignore = true)
+  @Mapping(target = "minTemperatureC", ignore = true)
+  @Mapping(target = "sunlight", ignore = true)
+  @Mapping(target = "careLevel", ignore = true)
+  @Mapping(target = "heatTolerant", ignore = true)
+  @Mapping(target = "droughtTolerant", ignore = true)
+  @Mapping(target = "useCase", ignore = true)
+  @Mapping(target = "floweringDescription", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "unit", ignore = true)
   @Mapping(target = "source", ignore = true)

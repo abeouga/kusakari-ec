@@ -1,304 +1,244 @@
-import { catalogText } from '../catalogText';
-import { ImagePreview } from '../workspace/ImagePreview';
-import { formText, formNumber, numberValue } from '../forms';
-import { useState } from 'react';
-import { PlantModelFields, readPlantProfile } from './PlantModelFields';
+import { ArrowLeft, ArrowRight, Check, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { PlantModelFields } from './PlantModelFields';
+import { RangeField } from './RangeField';
+import { usePlantSuggestion } from './usePlantSuggestion';
+import { PlantSuggestionControls } from './PlantSuggestionControls';
+import { ProductInfoFields } from './ProductInfoFields';
+import { ProductReview } from './ProductReview';
+import { emptyProduct, createDraft, productInput } from '../productDraft';
 
-/** @type {import('../types').Product} */
-const emptyProduct = {
-  id: '',
-  sku: '',
-  name: '',
-  latinName: '',
-  category: '庭木',
-  description: '',
-  sizeLabel: '',
-  care: '',
-  priceYen: 1000,
-  stock: 0,
-  unit: 'piece',
-  imageUrl: '/images/olive.png',
-  badge: '',
-  source: 'demo',
-  sourceUpdatedAt: '',
-  nurseryName: '',
-  nurseryAddress: '',
-  sunlight: '未設定',
-  useCase: '',
-  careLevel: 1,
-  minTemperatureC: null,
-  heatTolerant: false,
-  droughtTolerant: false,
-  ageYears: null,
-  heightCm: null,
-  potDiameterCm: null,
-  familyName: '',
-  floweringDescription: '',
-  seasonalCare: '',
-  styleDescription: '',
-  publishedAt: '',
-  active: true,
-  images: [],
-};
+/** @param {{product:import('../types').Product|null,storeId:number,storeName?:string,storeSelector?:import('react').ReactNode,busy:boolean,onSave:(id:string,input:import('../types').ProductInput)=>Promise<boolean|undefined>,onDone:()=>void}} props */
+export function ProductForm({ product, storeId, storeName, storeSelector, busy, onSave, onDone }) {
+  const [draft, setDraft] = useState(() => createDraft(product ?? emptyProduct));
+  const plant = usePlantSuggestion(product ?? emptyProduct, !!product);
+  const [step, setStep] = useState(0);
+  const [error, setError] = useState('');
+  const formRef = useRef(/** @type {HTMLFormElement|null} */ (null));
+  const heading = useRef(/** @type {HTMLHeadingElement|null} */ (null));
+  const saving = useRef(false);
+  const positioned = useRef(false);
+  useEffect(() => {
+    if (!busy && !positioned.current) {
+      positioned.current = true;
+      if (window.matchMedia('(max-width:700px)').matches) formRef.current?.scrollIntoView({ block: 'start' });
+    }
+  }, [busy]);
 
-/** @param {{product:import('../types').Product|null,storeId:number,busy:boolean,onSave:(id:string,input:import('../types').ProductInput)=>Promise<boolean|undefined>,onDone:()=>void}} props */
-export function ProductForm({ product, storeId, busy, onSave, onDone }) {
-  const [formError, setFormError] = useState('');
-  let p = emptyProduct;
-  let title = '商品を追加';
-  if (product) {
-    p = product;
-    title = '商品を編集';
+  const [imageBusy, setImageBusy] = useState(false);
+  const locked = busy || plant.busy || imageBusy;
+  const labels = product ? ['商品情報', '庭オブジェクト'] : ['商品情報', '庭オブジェクト', '確認'];
+  const values = { ...draft, heightCm: plant.height };
+  /** @param {string} name @param {any} value */
+  function set(name, value) {
+    setDraft((prev) => ({ ...prev, [name]: value }));
+  }
+  /** @param {number} next */
+  function move(next) {
+    setStep(next);
+    setError('');
+    requestAnimationFrame(() => {
+      heading.current?.focus({ preventScroll: true });
+      formRef.current?.scrollIntoView({ block: 'start' });
+    });
+  }
+  /** @param {HTMLElement} element */
+  function reveal(element) {
+    const panel = element.closest('[data-step]');
+    setStep(Number(panel?.getAttribute('data-step') ?? 0));
+    for (let parent = element.parentElement; parent; parent = parent.parentElement)
+      if (parent instanceof HTMLDetailsElement) parent.open = true;
+    requestAnimationFrame(() => {
+      element.focus();
+      element.scrollIntoView({ block: 'center' });
+      if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) element.reportValidity();
+    });
+  }
+  /** @param {number|null} scope */
+  function validate(scope) {
+    const root = scope === null ? formRef.current : formRef.current?.querySelector(`[data-step="${scope}"]`);
+    const invalid = root?.querySelector('input:invalid,select:invalid,textarea:invalid');
+    if (invalid instanceof HTMLElement) {
+      setError('入力内容を確認してください。');
+      reveal(invalid);
+      return false;
+    }
+    if (scope === 0 || scope === null) {
+      for (const name of ['name', 'sku', 'description']) {
+        if (!String(draft[name]).trim()) {
+          setError('商品名・商品番号・説明を入力してください。');
+          const field = formRef.current?.querySelector(`[name="${name}"]`);
+          if (field instanceof HTMLElement) reveal(field);
+          return false;
+        }
+      }
+      if (!draft.imageUrl) {
+        setError('商品画像を1枚以上追加してください。');
+        const field = formRef.current?.querySelector('input[type="file"]');
+        if (field instanceof HTMLElement) reveal(field);
+        return false;
+      }
+    }
+    if (scope === 1 || scope === null) {
+      try {
+        plant.currentProfile();
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : '植物情報を確認してください。');
+        const field = formRef.current?.querySelector('[name="modelHeight"]');
+        if (field instanceof HTMLElement) reveal(field);
+        return false;
+      }
+    }
+    return true;
+  }
+  function next() {
+    if (validate(step)) move(step + 1);
   }
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   async function save(event) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setFormError('');
-    let plantModelProfile;
-    try {
-      plantModelProfile = readPlantProfile(form);
-    } catch (reason) {
-      setFormError(reason instanceof Error ? reason.message : '植物情報を確認してください。');
+    if (locked || saving.current) return;
+    if (!product && step !== 2) {
+      next();
       return;
     }
-    const images = [];
-    for (const line of formText(form, 'images').split('\n')) {
-      const image = line.trim();
-      if (image) images.push(image);
+    if (!validate(null)) return;
+    saving.current = true;
+    try {
+      const saved = await onSave(product?.id ?? '', productInput(values, storeId, plant.currentProfile()));
+      if (saved) onDone();
+    } finally {
+      saving.current = false;
     }
-    const saved = await onSave(p.id, {
-      storeId,
-      plantModelProfile,
-      sku: formText(form, 'sku'),
-      name: formText(form, 'name'),
-      latinName: formText(form, 'latinName'),
-      category: formText(form, 'category'),
-      description: formText(form, 'description'),
-      sizeLabel: formText(form, 'sizeLabel'),
-      care: formText(form, 'care'),
-      priceYen: Number(formText(form, 'priceYen')),
-      stock: Number(formText(form, 'stock')),
-      imageUrl: formText(form, 'imageUrl'),
-      badge: formText(form, 'badge'),
-      nurseryName: formText(form, 'nurseryName'),
-      nurseryAddress: formText(form, 'nurseryAddress'),
-      sunlight: formText(form, 'sunlight'),
-      useCase: formText(form, 'useCase'),
-      careLevel: Number(formText(form, 'careLevel')),
-      minTemperatureC: formNumber(form, 'minTemperatureC'),
-      heatTolerant: form.has('heatTolerant'),
-      droughtTolerant: form.has('droughtTolerant'),
-      ageYears: formNumber(form, 'ageYears'),
-      heightCm: formNumber(form, 'heightCm'),
-      potDiameterCm: formNumber(form, 'potDiameterCm'),
-      familyName: formText(form, 'familyName'),
-      floweringDescription: formText(form, 'floweringDescription'),
-      seasonalCare: formText(form, 'seasonalCare'),
-      styleDescription: formText(form, 'styleDescription'),
-      images,
-    });
-    if (saved) onDone();
   }
   return (
-    <form className="basic-form product-form" onSubmit={save}>
-      <h3>{title}</h3>
-      <fieldset disabled={busy} className="product-form-content">
-        <fieldset className="product-form-section">
-          <legend>基本情報</legend>
-          <p className="fine-print">商品を識別する情報と、購入者に伝える説明を入力します。</p>
-          <div className="form-grid">
-            <label>
-              商品名
-              <input name="name" defaultValue={p.name} required maxLength={120} />
-            </label>
-            <label>
-              商品番号
-              <input name="sku" defaultValue={p.sku} required maxLength={50} />
-            </label>
-            <label>
-              カテゴリー
-              <select name="category" defaultValue={p.category}>
-                <option>庭木</option>
-                <option>草花</option>
-                <option>ハーブ</option>
-                <option>観葉植物</option>
-                <option>鉢・庭材</option>
-                <option>土・ケア用品</option>
-                <option>芝</option>
-                <option>道具</option>
-              </select>
-            </label>
-            <label>
-              商品ラベル
-              <input name="badge" defaultValue={p.badge} maxLength={30} />
-            </label>
-            <label className="form-full">
-              商品説明
-              <textarea
-                name="description"
-                defaultValue={catalogText(p.description)}
-                required
-                rows={3}
-                maxLength={5000}
-              />
-            </label>
-            <label>
-              生産者名
-              <input name="nurseryName" defaultValue={catalogText(p.nurseryName)} maxLength={100} />
-            </label>
-            <label>
-              生産者所在地
-              <input name="nurseryAddress" defaultValue={catalogText(p.nurseryAddress)} maxLength={200} />
-            </label>
+    <form
+      ref={formRef}
+      className="basic-form product-form product-wizard"
+      onSubmit={save}
+      onChange={() => setError('')}
+      noValidate
+    >
+      <nav className="wizard-steps" aria-label={product ? '商品編集のタブ' : '出品の手順'}>
+        {labels.map((label, index) => (
+          <button
+            type="button"
+            key={label}
+            aria-current={step === index ? 'step' : undefined}
+            disabled={locked || (!product && index > step)}
+            onClick={() => move(index)}
+          >
+            <span>{index + 1}</span>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <h3 ref={heading} tabIndex={-1} className="wizard-heading">
+        {labels[step]}
+      </h3>
+      <fieldset disabled={locked} className="product-form-content">
+        <section data-step="0" hidden={step !== 0} aria-label="商品情報">
+          <ProductInfoFields
+            p={values}
+            set={set}
+            plant={plant}
+            storeSelector={storeSelector}
+            onImageBusy={setImageBusy}
+          />
+        </section>
+        <section data-step="1" hidden={step !== 1} aria-label="庭オブジェクト">
+          <div className="model-layout">
+            <div className="model-preview-pane">
+              {plant.previewUrl ? (
+                <iframe className="plant-model-preview" title="植物の3Dプレビュー" src={plant.previewUrl} />
+              ) : (
+                <div className="preview-placeholder">
+                  {plant.enabled
+                    ? '設定後に「植物のプレビューを確認」を押してください。'
+                    : 'AIまたは手動で設定すると、ここで形を確認できます。'}
+                </div>
+              )}
+            </div>
+            <div>
+              <PlantSuggestionControls plant={plant} imageUrl={draft.imageUrl} editing={!!product} draft={values} />
+              {!plant.enabled && (
+                <button type="button" className="secondary-button" onClick={() => plant.setEnabled(true)}>
+                  <SlidersHorizontal className="seller-ui-icon" size={16} aria-hidden="true" />
+                  手動で設定
+                </button>
+              )}
+              <PlantModelFields
+                profile={plant.profile}
+                enabled={plant.enabled}
+                onEnabledChange={plant.setEnabled}
+                onChange={plant.changeProfile}
+                onPreview={plant.preview}
+                heightControl={
+                  plant.enabled && (
+                    <>
+                      <RangeField
+                        label="植物の高さ（cm・土際から）"
+                        name="modelHeight"
+                        min={10}
+                        max={1500}
+                        value={plant.height}
+                        onChange={plant.setHeight}
+                        required
+                      />
+                      {plant.estimated && <p className="ai-estimate">AI推定・実寸未確認。高さを確認してください。</p>}
+                    </>
+                  )
+                }
+              >
+                {null}
+              </PlantModelFields>
+            </div>
           </div>
-        </fieldset>
-        <fieldset className="product-form-section">
-          <legend>価格・在庫</legend>
-          <p className="fine-print">在庫は、この画面で選択した店舗に登録します。</p>
-          <div className="form-grid">
-            <label>
-              税込価格（円）
-              <input name="priceYen" type="number" min="1" max="100000" step="1" required defaultValue={p.priceYen} />
-            </label>
-            <label>
-              選択店舗の在庫
-              <input name="stock" type="number" min="0" max="10000" step="1" required defaultValue={p.stock} />
-            </label>
-          </div>
-        </fieldset>
-        <fieldset className="product-form-section">
-          <legend>植物の特徴</legend>
-          <p className="fine-print">
-            高さは庭オブジェクトにも共用します。サイズ表記には号数・セット数などの補足を入力してください。
-          </p>
-          <div className="form-grid">
-            <label>
-              学名
-              <input name="latinName" defaultValue={p.latinName} maxLength={120} />
-            </label>
-            <label>
-              科名・属名
-              <input name="familyName" defaultValue={p.familyName} maxLength={100} />
-            </label>
-            <label>
-              樹齢目安（年）
-              <input name="ageYears" type="number" min="0" max="1000" defaultValue={numberValue(p.ageYears)} />
-            </label>
-            <label>
-              植物の高さ（cm・土際から）
-              <input
-                name="heightCm"
-                type="number"
-                min="1"
-                max="3000"
-                defaultValue={numberValue(p.heightCm ?? p.plantModelProfile?.heightCm ?? null)}
-              />
-            </label>
-            <label>
-              鉢径（cm）
-              <input name="potDiameterCm" type="number" min="1" max="300" defaultValue={numberValue(p.potDiameterCm)} />
-            </label>
-            <label>
-              サイズ表記
-              <input name="sizeLabel" defaultValue={catalogText(p.sizeLabel)} maxLength={80} />
-            </label>
-            <label className="form-full">
-              開花・結実
-              <textarea
-                name="floweringDescription"
-                defaultValue={p.floweringDescription || ''}
-                rows={2}
-                maxLength={5000}
-              />
-            </label>
-          </div>
-        </fieldset>
-        <fieldset className="product-form-section">
-          <legend>育て方・植栽条件</legend>
-          <p className="fine-print">生育環境と、購入後の管理方法をまとめて入力します。</p>
-          <div className="form-grid">
-            <label>
-              日照条件
-              <select name="sunlight" defaultValue={p.sunlight}>
-                <option>未設定</option>
-                <option>日なた</option>
-                <option>半日陰</option>
-                <option>日陰</option>
-              </select>
-            </label>
-            <label>
-              手入れレベル
-              <select name="careLevel" defaultValue={p.careLevel}>
-                <option value="1">1：育てやすい</option>
-                <option value="2">2：定期的な手入れ</option>
-                <option value="3">3：こまめな手入れ</option>
-              </select>
-            </label>
-            <label>
-              耐寒温度（℃）
-              <input
-                name="minTemperatureC"
-                type="number"
-                min="-50"
-                max="50"
-                defaultValue={numberValue(p.minTemperatureC)}
-              />
-            </label>
-            <label>
-              用途・植栽場所
-              <input name="useCase" defaultValue={p.useCase} maxLength={80} />
-            </label>
-            <label className="checkbox-label">
-              <input name="heatTolerant" type="checkbox" defaultChecked={p.heatTolerant} />
-              耐暑性が高い
-            </label>
-            <label className="checkbox-label">
-              <input name="droughtTolerant" type="checkbox" defaultChecked={p.droughtTolerant} />
-              乾燥に強い
-            </label>
-            <label className="form-full">
-              水やり・育て方
-              <textarea name="care" defaultValue={p.care} rows={3} maxLength={5000} />
-            </label>
-            <label className="form-full">
-              季節の育て方
-              <textarea name="seasonalCare" defaultValue={p.seasonalCare || ''} rows={3} maxLength={5000} />
-            </label>
-            <label className="form-full">
-              相性のよい庭・空間
-              <textarea name="styleDescription" defaultValue={p.styleDescription || ''} rows={2} maxLength={5000} />
-            </label>
-          </div>
-        </fieldset>
-        <PlantModelFields profile={p.plantModelProfile} />
-        <fieldset className="product-form-section">
-          <legend>商品画像</legend>
-          <p className="fine-print">保存する画像URLを登録します。ファイル選択ではプレビューだけを確認できます。</p>
-          <ImagePreview />
-          <div className="form-grid">
-            <label className="form-full">
-              メイン画像URL
-              <input name="imageUrl" defaultValue={p.imageUrl} required maxLength={250} />
-            </label>
-            <label className="form-full">
-              追加画像URL（1行に1つ、最大4枚）
-              <textarea name="images" defaultValue={p.images.join('\n')} rows={3} />
-            </label>
-          </div>
-        </fieldset>
+        </section>
+        {step === 2 && (
+          <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} onEdit={move} />
+        )}
       </fieldset>
-      <p className="fine-print">
-        画像は /images/ 内のファイル、または https:// のURLを指定します。在庫は上で選択した店舗のみを更新します。
-      </p>
-      {formError && (
-        <p className="error" role="alert">
-          {formError}
-        </p>
-      )}
-      <button className="primary-button" type="submit" disabled={busy}>
-        商品を保存
-      </button>
+      <div className="wizard-footer">
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="wizard-actions">
+          <span>{product ? '商品を編集' : `${step + 1} / 3`}</span>
+          {step > 0 && (
+            <button type="button" className="secondary-button" disabled={locked} onClick={() => move(step - 1)}>
+              <ArrowLeft className="seller-ui-icon" size={16} aria-hidden="true" />
+              戻る
+            </button>
+          )}
+          {!product && step === 1 && (
+            <button
+              type="button"
+              className="text-button"
+              disabled={locked}
+              onClick={() => {
+                plant.setEnabled(false);
+                move(2);
+              }}
+            >
+              設定せず次へ
+            </button>
+          )}
+          {product || step === 2 ? (
+            <button key="save" type="submit" className="primary-button" disabled={locked}>
+              <Check className="seller-ui-icon" size={16} aria-hidden="true" />
+              {busy ? '保存中…' : product ? '変更を保存' : '出品する'}
+            </button>
+          ) : (
+            <button key="next" type="button" className="primary-button" disabled={locked} onClick={next}>
+              次へ
+              <ArrowRight className="seller-ui-icon" size={16} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
     </form>
   );
 }

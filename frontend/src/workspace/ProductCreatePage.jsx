@@ -10,30 +10,33 @@ export function ProductCreatePage({ shop }) {
       <button className="text-button" onClick={() => navigate('/seller/products')} disabled={shop.busy}>
         商品一覧へ戻る
       </button>
-      <p className="muted">商品情報と、選択した店舗の在庫を登録します。</p>
+
       {shop.error && (
         <p className="error" role="alert">
           {shop.error}
         </p>
       )}
-      <div className="manager-toolbar">
-        <label>
-          在庫を登録する店舗
-          <select
-            aria-label="在庫を登録する店舗"
-            value={storeId}
-            disabled={disabled}
-            onChange={(event) => shop.selectStore(Number(event.target.value))}
-          >
-            {shop.stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
       <ProductForm
+        storeSelector={
+          <div className="manager-toolbar">
+            <label>
+              在庫を登録する店舗
+              <select
+                aria-label="在庫を登録する店舗"
+                value={storeId}
+                disabled={disabled}
+                onChange={(event) => shop.selectStore(Number(event.target.value))}
+              >
+                {shop.stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        }
+        storeName={shop.stores.find((store) => store.id === storeId)?.name}
         product={null}
         storeId={storeId}
         busy={disabled}

@@ -1,70 +1,101 @@
+import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 
-test('product creation uses a separate page with the shared header and seller sidebar', async ({ page }) => {
-  test.setTimeout(90000);
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+test('product wizard navigation, validation, responsive screenshots and edit tabs persist through MySQL', async ({
+  page,
+}) => {
+  test.setTimeout(120000);
   await mkdir('artifacts/e2e', { recursive: true });
+  const errors = [];
+  let writes = 0;
+  page.on('request', (r) => {
+    if (r.url().endsWith('/api/products') && r.method() === 'POST') writes++;
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/seller/products');
-    await expect(page.getByTestId('manage-olive')).toBeVisible();
-    await expect(page.locator('.product-form')).toHaveCount(0);
-    const header = await page.locator('header').innerHTML();
-    const sidebar = await page.locator('.workspace-sidebar').innerHTML();
-    await page.getByRole('button', { name: '新しい商品', exact: true }).click();
-    await expect(page).toHaveURL(/\/seller\/products\/new$/);
-    await expect(page.getByRole('heading', { name: '商品追加', exact: true })).toBeVisible();
-    await expect(page.locator('.product-form')).toBeVisible();
-    await expect(page.locator('.product-form-content > fieldset > legend')).toHaveText([
-      '基本情報',
-      '価格・在庫',
-      '植物の特徴',
-      '育て方・植栽条件',
-      '庭オブジェクト',
-      '商品画像',
-    ]);
-    await expect(page.locator('.manager-list')).toHaveCount(0);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
-    expect(await page.locator('header').innerHTML()).toBe(header);
-    expect(await page.locator('.workspace-sidebar').innerHTML()).toBe(sidebar);
-    await page.reload();
-    await expect(page.getByLabel('商品名', { exact: true })).toBeEditable();
-    await expect(page.locator('.workspace-sidebar a.is-active')).toHaveText('商品一覧・登録');
+    const beforeWrites = writes;
+    await page.goto('/seller/products/new');
+    const form = page.locator('.product-form');
+    await expect(form.getByRole('button', { name: '次へ', exact: true })).toBeEnabled();
+    await expect(form.locator('.wizard-steps button')).toHaveCount(3);
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.locator('[name="name"]')).toBeFocused();
+    await form.getByLabel('商品名', { exact: true }).fill('ウィザード検証用モンステラ');
+    await form.getByLabel('商品番号', { exact: true }).fill(`WIZ-${randomUUID().slice(0, 8)}`);
+    await form.getByLabel('商品説明', { exact: true }).fill('専用DBへの出品手順を確認します。');
+    await addImages(form);
+    await form.getByLabel('税込価格（円）', { exact: true }).fill('3800');
+    await form.getByLabel('選択店舗の在庫', { exact: true }).fill('5');
+    await expect(form.locator('.product-options[open]')).toHaveCount(0);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: `artifacts/e2e/wizard-info-${width}.png` });
+    const footer = await form.locator('.wizard-footer').boundingBox();
+    expect(footer.y + footer.height).toBeLessThanOrEqual(901);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `artifacts/e2e/product-create-${width}.png`, fullPage: true });
-    await page.getByRole('button', { name: '商品一覧へ戻る', exact: true }).click();
+    await form.locator('summary').getByText('サイズ', { exact: true }).click();
+    await form.getByLabel('鉢径（cm）', { exact: true }).fill('301');
+    await form.locator('summary').getByText('サイズ', { exact: true }).click();
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.getByLabel('鉢径（cm）', { exact: true })).toBeFocused();
+    await form.getByLabel('鉢径（cm）', { exact: true }).fill('24');
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
+    await form.getByRole('button', { name: '手動で設定', exact: true }).click();
+    await form.locator('[name="modelHeight"]').fill('275');
+    await form.getByRole('button', { name: '植物のプレビューを確認', exact: true }).click();
+    await expect(form.getByTitle('植物の3Dプレビュー')).toBeVisible();
+    await page.waitForTimeout(1800);
+    await page.screenshot({ path: `artifacts/e2e/wizard-model-${width}.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+    await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('設定なし');
+    await form.getByRole('button', { name: '商品情報を修正', exact: true }).click();
+    await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('24');
+    await expect(form.locator('[name="heightCm"]')).toHaveValue('275');
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+    await page.screenshot({ path: `artifacts/e2e/wizard-review-${width}.png` });
+    expect(writes).toBe(beforeWrites);
+    const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
+    await form.getByRole('button', { name: '出品する', exact: true }).click();
+    const response = await saved;
+    expect(response.status()).toBe(200);
+    const product = await response.json();
+    expect(product.plantModelProfile).toBeNull();
     await expect(page).toHaveURL(/\/seller\/products$/);
-    await expect(page.locator('.product-form')).toHaveCount(0);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/seller\/products\/new$/);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/seller\/products$/);
+    await page.reload();
+    const card = page.getByTestId(`manage-${product.id}`);
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `artifacts/e2e/wizard-listed-${width}.png` });
+    await card.getByRole('button', { name: '編集', exact: true }).click();
+    await expect(page.locator('.manager-list')).toHaveCount(0);
+    await expect(form.locator('.wizard-steps button')).toHaveCount(2);
+    await form.getByLabel('税込価格（円）', { exact: true }).fill('3900');
+    await form
+      .locator('.wizard-steps')
+      .getByRole('button', { name: /庭オブジェクト/ })
+      .click();
+    await form
+      .locator('.wizard-steps')
+      .getByRole('button', { name: /商品情報/ })
+      .click();
+    await expect(form.getByLabel('税込価格（円）', { exact: true })).toHaveValue('3900');
+    const updated = page.waitForResponse(
+      (r) => r.url().includes(`/api/products/${product.id}`) && r.request().method() === 'PUT',
+    );
+    await form.getByRole('button', { name: '変更を保存', exact: true }).click();
+    expect((await updated).ok()).toBe(true);
+    await expect(page.getByTestId(`manage-${product.id}`)).toContainText('3,900');
+    await page.reload();
+    const products = await page.request.get('/api/products?storeId=1').then((r) => r.json());
+    const stored = products.find((p) => p.id === product.id);
+    expect(stored.priceYen).toBe(3900);
+    expect(stored.heightCm).toBe(275);
+    expect(stored.potDiameterCm).toBe(24);
+    await writeFile(`artifacts/e2e/wizard-persisted-${width}.json`, JSON.stringify(stored, null, 2));
   }
-  await page.goto('/seller/products/new');
-  await page.getByLabel('この植物を庭に配置できるようにする', { exact: true }).check();
-  await expect(page.locator('input[name="heightCm"]')).toHaveCount(1);
-  await expect(page.locator('.plant-model-group > legend')).toHaveText(['全体の形・大きさ', '幹・枝・茎', '葉', '花']);
-  await page.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('275');
-  await page.getByLabel('植物の幅（cm）', { exact: true }).fill('130');
-  await page.screenshot({ path: 'artifacts/e2e/product-create-model-groups.png', fullPage: true });
-  await page.getByRole('button', { name: '植物のプレビューを確認', exact: true }).click();
-  const previewUrl = await page.getByTitle('植物の3Dプレビュー', { exact: true }).getAttribute('src');
-  const profile = JSON.parse(new URL(previewUrl).searchParams.get('profile'));
-  expect(profile.heightCm).toBe(275);
-  expect(profile.widthCm).toBe(130);
-  await page.getByLabel('この植物を庭に配置できるようにする', { exact: true }).uncheck();
-  await expect(page.locator('input[name="heightCm"]')).toHaveValue('275');
-  await page.getByLabel('商品名', { exact: true }).fill('店舗選択後も保持する入力');
-  await page.getByRole('combobox', { name: '在庫を登録する店舗', exact: true }).selectOption('2');
-  await expect(page.getByRole('button', { name: '商品を保存', exact: true })).toBeEnabled();
-  await expect(page.getByLabel('商品名', { exact: true })).toHaveValue('店舗選択後も保持する入力');
-  const cart = await page.request.get('/api/cart').then((response) => response.json());
-  expect(cart.storeId).toBe(2);
-  await writeFile('artifacts/e2e/product-create-cart.json', JSON.stringify(cart, null, 2));
-  await page.locator('.workspace-sidebar').getByRole('link', { name: '商品一覧・登録', exact: true }).click();
-  await expect(page).toHaveURL(/\/seller\/products$/);
-  await expect(page.getByRole('combobox', { name: '在庫を編集する店舗', exact: true })).toHaveValue('2');
   expect(errors).toEqual([]);
 });
