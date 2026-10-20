@@ -44,12 +44,29 @@ function Save-DatabaseSettings([string]$path, [string[]]$databaseLines) {
             $_ -notmatch '^KUSAKARI_EC_(DATABASE_MODE|DB_PORT|DB_USER|DB_PASSWORD|DB_URL|E2E_DB_URL)='
         })
     }
-    # Add tracked public login defaults on fresh PCs; retain local overrides.
+    $retained += @(Get-MissingPublicLoginSettings $retained)
+    Set-PrivateFile $path ((@($databaseLines) + $retained -join "`n") + "`n")
+}
+
+# Tracked public login defaults absent from $lines; local overrides are retained.
+function Get-MissingPublicLoginSettings([string[]]$lines) {
     $public = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'config\cognito.development.json') | ConvertFrom-Json
     foreach ($property in $public.PSObject.Properties) {
-        if (-not @($retained | Where-Object { $_ -match ('^' + [regex]::Escape($property.Name) + '=') }).Count) {
-            $retained += "$($property.Name)=$($property.Value)"
+        if (-not @($lines | Where-Object { $_ -match ('^' + [regex]::Escape($property.Name) + '=') }).Count) {
+            "$($property.Name)=$($property.Value)"
         }
     }
-    Set-PrivateFile $path ((@($databaseLines) + $retained -join "`n") + "`n")
+}
+
+# A .env saved before the Cognito defaults existed is reused without rewriting
+# its DB settings; only the missing public login settings are appended.
+function Add-MissingPublicLoginSettings([string]$path) {
+    $lines = @(Get-Content -LiteralPath $path)
+    $missing = @(Get-MissingPublicLoginSettings $lines)
+    if (-not $missing.Count) { return }
+    $text = [IO.File]::ReadAllText($path)
+    Set-PrivateFile (Join-Path $runtimeDir 'env.previous') $text
+    $separator = if ($text -and -not $text.EndsWith("`n")) { "`n" } else { '' }
+    Set-PrivateFile $path ($text + $separator + ($missing -join "`n") + "`n")
+    Write-Host "保存済みの.envに不足していたCognito公開設定を追加しました: $(($missing | ForEach-Object { $_.Split('=')[0] }) -join ', ')"
 }
