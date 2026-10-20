@@ -41,7 +41,10 @@ try {
     $env:KUSAKARI_EC_API_PORT = '8086'
     $env:KUSAKARI_EC_WEB_ORIGIN = 'http://127.0.0.1:5186'
     $javaExecutable = Get-JavaExecutable
-    $apiProcess = Start-Process -FilePath $javaExecutable -ArgumentList @('-jar', "`"$jar`"") `
+    # Keep JDK's AF_UNIX pipe sockets outside AppData; MSIX-packaged launchers (e.g. agent apps) make connects there fail.
+    $javaSocketDir = Join-Path $runtimeDir 'java-tmp'
+    New-Item -ItemType Directory -Path $javaSocketDir -Force | Out-Null
+    $apiProcess = Start-Process -FilePath $javaExecutable -ArgumentList @("`"-Djdk.net.unixdomain.tmpdir=$javaSocketDir`"", '-jar', "`"$jar`"") `
         -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput "$runtimeDir\api.log" -RedirectStandardError "$runtimeDir\api-error.log"
     $apiRecord = @(Get-OwnedServiceProcesses | Where-Object Id -eq $apiProcess.Id | Select-Object -First 1)[0]
