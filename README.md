@@ -158,3 +158,7 @@ API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` �
 ## 業務バックエンドと機能要件
 
 出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証は実Cognito、会員・店舗・審査・注文・通知は実API/MySQLです。実決済・配送・精算は対象外です。[構成・移行・検証手順](docs/business-backend.md)を参照してください。
+
+## 別PCでMySQLを準備する場合
+
+`script/mysql-environment/setup-mysql.bat` でログインに必要なDB・権限・最新テーブルを準備し、Cognito設定を保持して実APIまで検証します。別のCodexへの指示と操作手順は [MySQL環境の準備](script/mysql-environment/README.md) を参照してください。

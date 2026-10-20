@@ -1,5 +1,7 @@
 ﻿. "$PSScriptRoot\mysql-tools.ps1"
 
+. "$PSScriptRoot\database-contract.ps1"
+
 function Set-PrivateFile([string]$path, [string]$content) {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
     if (-not (Test-Path -LiteralPath $path)) { New-Item -ItemType File -Path $path -Force | Out-Null }
@@ -427,7 +429,7 @@ function Initialize-Database([string]$mode, [switch]$reconfigure) {
             $probe = Invoke-MySql $adminUser $adminPassword $port 'SELECT VERSION();' -AllowFailure
             if (-not $probe.Success) {
                 if ($fixedAdminPassword) {
-                    throw '既存MySQLへroot/passwordで接続できません。MySQLのrootパスワードをpasswordに変更してから再実行してください。'
+                    throw '指定された管理者資格情報で既存MySQLへ接続できません。管理者パスワードまたは接続先を確認してください。'
                 }
                 $adminPassword = Read-Password 'MySQL rootパスワード（非表示）'
                 $null = Invoke-MySql $adminUser $adminPassword $port 'SELECT VERSION();'
@@ -446,7 +448,8 @@ function Initialize-Database([string]$mode, [switch]$reconfigure) {
             }
             $stateRoot = if ($env:KUSAKARI_EC_MYSQL_HOME) { $env:KUSAKARI_EC_MYSQL_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\mysql' }
             if (Test-Path -LiteralPath (Join-Path $stateRoot 'instance.json')) {
-                $null = Start-ManagedMySql
+                $managedState = Start-ManagedMySql
+                $port = [int]$managedState.Port
             } else {
                 $null = Initialize-ManagedMySql $port
             }
@@ -457,37 +460,26 @@ function Initialize-Database([string]$mode, [switch]$reconfigure) {
         # This is a local demo account. Keep the application credential
         # deterministic so another PC needs no extra DB-password prompt.
         $password = 'password'
-        # Reject unrelated existing schemas before provisioning users or grants.
+        Assert-MySqlCompatibility $adminUser $adminPassword $port
         foreach ($db in @('kusakari','kusakari_e2e')) {
-            $tables = (Invoke-MySql $adminUser $adminPassword $port "SELECT table_name FROM information_schema.tables WHERE table_schema='$db';").Output
-            if ($tables) {
-                $expectedV1 = @('products','stores','inventory','material_products','carts','cart_items','orders','order_items','flyway_schema_history')
-                $expectedV2 = @($expectedV1 + @('product_images','cart_details','order_details'))
-                $actual = @($tables -split "`r?`n")
-                $isV1 = @(Compare-Object $expectedV1 $actual).Count -eq 0
-                $isV2 = @(Compare-Object $expectedV2 $actual).Count -eq 0
-                if (-not $isV1 -and -not $isV2) { throw "$db は既知のKusakari Flywayスキーマと一致しません。変更せず停止します。" }
-                $historyV1 = (Invoke-MySql $adminUser $adminPassword $port "SELECT COUNT(*) FROM $db.flyway_schema_history WHERE version='1' AND script='V1__catalog_and_commerce.sql' AND success=1;").Output
-                $historyV2 = (Invoke-MySql $adminUser $adminPassword $port "SELECT COUNT(*) FROM $db.flyway_schema_history WHERE version='2' AND script='V2__mockup_crud.sql' AND success=1;").Output
-                if ($historyV1 -ne '1' -or ($isV1 -and $historyV2 -ne '0') -or ($isV2 -and $historyV2 -ne '1')) {
-                    throw "$db はFlyway履歴とテーブル構成が一致しません。変更せず停止します。"
-                }
-            }
+            Assert-KusakariSchema $adminUser $adminPassword $port $db
         }
         $literal = $password.Replace("'", "''")
-        $sql = "SET SESSION sql_mode='NO_BACKSLASH_ESCAPES'; CREATE USER IF NOT EXISTS '$user'@'localhost' IDENTIFIED BY '$literal'; ALTER USER '$user'@'localhost' IDENTIFIED BY '$literal';"
+        $sql = "SET SESSION sql_mode='NO_BACKSLASH_ESCAPES';"
+        foreach ($accountHost in @('localhost','127.0.0.1')) {
+            $sql += "CREATE USER IF NOT EXISTS '$user'@'$accountHost' IDENTIFIED BY '$literal'; ALTER USER '$user'@'$accountHost' IDENTIFIED BY '$literal';"
+        }
         foreach ($db in @('kusakari','kusakari_e2e')) {
-            $sql += "CREATE DATABASE IF NOT EXISTS $db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,DROP,INDEX,REFERENCES ON $db.* TO '$user'@'localhost';"
+            $sql += "CREATE DATABASE IF NOT EXISTS $db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
+            foreach ($accountHost in @('localhost','127.0.0.1')) {
+                $sql += "GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,DROP,INDEX,REFERENCES ON $db.* TO '$user'@'$accountHost';"
+            }
         }
         $null = Invoke-MySql $adminUser $adminPassword $port $sql
         $adminPassword = $null
         $null = Invoke-MySql $user $password $port 'USE kusakari; SELECT 1; USE kusakari_e2e; SELECT 1;'
-        if (Test-Path -LiteralPath $settings) { Set-PrivateFile (Join-Path $runtimeDir 'env.previous') ([IO.File]::ReadAllText($settings)) }
         $lines = @("KUSAKARI_EC_DATABASE_MODE=$mode", "KUSAKARI_EC_DB_PORT=$port", "KUSAKARI_EC_DB_USER=$user", "KUSAKARI_EC_DB_PASSWORD='$password'", "KUSAKARI_EC_DB_URL=jdbc:mysql://127.0.0.1:$port/kusakari?connectionTimeZone=UTC", "KUSAKARI_EC_E2E_DB_URL=jdbc:mysql://127.0.0.1:$port/kusakari_e2e?connectionTimeZone=UTC")
-        if (Test-Path -LiteralPath $settings) {
-            $lines += @(Get-Content -LiteralPath $settings | Where-Object { $_ -match '^(VITE_KUSAKARI_CANVAS_URL|KUSAKARI_CANVAS_API_URL)=' })
-        }
-        Set-PrivateFile $settings (($lines -join "`n") + "`n")
+        Save-DatabaseSettings $settings $lines
         Import-LocalSettings
     }
     $null = Invoke-MySql $user $password $port 'USE kusakari; SELECT 1; USE kusakari_e2e; SELECT 1;'

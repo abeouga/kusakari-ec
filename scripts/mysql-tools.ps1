@@ -55,6 +55,21 @@ function Get-KusakariEcMySqlBin {
     if ((Test-Path -LiteralPath (Join-Path $resolvedCandidate 'mysqld.exe')) -and
         (Test-Path -LiteralPath (Join-Path $resolvedCandidate 'mysql.exe')) -and
         (Test-Path -LiteralPath (Join-Path $resolvedCandidate 'mysqldump.exe'))) {
+      if ($Portable) {
+        $probe = New-Object Diagnostics.Process
+        try {
+          $probe.StartInfo.FileName = Join-Path $resolvedCandidate 'mysqld.exe'
+          $probe.StartInfo.Arguments = '--version'
+          $probe.StartInfo.UseShellExecute = $false
+          $probe.StartInfo.CreateNoWindow = $true
+          $probe.StartInfo.RedirectStandardOutput = $true
+          $probe.StartInfo.RedirectStandardError = $true
+          $null = $probe.Start()
+          if (-not $probe.WaitForExit(10000)) { $probe.Kill(); continue }
+          $versionText = $probe.StandardOutput.ReadToEnd() + $probe.StandardError.ReadToEnd()
+          if ($probe.ExitCode -ne 0 -or $versionText -notmatch '\bVer 8\.' -or $versionText -match '(?i)mariadb') { continue }
+        } catch { continue } finally { $probe.Dispose() }
+      }
       Write-Host "既存のMySQL実行ファイルを再利用します: $resolvedCandidate"
       return $resolvedCandidate
     }

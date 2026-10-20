@@ -7,6 +7,8 @@ DB作成後にアプリユーザーの認証やFlywayを検証せず、別PCで�
 
 ## Decision
 
+別PCのログイン用MySQLだけを準備する場合は、[Codex向けの指示と専用スクリプト](../script/mysql-environment/README.md)を使用してください。DB再設定で既存Cognito設定を保持し、現在のFlyway構成とログイン用APIまで検証します。
+
 Windows 10/11 x64のWindows PowerShell 5.1で `setup.bat` → `start.bat` を入口にします。
 初回の端末入力で接続設定を決め、現在のWindowsユーザーだけが読める `.env` に保存します。
 管理者パスワードを画面やコマンド引数に表示しません。既存MySQLの管理者パスワードは保存しません。
