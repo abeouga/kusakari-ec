@@ -4,11 +4,11 @@
 
 ## 1. 2つのリポジトリを並べる
 
-Gitを導入済みのPowerShellで、任意の作業用フォルダーに取得します。CanvasのGitHub URLには旧名称が残っていますが、保存先は必ず`kusakari-canvas`にします。
+Gitを導入済みのPowerShellで、任意の作業用フォルダーに取得します。保存先はそれぞれ`kusakari-ec`と`kusakari-canvas`にします。
 
 ```powershell
 git clone https://github.com/abeouga/kusakari-ec.git kusakari-ec
-git clone https://github.com/abeouga/greenly-mvp.git kusakari-canvas
+git clone https://github.com/abeouga/kusakari-canvas.git kusakari-canvas
 ```
 
 既に取得済みの場合は、各PCの変更を退避・コミットしてから両方のmainを更新してください。他PCの`.env`、`.runtime`、DBのデータフォルダーをコピーしないでください。
