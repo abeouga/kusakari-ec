@@ -4,6 +4,7 @@ import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } f
 import { yen } from '../api';
 import { DeliveryForm } from './DeliveryForm';
 import { DeliverySummary } from './DeliverySummary';
+import { PageLink } from '../workspace/Common';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void}} props */
 export function Cart({ shop, onStores }) {
@@ -33,9 +34,9 @@ export function Cart({ shop, onStores }) {
             <p className="error" role="alert">
               {shop.error}
             </p>
-            <a className="primary-button" href="/#plants">
+            <PageLink className="primary-button" href="/#plants">
               植物を探す
-            </a>
+            </PageLink>
           </>
         )}
         {!shop.error && <p role="status">カートを読み込んでいます。</p>}
@@ -55,9 +56,9 @@ export function Cart({ shop, onStores }) {
           <ShoppingCart size={40} />
           <h3>まだ植物が入っていません。</h3>
           <p>お気に入りのひと鉢を見つけてください。</p>
-          <a className="primary-button" href="/#plants">
+          <PageLink className="primary-button" href="/#plants">
             植物を探す
-          </a>
+          </PageLink>
         </div>
       </section>
     );
@@ -70,6 +71,7 @@ export function Cart({ shop, onStores }) {
     <section className="cart-content">
       <h2>{title}</h2>
       <p className="cart-page-lead">商品と受取方法をご確認ください。</p>
+      {shop.isGuest && <p role="status" className="fine-print">このカートは一時的なものです。再読み込みやECを離れると消えます。ログイン後に価格・在庫を再確認します。</p>}
       <ol className="step-list">
         <li>1 カート確認</li>
         <li>2 店舗受け取り</li>
@@ -138,7 +140,7 @@ export function Cart({ shop, onStores }) {
               </article>
             ))}
           </div>
-          {!confirming && (
+          {!confirming && !shop.isGuest && (
             <DeliveryForm
               key={cart.revision}
               details={cart.details}
@@ -192,7 +194,7 @@ export function Cart({ shop, onStores }) {
             <button
               className="primary-button full"
               disabled={shop.busy || !cart.canCheckout}
-              onClick={() => setConfirming(true)}
+              onClick={async () => { if (await shop.beginCheckout()) setConfirming(true); }}
             >
               注文内容を確認する
               <ArrowRight size={18} />

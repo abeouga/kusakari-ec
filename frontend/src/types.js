@@ -38,7 +38,8 @@
  *
  * @typedef {{id:number, name:string, address:string, hours:string, distanceKm:number|null}} Store
  * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean}} CartLine
- * @typedef {{revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
+ * @typedef {{guest?:boolean,revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
+ * @typedef {{revision:number,storeId:number,items:{productId:string,quantity:number}[]}} GuestCartPlan
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number}} OrderLine
  * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Order
  * @typedef {{recipientName:string,recipientPhone:string,contactEmail:string}} PickupInput

@@ -6,10 +6,12 @@ export function useAuth() {
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    readSession().then((value) => { if (active) setSession(value); }).catch((reason) => {
+    function refreshSession() { readSession().then((value) => { if (active) { setSession(value); setError(''); } }).catch((reason) => {
       if (active) setError(reason instanceof Error ? reason.message : 'ログイン状態を確認できません。');
-    });
-    return () => { active = false; };
+    }); }
+    refreshSession();
+    window.addEventListener('kusakari-auth-changed', refreshSession);
+    return () => { active = false; window.removeEventListener('kusakari-auth-changed', refreshSession); };
   }, []);
   return { session, error };
 }

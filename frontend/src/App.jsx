@@ -106,7 +106,7 @@ export default function App() {
       onNavigate={navigateFromHeader}
     />
   );
-  if (path === '/account/login' || panel === 'login') return <LoginPage />;
+  if (path === '/account/login' || panel === 'login') return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
   if (workspace) {
     return <Workspace shop={shop} path={path} header={header} />;
   }

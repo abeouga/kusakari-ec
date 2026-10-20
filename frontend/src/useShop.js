@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
-import { login } from './auth';
+import { login, readSession } from './auth';
+import { repriceGuestCart, setGuestQuantity } from './guestCart';
 
 export function useShop() {
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
@@ -18,16 +19,56 @@ export function useShop() {
   const [locationLabel, setLocationLabel] = useState('東京駅');
   const checkoutRequest = useRef(/** @type {import('./types').Checkout|null} */ (null));
   const operation = useRef(false);
+  const guestCart = useRef(/** @type {import('./types').Cart|null} */ (null));
+  const guestPlan = useRef(/** @type {import('./types').GuestCartPlan|null} */ (null));
+
+  const rememberGuest = useCallback(/** @param {import('./types').Cart} next */ (next) => {
+    guestCart.current = next;
+    setCart(next);
+  }, []);
+
+  const promoteGuestCart = useCallback(async () => {
+    let saved = await api.cart();
+    const draft = guestCart.current;
+    if (draft?.items.length) {
+      try {
+        if (saved.items.length && saved.storeId !== draft.storeId) throw new ApiError(`保存済みカートの受取店舗は「${saved.storeName}」です。カートに戻ってこの店舗を選び直してください。`, 409);
+        if (!guestPlan.current) {
+          guestPlan.current = {
+            revision: saved.revision,
+            storeId: draft.storeId,
+            items: draft.items.map((line) => ({ productId: line.product.id,
+              quantity: line.quantity + (saved.items.find((item) => item.product.id === line.product.id)?.quantity ?? 0) })),
+          };
+        }
+        const plan = guestPlan.current;
+        if (plan.items.some((line) => line.quantity > 99)) throw new ApiError('保存済みの数量との合計が99点を超えます。カートの数量を減らしてください。', 400);
+        const alreadyApplied = saved.storeId === plan.storeId && plan.items.every((line) =>
+          saved.items.some((item) => item.product.id === line.productId && item.quantity === line.quantity));
+        if (!alreadyApplied) saved = await api.mergeGuestCart(plan);
+      } catch (reason) {
+        // Retain absolute targets after an uncertain network response so retry cannot add the same items twice.
+        if (reason instanceof ApiError && reason.status > 0) guestPlan.current = null;
+        throw reason;
+      }
+    }
+    guestPlan.current = null;
+    guestCart.current = null;
+    setCart(saved);
+    return saved;
+  }, []);
 
   const refresh = useCallback(async () => {
     let nextCart;
     try {
-      nextCart = await api.cart();
+      nextCart = guestCart.current?.items.length ? await promoteGuestCart() : await api.cart();
     } catch (reason) {
       if (!(reason instanceof ApiError) || reason.status !== 401) throw reason;
-      setCart(null);
       setOrders([]);
-      setProducts(await api.products(1));
+      const storeId = guestCart.current?.storeId ?? 1;
+      const [nextProducts, store] = await Promise.all([api.products(storeId), api.store(storeId)]);
+      setProducts(nextProducts);
+      rememberGuest(repriceGuestCart(guestCart.current, store, nextProducts));
       return;
     }
     setCart(nextCart);
@@ -35,7 +76,7 @@ export function useShop() {
     const nextOrders = await api.orders();
     setProducts(nextProducts);
     setOrders(nextOrders);
-  }, []);
+  }, [promoteGuestCart, rememberGuest]);
 
   const run = useCallback(
     /** @param {() => Promise<void>} action */ async (action) => {
@@ -85,7 +126,12 @@ export function useShop() {
   function setQuantity(id, quantity) {
     return run(async () => {
       if (!cart) return;
-      setCart(await api.setItem(id, quantity, cart.revision));
+      if (cart.guest) {
+        if (guestPlan.current) throw new Error('引き継ぎ結果を確認中です。注文手続きを再試行してください。');
+        const product = products.find((item) => item.id === id) ?? cart.items.find((item) => item.product.id === id)?.product;
+        if (!product) throw new Error('商品が見つかりません。商品一覧を再読み込みしてください。');
+        rememberGuest(setGuestQuantity(cart, product, quantity));
+      } else setCart(await api.setItem(id, quantity, cart.revision));
       checkoutRequest.current = null;
       if (quantity === 0) {
         setNotice('カートから削除しました。');
@@ -98,7 +144,7 @@ export function useShop() {
   /** @param {string} id @param {number} [quantity] */
   function add(id, quantity = 1) {
     if (!cart) {
-      login();
+      setError('商品と店舗を読み込んでいます。しばらくしてから再試行してください。');
       return;
     }
     let currentQuantity = 0;
@@ -111,6 +157,14 @@ export function useShop() {
   function selectStore(id) {
     return run(async () => {
       if (!cart) return;
+      if (cart.guest) {
+        if (guestPlan.current) throw new Error('引き継ぎ結果を確認中です。注文手続きを再試行してください。');
+        const [nextProducts, store] = await Promise.all([api.products(id), api.store(id)]);
+        rememberGuest(repriceGuestCart(cart, store, nextProducts));
+        setProducts(nextProducts);
+        setNotice('受取店舗を変更しました。在庫を確認してください。');
+        return;
+      }
       const next = await api.setStore(id, cart.revision);
       setCart(next);
       checkoutRequest.current = null;
@@ -119,15 +173,30 @@ export function useShop() {
     });
   }
 
+  async function checkoutCart() {
+    const session = await readSession();
+    if (!session.authenticated) { login(); return null; }
+    const current = cart?.guest ? await promoteGuestCart() : await api.cart();
+    setCart(current);
+    return current;
+  }
+
+  async function beginCheckout() {
+    let ready = false;
+    await run(async () => { ready = !!(await checkoutCart()); });
+    return ready;
+  }
+
   function checkout() {
     return run(async () => {
-      if (!cart) return;
+      const current = await checkoutCart();
+      if (!current) return;
       // 応答が届かなかった場合の再試行では、同じ注文要求を送ります。
       if (!checkoutRequest.current) {
         checkoutRequest.current = {
           requestId: crypto.randomUUID(),
-          revision: cart.revision,
-          expectedTotalYen: cart.totalYen,
+          revision: current.revision,
+          expectedTotalYen: current.totalYen,
         };
       }
       const order = await api.checkout(checkoutRequest.current);
@@ -223,6 +292,9 @@ export function useShop() {
   }
 
   return {
+    isGuest: !!cart?.guest,
+    promoteGuestCart,
+    beginCheckout,
     sellerStoreId,
     setSellerStoreId,
     refreshProducts: refresh,

@@ -60,6 +60,10 @@ export const api = {
     request(`/cart/shopping-lists/${encodeURIComponent(id)}/items`, 'POST', JSON.stringify(input)),
   /** @returns {Promise<import('./types').Cart>} */
   cart: () => request('/cart'),
+  /** @param {import('./types').GuestCartPlan & {revision:number}} input @returns {Promise<import('./types').Cart>} */
+  mergeGuestCart: (input) => request('/cart/guest-items', 'PUT', JSON.stringify(input)),
+  /** @param {number} id @returns {Promise<import('./types').Store>} */
+  store: (id) => request(`/stores/${id}`),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
   products: (storeId) => request(`/products?storeId=${storeId}`),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */

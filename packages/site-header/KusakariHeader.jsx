@@ -41,7 +41,7 @@ export function KusakariHeader({
   }
 
   return (
-    <div className="kusakari-site-chrome" data-header-version="0.1.8">
+    <div className="kusakari-site-chrome" data-header-version="0.1.9">
       <div className="announcement">
         <span>GREEN FOR YOUR EVERYDAY</span>
         <span>ひと鉢からはじまる、緑のある暮らし。</span>
@@ -61,10 +61,10 @@ export function KusakariHeader({
         </nav>
         <div className="workspace-entry-links">
           {!authenticated && panelAction('login', <><LogIn size={16} aria-hidden="true" />ログイン</>, 'login-entry')}
-          <a className="account-entry" href={shopUrl('/account')} onClick={follow}>
+          {authenticated && <a className="account-entry" href={shopUrl('/account')} onClick={follow}>
             <span className="account-entry-avatar"><UserRound size={17} aria-hidden="true" /></span>
             <span>アカウント</span>
-          </a>
+          </a>}
           {showAdmin && <a href={shopUrl('/operator')} onClick={follow}>管理者画面</a>}
         </div>
         <div className="header-actions">

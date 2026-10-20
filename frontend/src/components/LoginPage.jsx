@@ -1,7 +1,8 @@
 import { AuthPanel } from './AuthPanel';
 import { useAuth } from '../useAuth';
 
-export function LoginPage() {
+/** @param {{onAuthenticated?:()=>Promise<unknown>}} props */
+export function LoginPage({ onAuthenticated }) {
   const { session } = useAuth();
   return (
     <div className="login-page">
@@ -16,7 +17,7 @@ export function LoginPage() {
           <br />
           ひとつのアカウントでご利用いただけます。
         </p>
-        <AuthPanel />
+        <AuthPanel onAuthenticated={onAuthenticated} />
         {session?.authenticated && (
           <a className="login-home" href="/">
             トップページへ

@@ -1,3 +1,5 @@
+import { navigate } from './workspace/navigation';
+
 /** @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,role:string|null,storeIds:number[]}} AuthSession */
 
 /** @returns {Promise<AuthSession>} */
@@ -25,9 +27,8 @@ export function login(signup = false) {
     window.location.pathname === '/account/login'
       ? new URLSearchParams(window.location.search).get('returnTo') || '/'
       : window.location.href.split('#')[0];
-  window.location.assign(
-    `${signup ? '/api/auth/login?signup=true&' : '/account/login?'}returnTo=${encodeURIComponent(returnTo)}`,
-  );
+  if (signup) window.location.assign(`/api/auth/login?signup=true&returnTo=${encodeURIComponent(returnTo)}`);
+  else navigate(`/account/login?returnTo=${encodeURIComponent(returnTo)}`);
 }
 
 /** @param {string} email @param {string} password @param {string} returnTo */
@@ -39,7 +40,8 @@ export async function passwordLogin(email, password, returnTo) {
   });
   const result = await response.json().catch(() => null);
   if (!response.ok) throw new Error(result?.message || 'ログインできませんでした。時間をおいて再試行してください。');
-  window.location.replace(result.returnTo);
+  window.dispatchEvent(new Event('kusakari-auth-changed'));
+  return String(result.returnTo);
 }
 
 export async function logout() {

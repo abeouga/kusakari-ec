@@ -42,6 +42,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await row.getByRole('button', { name: '非表示：再公開する', exact: true }).click();
     await expect(row).toContainText('公開中');
     await buyer.goto(ec);
+    await buyer.getByLabel('植物を検索', { exact: true }).fill(input.sku);
     await buyer.getByRole('button', { name: `${input.name}の詳細`, exact: true }).click();
     await buyer.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
     await expect.poll(async () => (await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(1);

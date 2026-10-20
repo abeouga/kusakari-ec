@@ -118,6 +118,41 @@ public class CartService {
     return view(cart);
   }
 
+  public CartView mergeGuestItems(String id, jp.kusakari.ec.commerce.dto.CommerceDtos.GuestCartRequest request) {
+    CartEntity cart = requireLockedCart(id);
+    checkRevision(cart, request.revision());
+    var current = items.findAllForCart(id).stream().collect(Collectors.toMap(i -> i.getId().getProductId(), i -> i));
+    if (cart.getStoreId() != request.storeId() && !current.isEmpty()) {
+      throw new ApiException(409, "CART_STORE_CONFLICT", "保存済みカートと受取店舗が異なります。カートに戻って店舗を選び直してください。");
+    }
+    var ids = request.items().stream().map(i -> i.productId()).toList();
+    if (new java.util.HashSet<>(ids).size() != ids.size()) {
+      throw new ApiException(400, "DUPLICATE_PRODUCT", "商品IDが重複しています。");
+    }
+    var selected = catalog.productsByIds(request.storeId(), ids).stream().collect(Collectors.toMap(ProductView::id, p -> p));
+    var allIds = new java.util.HashSet<>(current.keySet());
+    allIds.addAll(ids);
+    if (allIds.size() > 50) throw new ApiException(400, "CART_LIMIT", "カートは50種類までです。");
+    for (var input : request.items()) {
+      var product = selected.get(input.productId());
+      if (product == null || !product.active()) {
+        throw new ApiException(409, "PRODUCT_ARCHIVED", "販売を終了した商品が含まれています。カートから削除してください。");
+      }
+      if (input.quantity() > product.stock()) {
+        throw new ApiException(409, "OUT_OF_STOCK", "選択した店舗の在庫が不足しています。カートの数量を減らしてください。");
+      }
+    }
+    // Validate every line before changing the authenticated cart; failures roll back the entire import.
+    if (cart.getStoreId() != request.storeId()) cart.selectStore(request.storeId());
+    for (var input : request.items()) {
+      var item = current.getOrDefault(input.productId(), new CartItemEntity(new CartItemId(id, input.productId()), 0));
+      item.setQuantity(input.quantity());
+      items.save(item);
+    }
+    cart.incrementRevision();
+    return view(cart);
+  }
+
   public CartView updateDetails(String id, CartDetailsRequest request) {
     CartEntity cart = requireLockedCart(id);
     checkRevision(cart, request.revision());

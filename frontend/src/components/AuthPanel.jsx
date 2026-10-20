@@ -1,17 +1,33 @@
 import { useState } from 'react';
 import { useAuth } from '../useAuth';
 import { login, logout, passwordLogin } from '../auth';
+import { PageLink } from '../workspace/Common';
 import '../css/auth-dialog.css';
 
-export function AuthPanel() {
+/** @param {{onAuthenticated?:()=>Promise<unknown>}} [props] */
+export function AuthPanel({ onAuthenticated } = {}) {
   const { session, error } = useAuth();
   const [failure, setFailure] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [destination, setDestination] = useState('');
   const params = new URLSearchParams(window.location.search);
   const returnTo =
     params.get('returnTo') ||
     (window.location.pathname === '/account/login' ? '/' : window.location.href.split('#')[0]);
+  /** @param {string} target */
+  async function complete(target) {
+    setDestination(target);
+    setSubmitting(true);
+    setFailure('');
+    try {
+      if (onAuthenticated) await onAuthenticated();
+      window.location.replace(target);
+    } catch (reason) {
+      setFailure(reason instanceof Error ? reason.message : 'カートを引き継げませんでした。再試行してください。');
+      setSubmitting(false);
+    }
+  }
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   async function submit(event) {
     event.preventDefault();
@@ -20,7 +36,8 @@ export function AuthPanel() {
     setFailure('');
     setSubmitting(true);
     try {
-      await passwordLogin(String(data.get('email') || ''), String(data.get('password') || ''), returnTo);
+      const target = await passwordLogin(String(data.get('email') || ''), String(data.get('password') || ''), returnTo);
+      await complete(target);
     } catch (reason) {
       setFailure(reason instanceof Error ? reason.message : 'ログインできませんでした。');
       setSubmitting(false);
@@ -31,7 +48,11 @@ export function AuthPanel() {
   if (session.mode === 'demo') return <p>Cognitoが未設定のため、ログイン・新規登録は利用できません。</p>;
   return (
     <section className="workspace-card">
-      {session.authenticated ? (
+      {destination ? <>
+        <p>ログインしました。カートの価格・在庫を確認して引き継ぎます。</p>
+        <button disabled={submitting} onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
+        <PageLink href="/cart">カートに戻る</PageLink>
+      </> : session.authenticated ? (
         <>
           <p>{session.name || session.email}</p>
           <p>{session.role === 'ADMIN' ? '管理者' : session.role === 'SELLER' ? '出店者' : '利用者'}</p>

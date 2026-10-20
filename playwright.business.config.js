@@ -3,7 +3,7 @@ import base from './playwright.custom-login.config.js';
 
 export default defineConfig({
   ...base,
-  testMatch: ['business*.spec.js', 'custom-login.spec.js'],
+  testMatch: ['business*.spec.js', 'custom-login.spec.js', 'guest-cart.spec.js'],
   timeout: 180000,
   expect: { timeout: 20000 },
   workers: 1,

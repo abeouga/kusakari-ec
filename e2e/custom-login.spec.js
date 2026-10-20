@@ -13,6 +13,44 @@ const password = accounts
   .replace(/^["']|["']$/g, '');
 if (!password) throw new Error('The ignored test-account password file is required.');
 
+test('account header link is hidden for guests and visible after login in EC and Canvas', async ({ page }) => {
+  await mkdir('artifacts/account-header', { recursive: true });
+  const account = page.locator('.kusakari-site-header').getByRole('link', { name: 'アカウント', exact: true });
+  await page.goto(ec);
+  await page.reload();
+  await expect(page.locator('.login-entry')).toBeVisible();
+  await expect(account).toHaveCount(0);
+  const guest = await (await page.request.get(`${ec}/api/auth/me`)).json();
+  expect(guest.authenticated).toBe(false);
+  await page.screenshot({ path: 'artifacts/account-header/ec-guest.png' });
+  await page.goto(canvas);
+  await expect(page).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
+  await expect(account).toHaveCount(0);
+  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('パスワード', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click();
+  await expect(page).toHaveURL(canvas + '/');
+  for (const [name, url] of [['ec', ec], ['canvas', canvas]]) {
+    await page.goto(url);
+    await page.reload();
+    await expect(account).toBeVisible();
+    await expect(page.locator('.login-entry')).toHaveCount(0);
+    await page.screenshot({ path: `artifacts/account-header/${name}-authenticated.png` });
+  }
+  const member = await (await page.request.get(`${ec}/api/auth/me`)).json();
+  expect(member.authenticated).toBe(true);
+  const gardens = await (await page.request.get(`${canvas}/api/gardens`)).json();
+  const csrf = await (await page.request.get(`${ec}/api/auth/csrf`)).json();
+  expect((await page.request.post(`${ec}/api/auth/logout`, { headers: { [csrf.headerName]: csrf.token } })).status()).toBe(200);
+  await page.goto(ec);
+  await expect(page.locator('.login-entry')).toBeVisible();
+  await expect(account).toHaveCount(0);
+  await page.goto(canvas);
+  await expect(page).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
+  await expect(account).toHaveCount(0);
+  await writeFile('artifacts/account-header/api.json', JSON.stringify({ guest, member, gardens }, null, 2));
+});
+
 test('custom EC login shares a real Cognito session with Canvas and redirects again after logout', async ({
   page,
   context,

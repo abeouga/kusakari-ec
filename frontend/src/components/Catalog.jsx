@@ -1,7 +1,7 @@
 import { catalogText } from '../catalogText';
 import { useState } from 'react';
 import { Leaf, Search, X } from 'lucide-react';
-import { ProductCard } from './ProductCard';
+import { CatalogProducts } from './CatalogProducts';
 import { AddToShoppingList } from './AddToShoppingList';
 import { login } from '../auth';
 
@@ -47,6 +47,18 @@ export function Catalog({ shop, onDetail }) {
 
   if (sort === 'newest') products.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   if (sort === 'care') products.sort((a, b) => a.careLevel - b.careLevel);
+  const paginationKey = JSON.stringify([
+    category,
+    keyword,
+    sort,
+    inStockOnly,
+    sunlight,
+    careLevel,
+    nursery,
+    useCase,
+    maxPrice,
+    shop.cart?.storeId,
+  ]);
   function reset() {
     setCategory('すべて');
     setSearch('');
@@ -185,21 +197,17 @@ export function Catalog({ shop, onDetail }) {
             </div>
           )}
           {!loading && (
-            <div className="product-grid">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onOpen={() => onDetail(product.id)}
-                  onAdd={() => shop.add(product.id)}
-                  onAddToList={() => {
-                    if (!shop.cart) login();
-                    else setListProduct(product);
-                  }}
-                  disabled={shop.busy || !shop.cart}
-                />
-              ))}
-            </div>
+            <CatalogProducts
+              key={paginationKey}
+              products={products}
+              onDetail={onDetail}
+              onAdd={shop.add}
+              onAddToList={(product) => {
+                if (!shop.cart || shop.isGuest) login();
+                else setListProduct(product);
+              }}
+              disabled={shop.busy || !shop.cart}
+            />
           )}
           {shop.cart && !products.length && (
             <div className="empty">

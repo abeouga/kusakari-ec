@@ -51,6 +51,15 @@ public class CartController {
     return carts.updateStore(sessions.resolve(request, response), input);
   }
 
+  @PutMapping("/guest-items")
+  public CartView mergeGuestItems(
+    @Valid @RequestBody jp.kusakari.ec.commerce.dto.CommerceDtos.GuestCartRequest input,
+    HttpServletRequest request,
+    HttpServletResponse response
+  ) {
+    return carts.mergeGuestItems(sessions.resolve(request, response), input);
+  }
+
   @PutMapping("/details")
   public CartView updateDetails(
     @Valid @RequestBody CartDetailsRequest input,
