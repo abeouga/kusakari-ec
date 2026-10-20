@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-/** @param {{title:string, onClose:()=>void, children:import('react').ReactNode, wide?:boolean,role?:"dialog"|"alertdialog"}} props */
-export function Dialog({ title, onClose, children, wide = false, role = 'dialog' }) {
+/** @param {{title:string, onClose:()=>void, children:import('react').ReactNode, wide?:boolean,role?:"dialog"|"alertdialog",className?:string}} props */
+export function Dialog({ title, onClose, children, wide = false, role = 'dialog', className: extraClass = '' }) {
   const ref = useRef(/** @type {HTMLDialogElement|null} */ (null));
   let className = 'dialog';
   if (wide) className = 'dialog dialog-wide';
+  if (extraClass) className += ` ${extraClass}`;
   useEffect(() => {
     const element = ref.current;
     const previous = document.activeElement;

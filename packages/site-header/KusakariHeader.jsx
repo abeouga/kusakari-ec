@@ -2,12 +2,12 @@ import { History, LogIn, ShoppingCart, UserRound } from 'lucide-react';
 
 /**
  * @param {{ecUrl:string,canvasUrl:string,logoUrl:string,activeSection?:string,
- * cartCount?:number|null,cartText?:string,disabled?:boolean,onPanel?:(panel:string)=>void,
+ * cartCount?:number|null,cartText?:string,authenticated?:boolean,showAdmin?:boolean,showSeller?:boolean,disabled?:boolean,onPanel?:(panel:string)=>void,
  * onNavigate?:(url:string)=>void}} props
  */
 export function KusakariHeader({
   ecUrl, canvasUrl, logoUrl, activeSection = '', cartCount = null,
-  disabled = false, onPanel, onNavigate, cartText = 'カート',
+  authenticated = false, showAdmin = false, showSeller = false, disabled = false, onPanel, onNavigate, cartText = 'カート',
 }) {
   /** @param {string} path @param {string} [panel] */
   function shopUrl(path, panel) {
@@ -41,7 +41,7 @@ export function KusakariHeader({
   }
 
   return (
-    <div className="kusakari-site-chrome" data-header-version="0.1.5">
+    <div className="kusakari-site-chrome" data-header-version="0.1.8">
       <div className="announcement">
         <span>GREEN FOR YOUR EVERYDAY</span>
         <span>ひと鉢からはじまる、緑のある暮らし。</span>
@@ -57,15 +57,15 @@ export function KusakariHeader({
           {panelAction('stores', '店舗を探す')}
           <a className={activeSection === 'canvas' ? 'active' : ''} href={canvasUrl} onClick={follow}>Canvas</a>
           {panelAction('guide', 'Kusakariについて')}
-          <a href={shopUrl('/seller')} onClick={follow}>出店者</a>
+          {showSeller && <a href={shopUrl('/seller')} onClick={follow}>出店者</a>}
         </nav>
         <div className="workspace-entry-links">
-          {panelAction('login', <><LogIn size={16} aria-hidden="true" />ログイン</>, 'login-entry')}
+          {!authenticated && panelAction('login', <><LogIn size={16} aria-hidden="true" />ログイン</>, 'login-entry')}
           <a className="account-entry" href={shopUrl('/account')} onClick={follow}>
             <span className="account-entry-avatar"><UserRound size={17} aria-hidden="true" /></span>
             <span>アカウント</span>
           </a>
-          <a href={shopUrl('/operator')} onClick={follow}>管理者画面</a>
+          {showAdmin && <a href={shopUrl('/operator')} onClick={follow}>管理者画面</a>}
         </div>
         <div className="header-actions">
           {panelAction('orders', <><History size={18} aria-hidden="true" />注文履歴</>, 'history-button')}

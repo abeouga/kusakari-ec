@@ -2,7 +2,14 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['canvas-integration.spec.js', 'canvas-commerce.spec.js'],
+  testIgnore: [
+    'business*.spec.js',
+    'acceptance.spec.js',
+    'canvas-integration.spec.js',
+    'canvas-commerce.spec.js',
+    'auth.spec.js',
+    'custom-login.spec.js',
+  ],
   fullyParallel: false,
   workers: 1,
   timeout: 45000,

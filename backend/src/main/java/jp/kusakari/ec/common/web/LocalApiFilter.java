@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
+@org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 public class LocalApiFilter extends OncePerRequestFilter {
 
   private final String origin;
@@ -26,14 +27,26 @@ public class LocalApiFilter extends OncePerRequestFilter {
     this.origin = origin;
     this.canvasOrigin = canvasOrigin;
     this.container = container;
-    if (container && !privatePreview) throw new IllegalArgumentException("Container mode requires a private access boundary and KUSAKARI_PRIVATE_PREVIEW=true.");
+    if (container && !privatePreview) throw new IllegalArgumentException(
+      "Container mode requires a private access boundary and KUSAKARI_PRIVATE_PREVIEW=true."
+    );
     var publicUri = URI.create(origin);
-    if (container && (publicUri.getHost() == null || publicUri.getRawUserInfo() != null ||
+    if (
+      container &&
+      (publicUri.getHost() == null ||
+        publicUri.getRawUserInfo() != null ||
         !(publicUri.getScheme().equals("https") || publicUri.getScheme().equals("http")) ||
-        publicUri.getRawQuery() != null || publicUri.getRawFragment() != null || !publicUri.getRawPath().isEmpty())) {
-      throw new IllegalArgumentException("KUSAKARI_PUBLIC_ORIGIN must be an HTTP(S) origin without path or credentials.");
+        publicUri.getRawQuery() != null ||
+        publicUri.getRawFragment() != null ||
+        !publicUri.getRawPath().isEmpty())
+    ) {
+      throw new IllegalArgumentException(
+        "KUSAKARI_PUBLIC_ORIGIN must be an HTTP(S) origin without path or credentials."
+      );
     }
-    this.hosts = container ? new java.util.HashSet<>(java.util.List.of("127.0.0.1", "localhost", publicUri.getHost())) : Set.of("127.0.0.1", "localhost");
+    this.hosts = container
+      ? new java.util.HashSet<>(java.util.List.of("127.0.0.1", "localhost", publicUri.getHost()))
+      : Set.of("127.0.0.1", "localhost");
   }
 
   @Override
@@ -44,7 +57,9 @@ public class LocalApiFilter extends OncePerRequestFilter {
     response.setHeader("X-Content-Type-Options", "nosniff");
     String host = request.getServerName();
     String requestOrigin = request.getHeader("Origin");
-    boolean health = container && "GET".equals(request.getMethod()) &&
+    boolean health =
+      container &&
+      "GET".equals(request.getMethod()) &&
       Set.of("/api/health", "/api/health/ready").contains(request.getRequestURI());
     if (
       (!health && !hosts.contains(host)) ||

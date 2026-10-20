@@ -35,11 +35,20 @@ public class AuthController {
   public void login(
     @RequestParam(required = false) String returnTo,
     @RequestParam(defaultValue = "false") boolean signup,
+    @RequestParam(defaultValue = "false") boolean managed,
     HttpServletRequest request,
     HttpServletResponse response
   ) throws IOException {
     if (!auth.enabled()) {
       response.sendError(503);
+      return;
+    }
+    if (!signup && !managed) {
+      response.sendRedirect(
+        urls.webOrigin() +
+          "/account/login?returnTo=" +
+          java.net.URLEncoder.encode(urls.safeReturn(returnTo), java.nio.charset.StandardCharsets.UTF_8)
+      );
       return;
     }
     request.getSession().setAttribute("AUTH_RETURN_TO", urls.safeReturn(returnTo));
@@ -53,6 +62,6 @@ public class AuthController {
       return;
     }
     // Use the normal authorization flow so the provider's password-reset screen retains valid state/PKCE.
-    response.sendRedirect("/api/auth/login");
+    response.sendRedirect("/api/auth/login?managed=true");
   }
 }

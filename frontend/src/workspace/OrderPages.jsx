@@ -1,182 +1,195 @@
 import { useState } from 'react';
 import { yen } from '../api';
-import { DataTable, Field, text } from './Common';
-
-/** @param {{demo:import('./useDemo').Demo,operator?:boolean}} props */
-export function SampleOrders({ demo, operator = false }) {
-  const [selectedId, setSelectedId] = useState('SAMPLE-1001');
-  const [filter, setFilter] = useState('すべて');
-  const order = demo.state.orders.find((entry) => entry.id === selectedId);
-  const visible = demo.state.orders.filter((entry) => filter === 'すべて' || entry.status === filter);
-  /** @param {boolean} complete */
-  function updatePickup(complete) {
-    const expected = complete ? '受取準備完了' : '注文受付';
-    const status = complete ? '引き渡し完了' : '受取準備完了';
-    const timestamp = new Date().toISOString();
-    const noticeId = crypto.randomUUID();
-    demo.update((draft) => {
-      const target = draft.orders.find((entry) => entry.id === selectedId);
-      if (!target || target.status !== expected) return;
-      target.status = status;
-      if (complete) target.pickedUpAt = timestamp;
-      else target.readyAt = timestamp;
-      draft.notices.unshift({
-        id: noticeId,
-        audience: 'buyer',
-        title: `${target.id}の${status}`,
-        body: complete
-          ? `${target.pickupStore}で商品をお渡ししました。`
-          : `商品をご用意しました。${target.pickupStore}（${target.pickupAddress}）へお越しください。営業時間：${target.pickupHours}`,
-        read: false,
-      });
-    }, `${status}と購入者通知を更新しました。`);
-  }
-  return (
-    <>
-      <section className="workspace-card">
-        <h2>{operator ? 'サイト全体の注文' : '受注一覧'}</h2>
-        <label>
-          注文状態
-          <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-            <option>すべて</option>
-            <option>注文受付</option>
-            <option>受取準備完了</option>
-            <option>引き渡し完了</option>
-            <option>キャンセル</option>
-          </select>
-        </label>
-        <DataTable
-          headers={['注文番号', '購入者', '商品', '金額', '状態', '操作']}
-          rows={visible.map((entry) => [
-            entry.id,
-            entry.buyer,
-            `${entry.product} × ${entry.quantity}`,
-            yen(entry.total),
-            entry.status,
-            <button key={entry.id} onClick={() => setSelectedId(entry.id)}>
-              詳細
-            </button>,
-          ])}
-        />
-      </section>
-      {order && (
-        <section className="workspace-card">
-          <h2>注文詳細 {order.id}</h2>
-          <p>
-            {order.date} · {order.buyer} · {order.payment}
-          </p>
-          <p>
-            {order.product} × {order.quantity} / {yen(order.total)}
-          </p>
-          <PickupDetails order={order} />
-          <p>状態：{order.status}</p>
-          <div className="workspace-form">
-            <button
-              className="primary-button"
-              disabled={order.status !== '注文受付'}
-              onClick={() => updatePickup(false)}
-            >
-              受取準備完了にする
-            </button>
-            <button
-              className="primary-button"
-              disabled={order.status !== '受取準備完了'}
-              onClick={() => updatePickup(true)}
-            >
-              引き渡し完了にする
-            </button>
-          </div>
-        </section>
-      )}
-    </>
-  );
-}
-
-/** @param {{demo:import('./useDemo').Demo,orderId:string,eligible?:boolean}} props */
-export function CancelRequest({ demo, orderId, eligible = true }) {
-  const [open, setOpen] = useState(false);
-  const existing = demo.state.cancellations.find((entry) => entry.orderId === orderId);
-  /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function request(event) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    demo.update((draft) => {
-      draft.cancellations.push({ orderId, reason: text(data, 'reason'), status: '申請受付' });
-    }, 'キャンセル申請を受け付けました。');
-    setOpen(false);
-  }
-  return (
-    <div className="mock-cancel">
-      {existing && <p>キャンセル：{existing.status}</p>}
-      {!eligible && <p>受取準備完了・引き渡し完了・キャンセル済みの注文は申請できません。</p>}
-      {!existing && eligible && (
-        <button className="text-button" onClick={() => setOpen(!open)}>
-          キャンセルを申請
-        </button>
-      )}
-      {open && (
-        <form className="workspace-form" onSubmit={request}>
-          <Field label="申請理由" name="reason" />
-          <button>申請を確定</button>
-          <button type="button" onClick={() => setOpen(false)}>
-            取消
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
-
-/** @param {{demo:import('./useDemo').Demo}} props */
-export function SalesPage({ demo }) {
-  let sales = 0;
-  for (const order of demo.state.orders) {
-    if (order.status !== 'キャンセル') sales += order.total;
-  }
-  const fee = Math.floor((sales * demo.state.feePercent) / 100);
-  return (
-    <>
-      <div className="workspace-metrics">
-        <section>
-          <small>注文総額</small>
-          <strong>{yen(sales)}</strong>
-        </section>
-        <section>
-          <small>販売手数料 {demo.state.feePercent}%</small>
-          <strong>{yen(fee)}</strong>
-        </section>
-        <section>
-          <small>精算対象額</small>
-          <strong>{yen(sales - fee)}</strong>
-        </section>
-      </div>
-      <section className="workspace-card">
-        <h2>注文ごとの売上</h2>
-        <DataTable
-          headers={['注文番号', '日付', '状態', '注文総額']}
-          rows={demo.state.orders.map((order) => [order.id, order.date, order.status, yen(order.total)])}
-        />
-      </section>
-      <section className="workspace-card">
-        <h2>精算状況</h2>
-        <DataTable
-          headers={['対象月', '対象額', '状態']}
-          rows={demo.state.settlements.map((entry) => [entry.id, yen(sales - fee), entry.status])}
-        />
-      </section>
-    </>
-  );
-}
-
-/** @param {{order:import('./demoData').DemoState['orders'][number]}} props */
+import { useResource, write } from './useResource';
+import { ResourceStatus, Input, values } from './ResourceView';
+/** @type {Record<string,string>} */
+export const orderLabels = {
+  ACCEPTED: '注文受付',
+  READY: '受取準備完了',
+  COMPLETED: '引き渡し完了',
+  CANCELLED: 'キャンセル',
+  DEMO_CONFIRMED: '旧注文',
+};
+/** @param {{order:import('../types').Order}} props */
 export function PickupDetails({ order }) {
   return (
     <>
-      <p>受取店舗：{order.pickupStore}</p>
-      <p>所在地：{order.pickupAddress}</p>
-      <p>営業時間：{order.pickupHours}</p>
+      <p>受取店舗：{order.storeName}</p>
+      <p>
+        {order.pickupAddress} / {order.pickupHours}
+      </p>
       <p>準備完了日時：{order.readyAt ? new Date(order.readyAt).toLocaleString('ja-JP') : '未完了'}</p>
       <p>引き渡し完了日時：{order.pickedUpAt ? new Date(order.pickedUpAt).toLocaleString('ja-JP') : '未完了'}</p>
+    </>
+  );
+}
+/** @param {{order:import('../types').Order,resource:ReturnType<typeof useResource>,seller:boolean,readonly?:boolean}} props */
+function OrderActions({ order, resource, seller, readonly = false }) {
+  const pending = order.cancellationStatus === 'PENDING';
+  const reason = order.cancellationReason;
+  /** @param {import('react').FormEvent<HTMLFormElement>} event */
+  function request(event) {
+    event.preventDefault();
+    const input = values(event.currentTarget);
+    void resource.run(() => write(`/orders/${order.id}/cancellation`, 'POST', input), 'キャンセル申請を保存しました。');
+  }
+  /** @param {import('react').FormEvent<HTMLFormElement>} event */
+  function decide(event) {
+    event.preventDefault();
+    const input = values(event.currentTarget);
+    const button = /** @type {HTMLButtonElement} */ (/** @type {SubmitEvent} */ (event.nativeEvent).submitter);
+    void resource.run(() =>
+      write(`/seller/orders/${order.id}/cancellation`, 'PUT', {
+        approved: button.value === 'approve',
+        reason: input.reason,
+      }),
+    );
+  }
+  return (
+    <>
+      <p>注文状態：{orderLabels[order.status] || order.status}</p>
+      {!readonly && !seller && (
+        <details>
+          <summary>購入履歴を非表示にする</summary>
+          <p>この履歴だけを非表示にします。注文・在庫・出店者の受注記録は変更されません。</p>
+          <button
+            disabled={resource.busy}
+            onClick={() => void resource.run(() => write(`/orders/${order.id}`, 'DELETE'), '履歴を非表示にしました。')}
+          >
+            非表示を確定
+          </button>
+        </details>
+      )}
+      {!readonly && !seller && order.status === 'ACCEPTED' && (
+        <details>
+          <summary>受取連絡先を編集</summary>
+          <form
+            className="workspace-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const input = values(event.currentTarget);
+              void resource.run(() => write(`/orders/${order.id}`, 'PUT', input));
+            }}
+          >
+            <Input label="受取人氏名" name="recipientName" value={order.details.recipientName} required={false} />
+            <Input label="電話番号" name="recipientPhone" value={order.details.recipientPhone} required={false} />
+            <Input
+              label="連絡先メール"
+              name="contactEmail"
+              type="email"
+              value={order.details.contactEmail}
+              required={false}
+            />
+            <button disabled={resource.busy}>連絡先を保存</button>
+          </form>
+        </details>
+      )}
+      {reason && (
+        <p>
+          キャンセル申請：{reason} /{' '}
+          {
+            /** @type {Record<string,string>} */ ({ PENDING: '申請中', APPROVED: '承認', REJECTED: '却下' })[
+              order.cancellationStatus
+            ]
+          }{' '}
+          {order.cancellationResponse}
+        </p>
+      )}
+      {!readonly && !seller && order.status === 'ACCEPTED' && !pending && (
+        <form className="workspace-form" onSubmit={request}>
+          <Input label="キャンセル理由" name="reason" maxLength={500} />
+          <button disabled={resource.busy}>キャンセルを申請</button>
+        </form>
+      )}
+      {!readonly && seller && pending && (
+        <form className="workspace-form" onSubmit={decide}>
+          <Input label="キャンセル回答" name="reason" required={false} maxLength={500} />
+          <button name="decision" value="approve" disabled={resource.busy}>
+            キャンセルを承認
+          </button>
+          <button name="decision" value="reject" disabled={resource.busy}>
+            キャンセルを却下
+          </button>
+        </form>
+      )}
+      {!readonly && seller && ['ACCEPTED', 'READY'].includes(order.status) && (
+        <button
+          disabled={resource.busy || pending}
+          onClick={() =>
+            void resource.run(() =>
+              write(`/seller/orders/${order.id}/status`, 'PUT', {
+                expectedStatus: order.status,
+                status: order.status === 'ACCEPTED' ? 'READY' : 'COMPLETED',
+              }),
+            )
+          }
+        >
+          {order.status === 'ACCEPTED' ? '受取準備完了にする' : '引き渡し完了にする'}
+        </button>
+      )}
+    </>
+  );
+}
+/** @param {{storeId?:number,operator?:boolean,buyer?:boolean}} props */
+export function OrderPage({ storeId, operator = false, buyer = false }) {
+  const resource = useResource(buyer ? '/orders' : operator ? '/operator/orders' : `/seller/orders?storeId=${storeId}`);
+  const [filter, setFilter] = useState('');
+  const orders = /** @type {import('../types').Order[]} */ (resource.data ?? []);
+  return (
+    <>
+      <ResourceStatus resource={resource} />
+      <label>
+        注文状態
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="">すべて</option>
+          {Object.entries(orderLabels).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {resource.data && orders.length === 0 && <p>注文はありません。</p>}
+      {orders
+        .filter((o) => !filter || o.status === filter)
+        .map((order) => (
+          <section className="workspace-card" key={order.id} data-testid={`order-${order.id}`}>
+            <h2>{order.id}</h2>
+            <p>{new Date(order.createdAt).toLocaleString('ja-JP')}</p>
+            {order.items.map((item) => (
+              <p key={item.productId}>
+                {item.name} × {item.quantity} / {yen(item.lineTotalYen)}
+              </p>
+            ))}
+            <p>注文金額：{yen(order.totalYen)}</p>
+            <PickupDetails order={order} />
+            <OrderActions order={order} resource={resource} seller={!buyer} readonly={operator} />
+          </section>
+        ))}
+    </>
+  );
+}
+/** @param {{storeId:number}} props */
+export function SalesPage({ storeId }) {
+  const resource = useResource(`/seller/orders?storeId=${storeId}`);
+  const orders = /** @type {import('../types').Order[]} */ (resource.data ?? []);
+  const active = orders.filter((o) => o.status !== 'CANCELLED');
+  return (
+    <>
+      <ResourceStatus resource={resource} />
+      <section className="workspace-card">
+        <h2>注文実績</h2>
+        <p>
+          注文数：{active.length}件 / キャンセル：{orders.length - active.length}件
+        </p>
+        <p>注文金額：{yen(active.reduce((sum, o) => sum + o.totalYen, 0))}</p>
+        <p>決済・精算の記録は扱いません。</p>
+        {orders.map((o) => (
+          <p key={o.id}>
+            {o.id} / {orderLabels[o.status] || o.status} / {yen(o.totalYen)}
+          </p>
+        ))}
+      </section>
     </>
   );
 }

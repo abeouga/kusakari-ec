@@ -214,6 +214,12 @@
   font-size: 16px;
   letter-spacing: 0.6px;
 }
+.product-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.product-bottom { gap: 8px; flex-wrap: wrap; }
+.product-bottom .price { white-space: nowrap; }
+.product-actions .add-button:focus-visible { outline: 2px solid #285746; outline-offset: 3px; }
+.product-actions .shopping-list-button { width: 36px; height: 34px; border-radius: 10px; border-color: #e1e8dd; background: #f0f4ec; color: #365d46; transition: background .18s, border-color .18s; }
+.product-actions .shopping-list-button:hover { background: #e2ecdc; border-color: #adc4a5; }
 .price small {
   font-size: 8px;
   font-weight: 400;

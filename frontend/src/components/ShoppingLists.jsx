@@ -22,7 +22,7 @@ export function ShoppingListOverview() {
       <img className="garden-list-thumbnail" loading="lazy" src={'/api/shopping-lists/' + encodeURIComponent(list.gardenId) + '/thumbnail?v=' + encodeURIComponent(list.thumbnailVersion)} alt={list.name + 'の庭のイメージ'}/>
       <div className="garden-list-description"><h3>{list.name}</h3><p>{list.productCount}種類・必要数 {list.itemCount}点</p>
       <p className="fine-print">更新 {new Date(list.updatedAt).toLocaleString('ja-JP')}</p>
-      {list.itemCount === 0 && <p>商品が配置されていません。</p>}
+      {list.itemCount === 0 && <p>買い物リストは空です。</p>}
       <small className="fine-print">{thumbnailLabel(list.thumbnailVersion)}</small></div>
       <button type="button" className="secondary-button" onClick={() => navigate('/cart/gardens/' + list.gardenId)}>買い物リストを開く</button>
     </article>)}</div>
@@ -35,18 +35,19 @@ export function ShoppingListDetail({ shop, gardenId }) {
   const [selection, setSelection] = useState(/** @type {Record<string,string>} */ ({}));
   const [choices, setChoices] = useState(/** @type {Record<string,string>} */ ({}));
   const [changed, setChanged] = useState('');
-  const previousRevision = useRef(/** @type {number|null} */ (null));
+  const previousRevision = useRef(/** @type {string|null} */ (null));
   const detail = data.detail;
   const cart = shop.cart;
   const initialize = shop.initialize;
   useEffect(() => {
     if (!detail) return;
-    if (previousRevision.current !== null && previousRevision.current !== detail.revision) {
+    const revision = `${detail.revision}:${detail.listRevision}`;
+    if (previousRevision.current !== null && previousRevision.current !== revision) {
       setSelection({});
       setChoices({});
-      setChanged('庭の配置が更新されました。必要な商品を選び直してください。');
+      setChanged('庭の買い物リストが更新されました。必要な商品を選び直してください。');
     }
-    previousRevision.current = detail.revision;
+    previousRevision.current = revision;
   }, [detail]);
   useEffect(() => {
     if (detail && cart && detail.storeId !== cart.storeId) void initialize();
@@ -74,7 +75,7 @@ export function ShoppingListDetail({ shop, gardenId }) {
     if (!detail || !cart || shop.busy || data.error || detail.storeId !== cart.storeId) return;
     const items = Object.entries(selection).map(([key, productId]) => ({ key, productId }));
     if (!items.length) return;
-    const result = await shop.transferShoppingList(gardenId, { gardenRevision: detail.revision, cartRevision: cart.revision, items });
+    const result = await shop.transferShoppingList(gardenId, { gardenRevision: detail.revision, listRevision: detail.listRevision, cartRevision: cart.revision, items });
     if (!result) { setSelection({}); await data.reload(); return; }
     setSelection({});
     if (result.added.length) navigate('/cart');
@@ -82,14 +83,14 @@ export function ShoppingListDetail({ shop, gardenId }) {
   return <section className="garden-shopping-section" aria-label="庭の買い物リスト詳細">
     <button type="button" className="text-button" onClick={() => navigate('/cart#garden-shopping-lists')}>庭の買い物リスト一覧へ</button>
     <h2>{detail ? detail.name + 'の買い物リスト' : '庭の買い物リスト'}</h2>
-    <p>必要数は庭の配置に連動します。購入する商品を選択してください。</p>
+    <p>庭に配置した商品と、商品一覧から追加した商品を表示します。購入する商品を選択してください。</p>
     {detail && <p>受取店舗：{detail.storeName} <button type="button" className="text-button" onClick={() => navigate('/cart')}>カートで店舗を変更</button></p>}
     {data.loading && <p role="status">読み込み中…</p>}
     {data.error && <p role="alert">{data.error}<button type="button" onClick={data.reload}>再取得</button></p>}
     {shop.error && <p role="alert">{shop.error}</p>}
     {changed && <p role="status">{changed}</p>}
     <ShoppingTransferNotice shop={shop}/>
-    {detail?.items.length === 0 && <p>この庭には商品が配置されていません。</p>}
+    {detail?.items.length === 0 && <p>この庭の買い物リストは空です。</p>}
     {detail && <>
       <div className="garden-shopping-actions"><button type="button" disabled={shop.busy || !!data.error} onClick={selectAll}>全選択</button>
         <button type="button" disabled={shop.busy} onClick={() => setSelection({})}>選択解除</button></div>

@@ -59,8 +59,12 @@ public class AuthConfiguration {
   }
 
   @Bean
-  @ConditionalOnProperty(name = "kusakari.auth.mode", havingValue = "demo", matchIfMissing = true)
-  SecurityFilterChain demoSecurity(HttpSecurity http) throws Exception {
+  @ConditionalOnProperty(name = "kusakari.auth.mode", havingValue = "demo")
+  SecurityFilterChain demoSecurity(HttpSecurity http, org.springframework.core.env.Environment environment)
+    throws Exception {
+    if (!"true".equals(environment.getProperty("kusakari.test-auth"))) throw new IllegalStateException(
+      "Cognito is required outside explicit isolated tests."
+    );
     return http
       .csrf(csrf -> csrf.disable())
       .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
@@ -118,7 +122,9 @@ public class AuthConfiguration {
             org.springframework.http.HttpMethod.GET,
             "/api/products",
             "/api/product-images/**",
-            "/api/stores"
+            "/api/stores",
+            "/api/categories",
+            "/api/stores/*"
           )
           .permitAll()
           .requestMatchers("/api/products/references", "/api/materials/quote")
@@ -141,12 +147,12 @@ public class AuthConfiguration {
             } catch (RuntimeException error) {
               request.getSession().invalidate();
               org.springframework.security.core.context.SecurityContextHolder.clearContext();
-              response.sendRedirect(urls.webOrigin() + "/?auth=failed");
+              response.sendRedirect(urls.webOrigin() + "/account/login?auth=failed");
             }
           })
           .failureHandler((request, response, error) -> {
             if (request.getSession(false) != null) request.getSession(false).invalidate();
-            response.sendRedirect(urls.webOrigin() + "/?auth=failed");
+            response.sendRedirect(urls.webOrigin() + "/account/login?auth=failed");
           })
       )
       .logout(logout ->

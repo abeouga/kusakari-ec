@@ -1,3 +1,4 @@
+import { productCanvasUrl } from '../canvasLink';
 import { useState } from 'react';
 import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { yen } from '../api';
@@ -71,7 +72,7 @@ export function Cart({ shop, onStores }) {
       <p className="cart-page-lead">商品と受取方法をご確認ください。</p>
       <ol className="step-list">
         <li>1 カート確認</li>
-        <li>2 受取・配送</li>
+        <li>2 店舗受け取り</li>
         <li>3 注文確認</li>
       </ol>
       {shop.error && (
@@ -97,6 +98,7 @@ export function Cart({ shop, onStores }) {
                 <img src={line.product.imageUrl} alt={line.product.name} />
                 <div className="cart-line-main">
                   <h3>{line.product.name}</h3>
+                  <a href={productCanvasUrl(line.product.id)}>この商品を庭に配置</a>
                   <p>{yen(line.product.priceYen)} / 1鉢</p>
                   {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
                   {!confirming && (
@@ -158,7 +160,7 @@ export function Cart({ shop, onStores }) {
               <span>{yen(cart.subtotalYen)}</span>
             </div>
             <div>
-              <span>受取・配送料</span>
+              <span>受取料金</span>
               <span>{yen(cart.shippingFeeYen)}</span>
             </div>
             <div>
@@ -220,9 +222,7 @@ export function OrderSummary({ order }) {
           <strong>{yen(item.lineTotalYen)}</strong>
         </div>
       ))}
-      <p className="fine-print">
-        商品小計 {yen(order.subtotalYen)} / 受取・配送料 {yen(order.shippingFeeYen)}
-      </p>
+      <p className="fine-print">商品小計 {yen(order.subtotalYen)}</p>
       <div className="grand-total">
         <strong>合計（税込）</strong>
         <strong>{yen(order.totalYen)}</strong>

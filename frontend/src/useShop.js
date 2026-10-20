@@ -21,8 +21,9 @@ export function useShop() {
 
   const refresh = useCallback(async () => {
     let nextCart;
-    try { nextCart = await api.cart(); }
-    catch (reason) {
+    try {
+      nextCart = await api.cart();
+    } catch (reason) {
       if (!(reason instanceof ApiError) || reason.status !== 401) throw reason;
       setCart(null);
       setOrders([]);
@@ -96,7 +97,10 @@ export function useShop() {
 
   /** @param {string} id @param {number} [quantity] */
   function add(id, quantity = 1) {
-    if (!cart) { login(); return; }
+    if (!cart) {
+      login();
+      return;
+    }
     let currentQuantity = 0;
     const line = cart.items.find((item) => item.product.id === id);
     if (line) currentQuantity = line.quantity;
@@ -172,13 +176,13 @@ export function useShop() {
       setNotice('商品を一覧から削除しました。');
     });
   }
-  /** @param {import('./types').DeliveryDetails} details */
+  /** @param {import('./types').PickupInput} details */
   function saveDetails(details) {
     return run(async () => {
       if (!cart) return;
       setCart(await api.saveDetails(details, cart.revision));
       checkoutRequest.current = null;
-      setNotice('受取・配送情報を保存しました。');
+      setNotice('受取連絡先を保存しました。');
     });
   }
   function clearDetails() {
@@ -189,7 +193,7 @@ export function useShop() {
       setNotice('入力情報を削除しました。');
     });
   }
-  /** @param {string} id @param {import('./types').DeliveryDetails} details */
+  /** @param {string} id @param {import('./types').PickupInput} details */
   function updateOrder(id, details) {
     return run(async () => {
       await api.updateOrder(id, details);

@@ -7,10 +7,10 @@ import jp.kusakari.ec.catalog.dto.ProductRequest;
 import jp.kusakari.ec.catalog.mapper.ProductMapper;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryId;
-import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
 import jp.kusakari.ec.catalog.persistence.entity.MaterialProductEntity;
-import jp.kusakari.ec.catalog.persistence.repository.MaterialProductRepository;
+import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
+import jp.kusakari.ec.catalog.persistence.repository.MaterialProductRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.common.web.ApiException;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ProductEditorService {
 
+  private final CategoryService categories;
   private final ProductRepository products;
   private final InventoryRepository inventory;
   private final CatalogService catalog;
@@ -35,17 +36,21 @@ public class ProductEditorService {
   public ProductView create(ProductRequest input) {
     auth.requireSeller(input.getStoreId());
     catalog.requireStore(input.getStoreId());
+    categories.require(input.getCategory());
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
     if (auth.enabled()) product.setOwnerMemberId(auth.current().getId());
     if (products.existsBySku(product.getSku())) throw duplicateSku();
     resolveModel(product, input, null, true);
     saveProduct(product, true);
-    catalog
-      .storeIds()
+    java.util.List.of(input.getStoreId())
+      .stream()
       .forEach(storeId ->
         inventory.save(
-          new InventoryEntity(new InventoryId(storeId, product.getId()), storeId.equals(input.getStoreId()) ? input.getStock() : 0)
+          new InventoryEntity(
+            new InventoryId(storeId, product.getId()),
+            storeId.equals(input.getStoreId()) ? input.getStock() : 0
+          )
         )
       );
     linkMaterial(product);
@@ -55,6 +60,7 @@ public class ProductEditorService {
   public ProductView update(String id, ProductRequest input) {
     auth.requireSeller(input.getStoreId());
     catalog.requireStore(input.getStoreId());
+    categories.require(input.getCategory());
     ProductEntity product = products
       .findLocked(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
@@ -80,8 +86,12 @@ public class ProductEditorService {
     return catalog.product(id, input.getStoreId());
   }
 
-  private void resolveModel(ProductEntity product, ProductRequest input,
-                            jp.kusakari.ec.catalog.dto.PlantModelProfile previous, boolean profileProvided) {
+  private void resolveModel(
+    ProductEntity product,
+    ProductRequest input,
+    jp.kusakari.ec.catalog.dto.PlantModelProfile previous,
+    boolean profileProvided
+  ) {
     var profile = input.getPlantModelProfile();
     if (profile == null) {
       product.setModelComposition(null);
@@ -90,8 +100,11 @@ public class ProductEditorService {
     if (input.getHeightCm() == null || Double.compare(profile.getHeightCm(), input.getHeightCm()) != 0) {
       throw new ApiException(400, "PLANT_HEIGHT_MISMATCH", "商品の高さと植物モデルの高さを一致させてください。");
     }
-    if (!profile.equals(previous) || product.getModelComposition() == null
-        || (profileProvided && product.getModelComposition().path("version").asInt() < 4)) {
+    if (
+      !profile.equals(previous) ||
+      product.getModelComposition() == null ||
+      (profileProvided && product.getModelComposition().path("version").asInt() < 4)
+    ) {
       product.setModelComposition(models.resolve(profile));
     }
   }
@@ -104,7 +117,9 @@ public class ProductEditorService {
 
   public void delete(String id) {
     if (auth.enabled()) {
-      var product = products.findLocked(id).orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+      var product = products
+        .findLocked(id)
+        .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
       auth.requireProductOwner(product.getOwnerMemberId());
       auth.requireSeller(auth.current().getStoreId());
     }

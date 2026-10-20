@@ -1,8 +1,10 @@
+import { useResource } from '../workspace/useResource';
 import { Ruler, Leaf } from 'lucide-react';
 import { ProductImages } from './ProductImages';
 import { RangeField } from './RangeField';
 /** @param {{onImageBusy:(busy:boolean)=>void,storeSelector?:import('react').ReactNode,p:Record<string, any>,set:(name:string,value:any)=>void,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>}} props */
 export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy }) {
+  const categories = useResource('/categories');
   /** @param {import('react').ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>} event */
   function change(event) {
     const el = event.target;
@@ -23,15 +25,12 @@ export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy })
             </label>
             <label>
               カテゴリー
-              <select name="category" value={p.category} onChange={change}>
-                <option>庭木</option>
-                <option>草花</option>
-                <option>ハーブ</option>
-                <option>観葉植物</option>
-                <option>鉢・庭材</option>
-                <option>土・ケア用品</option>
-                <option>芝</option>
-                <option>道具</option>
+              <select name="category" disabled={!categories.data} value={p.category} onChange={change}>
+                {
+                  /** @type {string[]} */ (categories.data || [p.category]).map((name) => (
+                    <option key={name}>{name}</option>
+                  ))
+                }
               </select>
             </label>
             <label className="form-full">

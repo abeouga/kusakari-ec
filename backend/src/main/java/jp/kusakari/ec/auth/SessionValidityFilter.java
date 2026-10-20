@@ -36,6 +36,10 @@ public class SessionValidityFilter extends OncePerRequestFilter {
       } catch (ApiException error) {
         if (request.getSession(false) != null) request.getSession(false).invalidate();
         SecurityContextHolder.clearContext();
+        if (error.status() == 401 && path.equals("/api/auth/me")) {
+          chain.doFilter(request, response);
+          return;
+        }
         response.setStatus(error.status());
         response.setContentType("application/json;charset=UTF-8");
         json.writeValue(

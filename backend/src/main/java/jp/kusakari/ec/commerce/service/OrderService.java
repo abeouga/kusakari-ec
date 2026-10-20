@@ -4,12 +4,10 @@ import java.util.List;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsRequest;
 import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
-import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
 import jp.kusakari.ec.commerce.persistence.entity.OrderDetailsEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
-import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderDetailsRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
@@ -23,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class OrderService {
 
-  private final CartRepository carts;
+  private final jp.kusakari.ec.auth.AuthService auth;
   private final OrderRepository orders;
   private final OrderItemRepository items;
   private final OrderDetailsRepository details;
@@ -32,22 +30,24 @@ public class OrderService {
 
   public List<OrderView> list(String cartId) {
     return orders
-      .findTop30ByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdAsc(cartId)
+      .findByBuyerMemberIdAndDeletedAtIsNullOrderByCreatedAtDesc(auth.current().getId())
       .stream()
       .map(this::view)
       .toList();
   }
 
   public OrderView updateDetails(String cartId, String orderId, DetailsRequest request) {
-    lockCart(cartId);
-    OrderEntity order = orders
-      .findLocked(cartId, orderId)
-      .orElseThrow(() -> new ApiException(404, "ORDER_NOT_FOUND", "注文が見つかりません。"));
+    OrderEntity order = ownedOrder(orderId);
+    if (!order.getStatus().equals("ACCEPTED")) throw new ApiException(
+      409,
+      "ORDER_FIXED",
+      "受付中の注文のみ編集できます。"
+    );
     DeliveryFields previous = details
       .findById(orderId)
       .map(OrderDetailsEntity::getDetails)
       .orElseGet(DeliveryFields::empty);
-    if (!previous.getFulfillmentMethod().equals(request.fulfillmentMethod())) {
+    if (!previous.getFulfillmentMethod().equals("PICKUP")) {
       throw new ApiException(409, "ORDER_METHOD_FIXED", "注文後は受取・配送区分を変更できません。");
     }
     DeliveryFields updated = delivery.validate(request);
@@ -56,17 +56,16 @@ public class OrderService {
   }
 
   public void delete(String cartId, String orderId) {
-    lockCart(cartId);
-    OrderEntity order = orders
-      .findLocked(cartId, orderId)
-      .orElseThrow(() -> new ApiException(404, "ORDER_NOT_FOUND", "注文が見つかりません。"));
+    OrderEntity order = ownedOrder(orderId);
     order.archive();
   }
 
-  private CartEntity lockCart(String cartId) {
-    return carts
-      .findLocked(cartId)
-      .orElseThrow(() -> new ApiException(404, "CART_NOT_FOUND", "カートが見つかりません。"));
+  private OrderEntity ownedOrder(String id) {
+    String buyer = auth.current().getId();
+    return orders
+      .lockOrder(id)
+      .filter(o -> buyer.equals(o.getBuyerMemberId()) && o.getDeletedAt() == null)
+      .orElseThrow(() -> new ApiException(404, "ORDER_NOT_FOUND", "注文が見つかりません。"));
   }
 
   private OrderView view(OrderEntity order) {

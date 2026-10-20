@@ -1,9 +1,9 @@
 import { catalogText } from '../catalogText';
-import { ArrowUpRight, Plus } from 'lucide-react';
+import { ArrowUpRight, ListPlus, Plus } from 'lucide-react';
 import { yen } from '../api';
 
-/** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, disabled:boolean}} props */
-export function ProductCard({ product, onOpen, onAdd, disabled }) {
+/** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, onAddToList:()=>void, disabled:boolean}} props */
+export function ProductCard({ product, onOpen, onAdd, onAddToList, disabled }) {
   let stockClass = 'sold-out';
   let stockLabel = 'この店舗では在庫なし';
   if (product.stock > 0) {
@@ -33,14 +33,26 @@ export function ProductCard({ product, onOpen, onAdd, disabled }) {
         <span className="price">
           {yen(product.priceYen)} <small>税込</small>
         </span>
-        <button
-          className="add-button"
-          onClick={onAdd}
-          disabled={disabled || !product.stock}
-          aria-label={`${product.name}をカートに追加`}
-        >
-          <Plus size={20} />
-        </button>
+        <div className="product-actions">
+          <button
+            type="button"
+            className="add-button shopping-list-button"
+            onClick={onAddToList}
+            aria-label={`${product.name}を買い物リストに追加`}
+            aria-haspopup="dialog"
+            title="買い物リストに追加"
+          >
+            <ListPlus size={18} aria-hidden="true" />
+          </button>
+          <button
+            className="add-button"
+            onClick={onAdd}
+            disabled={disabled || !product.stock}
+            aria-label={`${product.name}をカートに追加`}
+          >
+            <Plus size={20} />
+          </button>
+        </div>
       </div>
     </article>
   );

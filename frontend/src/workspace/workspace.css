@@ -23,6 +23,15 @@
   letter-spacing: 0.2em;
   color: #c0d0c3;
 }
+.workspace-sidebar nav + nav {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #668372;
+}
+.workspace-sidebar nav > p {
+  width: 100%;
+  margin: 0 13px 8px;
+}
 .workspace-sidebar a {
   display: flex;
   align-items: center;

@@ -2,11 +2,15 @@ import { catalogText } from '../catalogText';
 import { useState } from 'react';
 import { Leaf, Search, X } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-const categories = ['すべて', '庭木', '草花', 'ハーブ', '観葉植物', '鉢・庭材', '土・ケア用品', '芝', '道具'];
+import { AddToShoppingList } from './AddToShoppingList';
+import { login } from '../auth';
+
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onDetail:(id:string)=>void}} props */
 export function Catalog({ shop, onDetail }) {
+  const categories = ['すべて', ...new Set(shop.products.map((product) => product.category))];
   const [category, setCategory] = useState('すべて');
   const [search, setSearch] = useState('');
+  const [listProduct, setListProduct] = useState(/** @type {import('../types').Product|null} */ (null));
   const [sort, setSort] = useState('recommended');
   const [inStockOnly, setInStockOnly] = useState(false);
   const keyword = search.trim().toLowerCase();
@@ -188,6 +192,10 @@ export function Catalog({ shop, onDetail }) {
                   product={product}
                   onOpen={() => onDetail(product.id)}
                   onAdd={() => shop.add(product.id)}
+                  onAddToList={() => {
+                    if (!shop.cart) login();
+                    else setListProduct(product);
+                  }}
                   disabled={shop.busy || !shop.cart}
                 />
               ))}
@@ -204,6 +212,7 @@ export function Catalog({ shop, onDetail }) {
           )}
         </div>
       </div>
+      {listProduct && <AddToShoppingList product={listProduct} onClose={() => setListProduct(null)} />}
     </section>
   );
 }

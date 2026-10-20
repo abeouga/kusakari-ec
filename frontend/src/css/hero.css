@@ -141,10 +141,67 @@
 }
 .hero-visual {
   position: relative;
+  min-width: 0;
   overflow: hidden;
   background: #e9e2d2;
 }
-.hero-visual > img {
+.hero-slides,
+.hero-slide {
+  position: absolute;
+  inset: 0;
+}
+.hero-slides {
+  --hero-distance: 100%;
+}
+.hero-slides[data-direction='-1'] {
+  --hero-distance: -100%;
+}
+.hero-slide-incoming {
+  animation: hero-slide-in 0.5s ease both;
+}
+.hero-slide-outgoing {
+  animation: hero-slide-out 0.5s ease both;
+  pointer-events: none;
+}
+@keyframes hero-slide-in {
+  from {
+    transform: translateX(var(--hero-distance));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes hero-slide-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--hero-distance)));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide-incoming,
+  .hero-slide-outgoing {
+    animation: none;
+  }
+  .hero-slide-outgoing {
+    visibility: hidden;
+  }
+}
+.hero-image-placeholder,
+.hero-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  color: #526151;
+  text-align: center;
+}
+.hero-slide > img {
   width: 100%;
   height: 100%;
   position: absolute;
@@ -173,6 +230,44 @@
   align-items: center;
   justify-content: space-between;
   text-align: left;
+  gap: 12px;
+}
+.hero-product-label > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.hero-product-label > svg {
+  flex-shrink: 0;
+}
+.hero-carousel-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hero-carousel-controls button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 56px;
+  border: 0;
+  border-radius: 2px;
+  background: #fcfbf14d;
+  color: #294c3eb3;
+  pointer-events: auto;
+}
+.hero-carousel-controls button:hover,
+.hero-carousel-controls button:focus-visible {
+  background: #fcfbf1e6;
+  color: var(--green);
+}
+.hero-carousel-previous {
+  left: 4px;
+}
+.hero-carousel-next {
+  right: 4px;
 }
 .hero-product-label small {
   font-size: 8px;

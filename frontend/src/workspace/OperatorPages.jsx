@@ -1,178 +1,160 @@
 import { useState } from 'react';
-import { DataTable, Field, text } from './Common';
-
-/** @param {{demo:import('./useDemo').Demo,products?:boolean}} props */
-export function ReviewPage({ demo, products = false }) {
+import { useResource, write } from './useResource';
+import { ResourceStatus, Input, values } from './ResourceView';
+/** @param {{products?:boolean}} props */
+export function ReviewPage({ products = false }) {
+  const resource = useResource(products ? '/operator/products' : '/operator/applications');
   const [reason, setReason] = useState('');
-  /** @param {string} id @param {string} status */
-  function review(id, status) {
-    if (status === '却下' && !reason.trim()) {
-      demo.setNotice('却下・差戻し理由を入力してください。');
-      return;
-    }
-    demo.update((draft) => {
-      const records = products ? draft.reviews : draft.applications;
-      const record = records.find((entry) => entry.id === id);
-      if (!record) return;
-      record.status = status;
-      record.reason = reason.trim();
-      draft.notices.unshift({
-        id: crypto.randomUUID(),
-        audience: 'seller',
-        title: `${products ? '商品' : '出店'}審査：${status}`,
-        body: reason.trim() || '申請が承認されました。',
-        read: false,
-      });
-    }, '審査結果を反映しました。');
-  }
-  const rows = products
-    ? demo.state.reviews.map((record) => ({
-        id: record.id,
-        name: record.name,
-        person: record.seller,
-        status: record.status,
-        reason: record.reason,
-      }))
-    : demo.state.applications.map((record) => ({
-        id: record.id,
-        name: record.company,
-        person: record.contact,
-        status: record.status,
-        reason: record.reason,
-      }));
   return (
     <>
-      <section className="workspace-card">
-        <h2>{products ? '商品審査' : '出店審査・承認'}</h2>
-        <label>
-          審査コメント・却下理由
-          <input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={250} />
-        </label>
-        <DataTable
-          headers={['申請内容', '担当・出店者', '状態', '理由', '審査']}
-          rows={rows.map((record) => [
-            record.name,
-            record.person,
-            record.status,
-            record.reason,
-            <div key={record.id} className="workspace-actions">
-              <button onClick={() => review(record.id, '承認済み')}>承認</button>
-              <button onClick={() => review(record.id, '却下')}>却下</button>
-            </div>,
-          ])}
-        />
-      </section>
+      <ResourceStatus resource={resource} />
+      <label>
+        理由・コメント
+        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
+      </label>
+      {
+        /** @type {import('../businessTypes').Review[]} */ (resource.data ?? []).map((row) => (
+          <section className="workspace-card" key={row.id}>
+            <h3>{row.name || row.company}</h3>
+            {products ? (
+              <>
+                <p>{row.suspended ? '公開停止中' : row.active ? '公開可能' : '販売終了'}</p>
+                <button
+                  disabled={resource.busy || !reason.trim()}
+                  onClick={() =>
+                    void resource.run(() =>
+                      write(`/operator/products/${row.id}/moderation`, 'PUT', { suspended: !row.suspended, reason }),
+                    )
+                  }
+                >
+                  {row.suspended ? '公開停止を解除' : '公開を停止'}
+                </button>
+              </>
+            ) : (
+              <>
+                <p>
+                  {row.contact} / {row.email} / {row.address} / {row.phone} / {row.plan}
+                </p>
+                <p>
+                  {
+                    /** @type {Record<string,string>} */ ({ PENDING: '審査待ち', APPROVED: '承認', REJECTED: '却下' })[
+                      row.status
+                    ]
+                  }{' '}
+                  {row.reason}
+                </p>
+                <a href={`/api/account/store-applications/${row.id}/document`}>提出書類を確認</a>
+                {row.status === 'PENDING' && (
+                  <div>
+                    <button
+                      disabled={resource.busy}
+                      onClick={() =>
+                        void resource.run(() =>
+                          write(`/operator/applications/${row.id}`, 'PUT', { approved: true, reason }),
+                        )
+                      }
+                    >
+                      承認
+                    </button>
+                    <button
+                      disabled={resource.busy || !reason.trim()}
+                      onClick={() =>
+                        void resource.run(() =>
+                          write(`/operator/applications/${row.id}`, 'PUT', { approved: false, reason }),
+                        )
+                      }
+                    >
+                      却下
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        ))
+      }
+      {resource.data?.length === 0 && <p>対象の記録はありません。</p>}
     </>
   );
 }
-
-/** @param {{demo:import('./useDemo').Demo,sellers?:boolean}} props */
-export function MembersPage({ demo, sellers = false }) {
+/** @param {{sellers?:boolean}} props */
+export function MembersPage({ sellers = false }) {
+  const resource = useResource(sellers ? '/operator/stores' : '/operator/members');
   const [query, setQuery] = useState('');
-  const users = demo.state.users.filter(
-    (user) => (!sellers || user.role === '事業者') && `${user.name} ${user.email}`.includes(query),
-  );
-  /** @param {string} id */
-  function toggle(id) {
-    demo.update((draft) => {
-      const user = draft.users.find((entry) => entry.id === id);
-      if (!user) return;
-      if (user.status === '利用中') user.status = '利用停止';
-      else user.status = '利用中';
-    }, '利用状態を変更しました。');
-  }
   return (
     <>
-      <section className="workspace-card">
-        <h2>{sellers ? '店舗情報・利用状態' : '会員管理'}</h2>
-        <label>
-          氏名・メール検索
-          <input value={query} onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <DataTable
-          headers={['名前', 'メール', '区分', '利用状態', '操作']}
-          rows={users.map((user) => [
-            user.name,
-            user.email,
-            user.role,
-            user.status,
-            <button key={user.id} onClick={() => toggle(user.id)}>
-              利用状態を切り替え
-            </button>,
-          ])}
-        />
-      </section>
-      {sellers && (
-        <section className="workspace-card">
-          <h2>出店申請・審査状況</h2>
-          {demo.state.applications.map((entry) => (
-            <p key={entry.id}>
-              {entry.company} / {entry.status} / {entry.reason}
-            </p>
-          ))}
-        </section>
-      )}
+      <ResourceStatus resource={resource} />
+      <label>
+        名前・メール検索
+        <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      </label>
+      {
+        /** @type {import('../businessTypes').Member[]} */ (resource.data ?? [])
+          .filter((m) => `${m.name} ${m.email}`.includes(query))
+          .map((m) => (
+            <section className="workspace-card" key={m.id}>
+              <h3>{m.name}</h3>
+              <p>
+                {m.email} / {m.role || m.address}
+              </p>
+              <p>{m.withdrawnAt ? '退会済み' : m.enabled ? '利用中' : '利用停止'}</p>
+              <button
+                disabled={resource.busy || m.role === 'ADMIN' || !!m.withdrawnAt}
+                onClick={() =>
+                  void resource.run(() =>
+                    write(`/operator/${sellers ? 'stores' : 'members'}/${m.id}/enabled`, 'PUT', {
+                      enabled: !m.enabled,
+                    }),
+                  )
+                }
+              >
+                {m.enabled ? '利用を停止' : '利用を再開'}
+              </button>
+            </section>
+          ))
+      }
     </>
   );
 }
-
-/** @param {{demo:import('./useDemo').Demo}} props */
-export function CategoriesPage({ demo }) {
+export function CategoriesPage() {
+  const resource = useResource('/categories');
   const [editing, setEditing] = useState('');
-  const [deleting, setDeleting] = useState('');
-  /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function save(event) {
-    event.preventDefault();
-    const value = text(new FormData(event.currentTarget), 'category');
-    if (demo.state.categories.includes(value) && value !== editing) {
-      demo.setNotice('同じカテゴリ名があります。');
-      return;
+  /** @param {import('react').FormEvent<HTMLFormElement>} e */
+  async function save(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    if (
+      await resource.run(() => write('/operator/categories', 'PUT', { previous: editing, name: values(form).name }))
+    ) {
+      setEditing('');
+      form.reset();
     }
-    demo.update((draft) => {
-      if (editing) draft.categories = draft.categories.map((entry) => (entry === editing ? value : entry));
-      else draft.categories.push(value);
-    }, 'カテゴリを更新しました。');
-    setEditing('');
-    event.currentTarget.reset();
   }
   return (
     <>
-      <section className="workspace-card">
-        <h2>商品カテゴリ管理</h2>
-        <form key={editing} className="workspace-form" onSubmit={save}>
-          <Field label="カテゴリ名" name="category" value={editing} />
-          <button>{editing ? '変更を保存' : 'カテゴリを追加'}</button>
-          <button type="button" onClick={() => setEditing('')}>
-            取消
-          </button>
-        </form>
-        <DataTable
-          headers={['カテゴリ', '操作']}
-          rows={demo.state.categories.map((category) => [
-            category,
-            <div key={category} className="workspace-actions">
-              <button onClick={() => setEditing(category)}>編集</button>
-              <button onClick={() => setDeleting(category)}>削除</button>
-            </div>,
-          ])}
-        />
-        {deleting && (
-          <div role="alertdialog" aria-label="カテゴリ削除の確認">
-            <p>「{deleting}」を一覧から削除しますか？</p>
+      <ResourceStatus resource={resource} />
+      <form key={editing} className="workspace-form" onSubmit={save}>
+        <Input label="カテゴリ名" name="name" value={editing} maxLength={30} />
+        <button disabled={resource.busy}>保存</button>
+        <button type="button" onClick={() => setEditing('')}>
+          編集を取消
+        </button>
+      </form>
+      {
+        /** @type {string[]} */ (resource.data ?? []).map((name) => (
+          <section className="workspace-card" key={name}>
+            <span>{name}</span> <button onClick={() => setEditing(name)}>編集</button>
             <button
-              onClick={() => {
-                demo.update((draft) => {
-                  draft.categories = draft.categories.filter((entry) => entry !== deleting);
-                }, 'カテゴリを削除しました。');
-                setDeleting('');
-              }}
+              disabled={resource.busy}
+              onClick={() =>
+                void resource.run(() => write(`/operator/categories/${encodeURIComponent(name)}`, 'DELETE'))
+              }
             >
-              削除を確定
+              削除
             </button>
-            <button onClick={() => setDeleting('')}>取消</button>
-          </div>
-        )}
-      </section>
+          </section>
+        ))
+      }
     </>
   );
 }

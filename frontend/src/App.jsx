@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, Leaf, X, ListTree } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, X, ListTree } from 'lucide-react';
 import { useShop } from './useShop';
 import { BrandIcon } from './components/BrandIcon';
-import { useDemo } from './workspace/useDemo';
 import { usePath, navigate } from './workspace/navigation';
 import { KusakariHeader } from '@kusakari/site-header';
 import '@kusakari/site-header/style.css';
@@ -12,19 +11,26 @@ import { Catalog } from './components/Catalog';
 import { ProductManager } from './components/ProductManager';
 import { Orders } from './components/Orders';
 import { ProductDetail } from './components/ProductDetail';
+import { HeroProductCarousel } from './components/HeroProductCarousel';
 import { Dialog } from './components/Dialog';
 import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
-import { AuthDialog } from './components/AuthDialog';
+import { LoginPage } from './components/LoginPage';
+import { login } from './auth';
+import { useAuth } from './useAuth';
 
-const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin).href;
+const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin)
+  .href;
 
 /** @param {string} url */
 function navigateFromHeader(url) {
   const target = new URL(url);
   const canvas = new URL(canvasUrl);
-  if (target.origin !== window.location.origin || (target.origin === canvas.origin && target.pathname.startsWith(canvas.pathname))) {
+  if (
+    target.origin !== window.location.origin ||
+    (target.origin === canvas.origin && target.pathname.startsWith(canvas.pathname))
+  ) {
     window.location.assign(url);
     return;
   }
@@ -40,7 +46,7 @@ function requestedPanel() {
 
 export default function App() {
   const shop = useShop();
-  const demo = useDemo();
+  const { session } = useAuth();
   const location = usePath();
   const path = location.split('#')[0];
   const [panel, setPanel] = useState(requestedPanel);
@@ -66,6 +72,10 @@ export default function App() {
   }
   /** @param {string} next */
   function open(next) {
+    if (next === 'login') {
+      login();
+      return;
+    }
     shop.setError('');
     shop.setNotice('');
     setPanel(next);
@@ -75,6 +85,10 @@ export default function App() {
   const workspace = path !== '/' && path !== '/cart' && !gardenCart;
   /** @param {string} next */
   function openHeaderPanel(next) {
+    if (next === 'login') {
+      login();
+      return;
+    }
     if (workspace || next === 'guide') navigate('/');
     open(next);
   }
@@ -85,21 +99,30 @@ export default function App() {
       logoUrl="/icon/kusakari_ico.png"
       activeSection={path === '/' ? 'plants' : ''}
       cartCount={itemCount}
+      authenticated={session?.authenticated ?? false}
+      showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
+      showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
       onPanel={openHeaderPanel}
       onNavigate={navigateFromHeader}
     />
   );
+  if (path === '/account/login' || panel === 'login') return <LoginPage />;
   if (workspace) {
-    return <Workspace shop={shop} demo={demo} path={path} header={header} />;
+    return <Workspace shop={shop} path={path} header={header} />;
   }
 
   if (path === '/cart' || gardenCart) {
     return (
       <>
-        <CartPage shop={shop} gardenId={gardenCart?.[1]} showGardens={location.includes('#garden-shopping-lists')} header={header} onStores={() => open('stores')} />
+        <CartPage
+          shop={shop}
+          gardenId={gardenCart?.[1]}
+          showGardens={location.includes('#garden-shopping-lists')}
+          header={header}
+          onStores={() => open('stores')}
+        />
         {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-        {panel === 'login' && <AuthDialog onClose={close} />}
-        {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
+        {panel === 'orders' && <Orders shop={shop} onClose={close} />}
       </>
     );
   }
@@ -144,32 +167,13 @@ export default function App() {
               <ArrowDown size={16} />
             </div>
           </div>
-          <div className="hero-visual">
-            <img
-              src="/images/olive.png"
-              alt="柔らかな光の中のオリーブの鉢植え"
-              fetchPriority="high"
-              width="1024"
-              height="1536"
-            />
-            <span className="vertical-caption">A LITTLE GREEN, A LITTLE BETTER.</span>
-            <button className="hero-product-label" onClick={() => openDetail('olive')} disabled={!shop.products.length}>
-              <span>
-                <small>MEET YOUR FIRST GREEN</small>
-                <strong>オリーブ</strong>
-                <em>Olea europaea</em>
-              </span>
-              <ArrowUpRight size={26} />
-            </button>
-            <div className="hero-stamp">
-              <Leaf size={23} />
-              <span>
-                GROW
-                <br />
-                SLOWLY.
-              </span>
-            </div>
-          </div>
+          <HeroProductCarousel
+            products={shop.products}
+            storeId={shop.cart?.storeId ?? 1}
+            onDetail={openDetail}
+            paused={Boolean(detail) || Boolean(panel)}
+            loading={shop.busy}
+          />
         </section>
 
         <Catalog shop={shop} onDetail={openDetail} />
@@ -266,9 +270,8 @@ export default function App() {
       )}
       {panel === 'stores' && <Stores shop={shop} onClose={close} />}
       {panel === 'materials' && <Materials shop={shop} onClose={close} />}
-      {panel === 'orders' && <Orders shop={shop} onClose={close} demo={demo} />}
+      {panel === 'orders' && <Orders shop={shop} onClose={close} />}
       {panel === 'manage' && <ProductManager shop={shop} onClose={close} />}
-      {panel === 'login' && <AuthDialog onClose={close} />}
       {panel === 'guide' && (
         <Dialog title="Kusakariについて" onClose={close}>
           <div className="guide">
@@ -283,9 +286,7 @@ export default function App() {
             </ol>
             <h4>お買い物について</h4>
             <p>価格はすべて税込です。店舗受け取りは無料です。</p>
-            <p>
-              カートと注文履歴はブラウザーのCookieに紐づいて保存されます。Cookieを削除すると、同じ履歴を開けなくなります。
-            </p>
+            <p>カートと注文履歴はログイン中のアカウントに保存されます。再ログイン後も確認できます。</p>
             <h4>材料リストについて</h4>
             <p>
               材料コードから商品候補を検索できます。Kusakari

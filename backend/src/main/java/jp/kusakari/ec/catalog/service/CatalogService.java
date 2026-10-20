@@ -4,8 +4,8 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toSet;
 
-import java.util.Comparator;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +38,7 @@ public class CatalogService {
   private final InventoryRepository inventory;
   private final MaterialProductRepository materialProducts;
   private final ProductMapper mapper;
+  private final jp.kusakari.ec.auth.AuthMemberRepository members;
 
   public List<ProductView> products(long storeId) {
     return allProducts(storeId).stream().filter(ProductView::active).toList();
@@ -47,7 +48,9 @@ public class CatalogService {
     if (Set.copyOf(ids).size() != ids.size()) {
       throw new ApiException(400, "DUPLICATE_PRODUCT", "参照する商品IDが重複しています。");
     }
-    var found = products.findImageReferences(ids).stream()
+    var found = products
+      .findImageReferences(ids)
+      .stream()
       .collect(java.util.stream.Collectors.toMap(ProductImageReference::id, item -> item));
     if (found.size() != ids.size()) {
       throw new ApiException(404, "PRODUCT_NOT_FOUND", "配置に紐づく商品の登録情報が見つかりません。");
@@ -71,6 +74,13 @@ public class CatalogService {
       .findAllAtStore(storeId)
       .stream()
       .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row));
+    boolean open = stores.findById(storeId).map(StoreEntity::isEnabled).orElse(false);
+    var enabledOwners = members
+      .findAll()
+      .stream()
+      .filter(m -> m.isEnabled())
+      .map(m -> m.getId())
+      .collect(toSet());
     return selected
       // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
       // The comparator below already provides the complete, deterministic display order.
@@ -82,20 +92,24 @@ public class CatalogService {
       )
       .map(product -> {
         var stock = stockByProduct.get(product.getId());
-        return mapper.toView(product, stock == null ? 0 : stock.getQuantity(),
-          stock == null ? "DELETED" : stock.getPublicationStatus());
+        return mapper.toView(
+          product,
+          stock == null ? 0 : stock.getQuantity(),
+          stock == null
+            ? "DELETED"
+            : !open || (product.getOwnerMemberId() != null && !enabledOwners.contains(product.getOwnerMemberId()))
+              ? "HIDDEN"
+              : stock.getPublicationStatus()
+        );
       })
       .toList();
   }
 
   public ProductView product(String id, long storeId) {
-    requireStore(storeId);
-    ProductEntity product = products
-      .findById(id)
+    return productsByIds(storeId, List.of(id))
+      .stream()
+      .findFirst()
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    var stock = inventory.findById(new InventoryId(storeId, id)).orElse(null);
-    return mapper.toView(product, stock == null ? 0 : stock.getQuantity(),
-      stock == null ? "DELETED" : stock.getPublicationStatus());
   }
 
   public void requireStore(long id) {

@@ -14,6 +14,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<ProductEntity, String> {
+  boolean existsByCategory(String category);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @org.springframework.data.jpa.repository.Query(
+    "update ProductEntity p set p.category=:next where p.category=:previous"
+  )
+  void renameCategory(
+    @org.springframework.data.repository.query.Param("previous") String previous,
+    @org.springframework.data.repository.query.Param("next") String next
+  );
+
   @EntityGraph(attributePaths = "images")
   @Override
   List<ProductEntity> findAll();
@@ -22,8 +33,10 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
   List<ProductEntity> findByIdIn(Collection<String> ids);
 
   // Avoid loading multi-megabyte manifests just to retrieve image metadata.
-  @Query("select new jp.kusakari.ec.catalog.dto.ProductImageReference(p.id, p.name, p.imageUrl, p.active, " +
-    "case when p.modelComposition is not null then true else false end) from ProductEntity p where p.id in :ids")
+  @Query(
+    "select new jp.kusakari.ec.catalog.dto.ProductImageReference(p.id, p.name, p.imageUrl, p.active, " +
+      "case when p.modelComposition is not null then true else false end) from ProductEntity p where p.id in :ids"
+  )
   List<ProductImageReference> findImageReferences(@Param("ids") Collection<String> ids);
 
   boolean existsBySku(String sku);

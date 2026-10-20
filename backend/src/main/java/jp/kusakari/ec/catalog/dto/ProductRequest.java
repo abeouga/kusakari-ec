@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 /** A bean allows older clients to omit the optional plantModelProfile field. */
-  @Getter
-  @Setter
+@Getter
+@Setter
 public class ProductRequest {
 
   @NotNull
@@ -29,7 +29,7 @@ public class ProductRequest {
   private String latinName;
 
   @NotBlank
-  @Pattern(regexp = "庭木|草花|ハーブ|観葉植物|鉢・庭材|土・ケア用品|芝|道具")
+  @Size(max = 30)
   private String category;
 
   @NotBlank

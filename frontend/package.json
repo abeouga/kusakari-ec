@@ -11,7 +11,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "lucide-react": "^0.468.0",
-    "@kusakari/site-header": "0.1.5"
+    "@kusakari/site-header": "0.1.8"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.1",

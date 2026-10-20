@@ -36,6 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(isolation = Isolation.READ_COMMITTED)
 public class CheckoutService {
 
+  private final jp.kusakari.ec.auth.AuthService auth;
+  private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
+  private final jp.kusakari.ec.notification.service.NotificationService notices;
+  private final jp.kusakari.ec.catalog.persistence.repository.ProductRepository products;
   private final CartRepository carts;
   private final CartItemRepository cartItems;
   private final CartDetailsRepository cartDetails;
@@ -65,7 +69,13 @@ public class CheckoutService {
       throw new ApiException(409, "CART_CHANGED", "別の操作でカートが更新されました。最新の内容を確認してください。");
     }
 
+    var selectedStore = stores.lock(cart.getStoreId()).orElseThrow();
     List<CartItemEntity> items = cartItems.findAllForCart(cartId);
+    items
+      .stream()
+      .map(i -> i.getId().getProductId())
+      .sorted()
+      .forEach(id -> products.findLocked(id).orElseThrow());
     Map<String, InventoryEntity> lockedStock = lockInventory(cart, items);
     CartView current = cartService.view(cart);
     if (current.items().isEmpty()) throw new ApiException(409, "EMPTY_CART", "カートが空です。");
@@ -86,11 +96,28 @@ public class CheckoutService {
       current.subtotalYen(),
       current.shippingFeeYen()
     );
+    var store = selectedStore;
+    if (!store.isEnabled()) throw new ApiException(409, "STORE_DISABLED", "店舗は受付を停止しています。");
+    order.assignPickup(auth.current().getId(), store.getId(), store.getAddress(), store.getHours());
     orders.save(order);
+    notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
+    notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
     DeliveryFields details = cartDetails
       .findById(cartId)
       .map(CartDetailsEntity::getDetails)
       .orElseGet(DeliveryFields::empty);
+    details = new DeliveryFields(
+      "PICKUP",
+      "NONE",
+      details.getRecipientName(),
+      details.getRecipientPhone(),
+      details.getContactEmail(),
+      "",
+      "",
+      "",
+      "",
+      "ANY"
+    );
     orderDetails.save(new OrderDetailsEntity(order.getId(), details));
 
     for (CartLine line : current.items()) {

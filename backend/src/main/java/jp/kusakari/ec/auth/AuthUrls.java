@@ -37,6 +37,9 @@ public class AuthUrls {
       if (value.getRawUserInfo() != null || value.getRawFragment() != null || target.contains("\\")) return (
         origin + "/"
       );
+      if (
+        value.getPath() == null || value.getPath().equals("/account/login") || value.getPath().startsWith("/api/auth/")
+      ) return origin + "/";
       if (target.startsWith("/") && !target.startsWith("//")) return origin + target;
       String host = value.getScheme() + "://" + value.getRawAuthority();
       if (host.equals(origin) || host.equals(canvasOrigin)) return target;

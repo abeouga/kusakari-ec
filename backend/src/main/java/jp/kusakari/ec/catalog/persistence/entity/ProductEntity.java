@@ -40,6 +40,14 @@ public class ProductEntity {
     return modelComposition == null ? null : "product." + id;
   }
 
+  @Column(nullable = false)
+  @Setter(AccessLevel.NONE)
+  private boolean suspended;
+
+  public void moderate(boolean suspended) {
+    this.suspended = suspended;
+  }
+
   @Id
   @Column(length = 40)
   private String id;

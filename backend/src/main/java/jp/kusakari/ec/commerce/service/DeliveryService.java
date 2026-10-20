@@ -12,44 +12,22 @@ import org.springframework.stereotype.Service;
 public class DeliveryService {
 
   public DeliveryFields validate(DetailsRequest input) {
-    if (!input.requestedDate().isBlank()) {
-      try {
-        LocalDate.parse(input.requestedDate());
-      } catch (DateTimeParseException error) {
-        throw new ApiException(400, "INVALID_DATE", "希望日を正しく指定してください。");
-      }
-    }
-
-    if (input.fulfillmentMethod().equals("DELIVERY")) {
-      if (
-        input.recipientName().isBlank() ||
-        input.recipientPhone().isBlank() ||
-        input.postalCode().isBlank() ||
-        input.addressLine1().isBlank()
-      ) {
-        throw new ApiException(400, "DELIVERY_REQUIRED", "配送には受取者名・電話番号・郵便番号・住所が必要です。");
-      }
-      if (input.paymentMethod().equals("STORE")) {
-        throw new ApiException(400, "INVALID_PAYMENT", "自宅配送では店頭払いを選択できません。");
-      }
-    }
-
     return new DeliveryFields(
-      input.fulfillmentMethod(),
-      input.paymentMethod(),
+      "PICKUP",
+      "NONE",
       input.recipientName().trim(),
       input.recipientPhone(),
       input.contactEmail(),
-      input.postalCode(),
-      input.addressLine1().trim(),
-      input.addressLine2().trim(),
-      input.requestedDate(),
-      input.timeSlot()
+      "",
+      "",
+      "",
+      "",
+      "ANY"
     );
   }
 
   public int shippingFee(DeliveryFields details) {
-    return details.getFulfillmentMethod().equals("DELIVERY") ? 800 : 0;
+    return 0;
   }
 
   public DetailsView view(DeliveryFields details) {

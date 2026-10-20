@@ -33,6 +33,16 @@ public class ApiErrors {
     return ResponseEntity.status(413).body(new ErrorView("IMAGE_TOO_LARGE", "画像は1枚5MB以下にしてください。"));
   }
 
+  @ExceptionHandler({
+    org.springframework.dao.OptimisticLockingFailureException.class,
+    org.springframework.dao.DataIntegrityViolationException.class,
+  })
+  public ResponseEntity<ErrorView> conflict(Exception error) {
+    return ResponseEntity.status(409).body(
+      new ErrorView("DATA_CHANGED", "データが競合しました。最新の内容を確認してください。")
+    );
+  }
+
   @ExceptionHandler(DataAccessException.class)
   public ResponseEntity<ErrorView> database(DataAccessException error) {
     return ResponseEntity.status(503).body(

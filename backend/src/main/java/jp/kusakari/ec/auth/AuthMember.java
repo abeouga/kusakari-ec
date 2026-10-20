@@ -6,9 +6,10 @@ import lombok.*;
 @Entity
 @Table(name = "auth_members", uniqueConstraints = @UniqueConstraint(columnNames = { "issuer", "subject" }))
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AuthMember {
+
+  private java.time.Instant withdrawnAt;
 
   @Id
   @Column(length = 36, columnDefinition = "CHAR(36)")
@@ -34,6 +35,20 @@ public class AuthMember {
 
   @Column(nullable = false)
   private boolean enabled = true;
+
+  public void withdraw() {
+    enabled = false;
+    withdrawnAt = java.time.Instant.now();
+  }
+
+  public void changeEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public void approveStore(Long storeId) {
+    this.storeId = storeId;
+    this.role = "SELLER";
+  }
 
   public AuthMember(String issuer, String subject, String email, String name) {
     this.id = java.util.UUID.randomUUID().toString();

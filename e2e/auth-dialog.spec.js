@@ -1,80 +1,37 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-test('header authentication popup switches three mock forms without sending data', async ({ page }) => {
+test('header opens the dedicated EC login page', async ({ page }) => {
   await page.goto('/');
-  const requests = [];
-  page.on('request', (request) => {
-    if (request.method() !== 'GET') requests.push(`${request.method()} ${request.url()}`);
-  });
-  const login = page.locator('.kusakari-site-header').getByRole('button', { name: 'ログイン', exact: true });
-  await login.click();
-  const dialog = page.getByRole('dialog', { name: 'ログイン・アカウント作成' });
-  await expect(dialog.getByRole('radio')).toHaveCount(3);
-  await expect(dialog.locator('.auth-segments svg')).toHaveCount(0);
-  await expect(dialog).not.toContainText('緑のある暮らし');
-  await expect(dialog.getByRole('radio', { name: 'ログイン', exact: true })).toBeChecked();
-  await dialog.getByLabel('メールアドレス').fill('mock@example.jp');
-  await dialog.getByLabel('パスワード（8文字以上）', { exact: true }).fill('mock-password');
-  await dialog.getByRole('button', { name: 'ログイン' }).click();
-  await expect(dialog.getByRole('status')).toContainText('入力内容を確認しました');
-  await expect(dialog).not.toContainText('画面モック');
-  await expect(dialog.getByLabel('パスワード（8文字以上）', { exact: true })).toHaveValue('');
-  await dialog.locator('.auth-segments label').filter({ hasText: '新規アカウント作成' }).click();
-  await dialog.getByLabel('お名前', { exact: true }).fill('サンプル利用者');
-  await dialog.getByLabel('メールアドレス').fill('sample@example.jp');
-  await dialog.getByLabel('パスワード（8文字以上）', { exact: true }).fill('mock-password');
-  await dialog.getByLabel('パスワード（確認）').fill('different-password');
-  await dialog.getByRole('button', { name: 'アカウントを作成', exact: true }).click();
-  await expect(dialog.getByRole('alert')).toContainText('一致しません');
-  await dialog.getByLabel('パスワード（確認）').fill('mock-password');
-  await dialog.getByRole('button', { name: 'アカウントを作成', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('新規アカウント作成');
-  await dialog.locator('.auth-segments label').filter({ hasText: '出店者用アカウント作成' }).click();
-  await dialog.getByLabel('会社・屋号').fill('サンプル園芸店');
-  await dialog.getByLabel('担当者名').fill('サンプル担当者');
-  await dialog.getByLabel('メールアドレス').fill('seller@example.jp');
-  await dialog.getByLabel('パスワード（8文字以上）', { exact: true }).fill('mock-password');
-  await dialog.getByLabel('パスワード（確認）').fill('mock-password');
-  await dialog.getByRole('button', { name: '出店者用アカウントを作成', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('出店者用アカウント作成');
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-  await expect(login).toBeFocused();
-  await login.click();
-  await expect(dialog.getByRole('radio', { name: 'ログイン', exact: true })).toBeChecked();
-  await expect(dialog.getByRole('status')).toHaveCount(0);
-  await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page.getByRole('link', { name: 'アカウント', exact: true }).click();
-  await expect(page.locator('.workspace-sidebar').getByRole('link', { name: 'ログイン', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: '新規登録', exact: true })).toBeVisible();
-  expect(requests).toEqual([]);
+  await page.locator('.kusakari-site-header').getByRole('button', { name: 'ログイン', exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/login\?returnTo=/);
+  await expect(page.getByRole('heading', { name: 'ログイン', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const session = await (await page.request.get('/api/auth/me')).json();
+  if (session.mode === 'cognito') {
+    await expect(page.getByLabel('メールアドレス', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('パスワード', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'パスワードを忘れた方・追加の本人確認' })).toHaveAttribute(
+      'href',
+      /managed=true/,
+    );
+  } else {
+    await expect(page.getByText('Cognitoが未設定のため、ログイン・新規登録は利用できません。')).toBeVisible();
+  }
 });
 
-test('login deep link and segmented controls work on desktop and small screens', async ({ page }) => {
+test('login page retains its layout after reload on desktop and mobile', async ({ page }) => {
   await mkdir('artifacts/e2e', { recursive: true });
-  for (const width of [1600, 1280, 768, 390, 320]) {
+  for (const width of [1600, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 950 });
-    await page.goto('/?panel=login');
+    await page.goto('/account/login');
     await page.reload();
-    const dialog = page.getByRole('dialog', { name: 'ログイン・アカウント作成' });
-    await expect(dialog).toBeVisible();
-    const radio = dialog.getByRole('radio', { name: 'ログイン', exact: true });
-    await radio.focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(dialog.getByRole('radio', { name: '新規アカウント作成', exact: true })).toBeChecked();
-    await page.keyboard.press('ArrowRight');
-    await expect(dialog.getByRole('radio', { name: '出店者用アカウント作成', exact: true })).toBeChecked();
-    await expect(dialog.getByLabel('会社・屋号')).toBeVisible();
-    expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `artifacts/e2e/auth-dialog-seller-${width}.png` });
-    await page.keyboard.press('Escape');
-    const header = page.locator('.kusakari-site-header');
-    await expect(header.getByRole('button', { name: 'ログイン', exact: true })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `artifacts/e2e/auth-header-${width}.png` });
+    await expect(page.getByRole('heading', { name: 'ログイン', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `artifacts/e2e/login-page-${width}.png`, fullPage: true });
   }
-  const cart = await (await page.request.get('/api/cart')).json();
-  await writeFile('artifacts/e2e/auth-dialog-api.json', JSON.stringify(cart, null, 2));
+  await writeFile(
+    'artifacts/e2e/login-page-session.json',
+    JSON.stringify(await (await page.request.get('/api/auth/me')).json(), null, 2),
+  );
 });

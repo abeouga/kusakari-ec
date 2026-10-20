@@ -1,6 +1,39 @@
 .auth-dialog {
   padding: 0 0 4px;
 }
+.login-page {
+  min-height: 100dvh;
+  padding: 48px 20px 64px;
+  background: #f1f4ec;
+}
+.login-brand {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 32px;
+  color: var(--green);
+  font-family: var(--serif);
+  font-size: 32px;
+  text-decoration: none;
+}
+.login-card {
+  width: min(100%, 460px);
+  margin: auto;
+  padding: 40px 32px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+.login-card h1 { margin: 16px 0; font-size: 30px; font-weight: 500; }
+.login-description { margin-bottom: 28px; color: #526056; line-height: 1.8; font-size: 14px; }
+.login-card .workspace-card { padding: 0; border: 0; box-shadow: none; }
+.auth-links { display: grid; gap: 16px; margin: 22px 0 16px; font-size: 13px; }
+.auth-links a, .auth-links button, .login-home { color: var(--green); text-underline-offset: 4px; }
+.auth-links button { padding: 0; border: 0; background: transparent; text-decoration: underline; text-align: left; }
+.auth-submit:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 480px) {
+  .login-page { padding: 32px 16px; }
+  .login-card { padding: 28px 20px; }
+}
 .auth-segments {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

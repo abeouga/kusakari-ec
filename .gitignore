@@ -24,3 +24,6 @@ artifacts/
 sysover-ray2/SysOverRay/bin/
 sysover-ray2/SysOverRay/obj/
 sysover-ray2/app/
+
+# Python management command caches
+__pycache__/

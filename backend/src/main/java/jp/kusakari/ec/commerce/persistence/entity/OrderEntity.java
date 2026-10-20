@@ -8,14 +8,37 @@ import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "orders")
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderEntity {
+
+  @Column(columnDefinition = "CHAR(36)")
+  private String buyerMemberId;
+
+  private Long storeId;
+
+  @Column(length = 200, nullable = false)
+  private String pickupAddress = "";
+
+  @Column(length = 80, nullable = false)
+  private String pickupHours = "";
+
+  private Instant readyAt;
+  private Instant pickedUpAt;
+
+  @Column(length = 20, nullable = false)
+  private String cancellationStatus = "NONE";
+
+  @Column(length = 500, nullable = false)
+  private String cancellationReason = "";
+
+  @Column(length = 500, nullable = false)
+  private String cancellationResponse = "";
+
+  private Instant cancellationAt;
 
   @Id
   @Column(length = 36, columnDefinition = "CHAR(36)")
@@ -37,7 +60,7 @@ public class OrderEntity {
   private int totalYen;
 
   @Column(nullable = false, length = 30)
-  private String status = "DEMO_CONFIRMED";
+  private String status = "ACCEPTED";
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt = Instant.now();
@@ -69,6 +92,37 @@ public class OrderEntity {
     this.totalYen = totalYen;
     this.subtotalYen = subtotalYen;
     this.shippingFeeYen = shippingFeeYen;
+  }
+
+  public void assignPickup(String buyerId, Long storeId, String address, String hours) {
+    this.buyerMemberId = buyerId;
+    this.storeId = storeId;
+    this.pickupAddress = address;
+    this.pickupHours = hours;
+  }
+
+  public void markReady() {
+    status = "READY";
+    readyAt = Instant.now();
+  }
+
+  public void completePickup() {
+    status = "COMPLETED";
+    pickedUpAt = Instant.now();
+  }
+
+  public void requestCancellation(String reason) {
+    cancellationStatus = "PENDING";
+    cancellationReason = reason.trim();
+    cancellationResponse = "";
+    cancellationAt = Instant.now();
+  }
+
+  public void decideCancellation(boolean approved, String reason) {
+    if (approved) status = "CANCELLED";
+    cancellationStatus = approved ? "APPROVED" : "REJECTED";
+    cancellationResponse = reason.trim();
+    cancellationAt = Instant.now();
   }
 
   public void archive() {

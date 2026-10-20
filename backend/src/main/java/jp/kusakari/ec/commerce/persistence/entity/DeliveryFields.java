@@ -14,14 +14,14 @@ import lombok.Setter;
 public class DeliveryFields {
 
   public static DeliveryFields empty() {
-    return new DeliveryFields("PICKUP", "DEMO_CARD", "", "", "", "", "", "", "", "ANY");
+    return new DeliveryFields("PICKUP", "NONE", "", "", "", "", "", "", "", "ANY");
   }
 
   @Column(name = "fulfillment_method", nullable = false, length = 20)
   private String fulfillmentMethod = "PICKUP";
 
   @Column(name = "payment_method", nullable = false, length = 20)
-  private String paymentMethod = "DEMO_CARD";
+  private String paymentMethod = "NONE";
 
   @Column(name = "recipient_name", nullable = false, length = 100)
   private String recipientName = "";

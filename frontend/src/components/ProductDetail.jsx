@@ -1,3 +1,4 @@
+import { productCanvasUrl } from '../canvasLink';
 import { catalogText } from '../catalogText';
 import { PageLink } from '../workspace/Common';
 import { useState } from 'react';
@@ -6,7 +7,7 @@ import { Dialog } from './Dialog';
 import { yen } from '../api';
 
 /** @param {{product:import('../types').Product,storeName:string,storeId?:number,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
-export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onClose, onAdd, busy, notice, error }) {
+export function ProductDetail({ product, storeName, storeId = 1, onClose, onAdd, busy, notice, error }) {
   const [image, setImage] = useState(product.imageUrl);
   const [quantity, setQuantity] = useState(1);
 
@@ -95,7 +96,7 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             <MapPin size={18} />
             <div>
               <strong>{storeName}で店舗受取</strong>
-              <p>店舗受取は無料。自宅配送はカートで選択できます。</p>
+              <p>店舗で商品を受け取れます。</p>
             </div>
           </div>
           <label className="detail-quantity">
@@ -119,12 +120,12 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
             カートに追加
           </button>
           <div className="canvas-product-entry">
-            <a className="canvas-product-button" href={canvasUrl}>
+            <a className="canvas-product-button" href={productCanvasUrl(product.id)}>
               <Eye size={19} />
               <span>Canvasでイメージする</span>
               <ArrowUpRight size={15} />
             </a>
-            <p>商品情報は引き継がれません。</p>
+            <p>庭を選んだ後、配置する位置を指定してください。</p>
           </div>
           {notice && (
             <p className="success-text" role="status">
@@ -143,8 +144,8 @@ export function ProductDetail({ product, storeName, storeId = 1, canvasUrl, onCl
           </div>
           <div className="care-accordions">
             <details>
-              <summary>受取・配送のご案内</summary>
-              <p>受取方法と配送先はカートで指定できます。</p>
+              <summary>店舗受け取りのご案内</summary>
+              <p>受取店舗はカートで指定できます。</p>
             </details>
           </div>
         </div>

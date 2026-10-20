@@ -4,6 +4,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AuthMemberRepository extends JpaRepository<AuthMember, String> {
+  java.util.List<AuthMember> findByStoreIdAndEnabledTrue(Long storeId);
   Optional<AuthMember> findByIssuerAndSubject(String issuer, String subject);
 
   @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

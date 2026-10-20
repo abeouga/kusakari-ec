@@ -15,8 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
   private final AuthMemberRepository members;
+  private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
 
-  @Value("${kusakari.auth.mode:demo}")
+  @Value("${kusakari.auth.mode:cognito}")
   private String mode;
 
   public boolean enabled() {
@@ -81,6 +82,12 @@ public class AuthService {
     var member = current();
     if ("ADMIN".equals(member.getRole())) return;
     if (!"SELLER".equals(member.getRole()) || !java.util.Objects.equals(storeId, member.getStoreId())) denied();
+    if (
+      !stores
+        .findById(storeId)
+        .map(s -> s.isEnabled())
+        .orElse(false)
+    ) denied();
   }
 
   public void requireAdmin() {
@@ -96,7 +103,8 @@ public class AuthService {
     var member = current();
     if (
       !"ADMIN".equals(member.getRole()) && !("SELLER".equals(member.getRole()) && member.getId().equals(owner))
-    ) denied();
+    ) throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
+    if (!"ADMIN".equals(member.getRole())) requireSeller(member.getStoreId());
   }
 
   private static void denied() {

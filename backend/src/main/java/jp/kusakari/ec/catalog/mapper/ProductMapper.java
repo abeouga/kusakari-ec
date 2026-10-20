@@ -15,7 +15,10 @@ import org.mapstruct.ReportingPolicy;
 public interface ProductMapper {
   @Mapping(target = "stock", source = "stock")
   @Mapping(target = "modelComposition", source = "product.modelComposition", qualifiedByName = "compositionView")
-  @Mapping(target = "active", expression = "java(product.isActive() && publicationStatus.equals(\"PUBLISHED\"))")
+  @Mapping(
+    target = "active",
+    expression = "java(product.isActive() && !product.isSuspended() && publicationStatus.equals(\"PUBLISHED\"))"
+  )
   @Mapping(target = "publicationStatus", expression = "java(product.isActive() ? publicationStatus : \"DELETED\")")
   ProductView toView(ProductEntity product, int stock, String publicationStatus);
 

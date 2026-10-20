@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { Field, text } from './Common';
 import { AuthPanel } from '../components/AuthPanel';
-import { useAuth } from '../useAuth';
-
+import { useResource, write } from './useResource';
+import { Input, ResourceStatus, values } from './ResourceView';
+import { login } from '../auth';
 export const accountActions = [
   ['/account/login', 'ログイン'],
   ['/account/register', '新規登録'],
@@ -11,157 +10,65 @@ export const accountActions = [
   ['/account/reset', 'パスワードリセット'],
   ['/account/delete', '退会'],
 ];
-
-/** @param {{demo:import('./useDemo').Demo,tab:string}} props */
-export function AccountPage({ demo, tab }) {
-  const { session, error: authError } = useAuth();
-  const [resetReady, setResetReady] = useState(false);
-  const [error, setError] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  if (authError) return <p role="alert">{authError}</p>;
-  if (!session) return <p>ログイン状態を確認しています。</p>;
-  if (['ログイン', '新規登録', 'パスワード変更', 'パスワードリセット'].includes(tab)) return <AuthPanel />;
-  if (session.mode === 'cognito') return <section className="workspace-card"><AuthPanel /><p>住所管理・退会は未実装です。住所は注文時に入力してください。</p></section>;
+/** @param {{tab:string}} props */
+export function AccountPage({ tab }) {
+  const resource = useResource(tab === '住所管理' ? '/account/address' : '/auth/me');
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function submit(event) {
+  async function save(event) {
     event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    setError('');
-    const email = text(data, 'email');
-    const password = text(data, 'password');
-    if (password && password.length < 8) {
-      setError('パスワードは8文字以上で入力してください。');
-      return;
-    }
-    if (tab === '新規登録') {
-      if (demo.state.users.some((user) => user.email === email)) {
-        setError('このメールアドレスは登録済みです。');
-        return;
-      }
-      demo.update((draft) => {
-        const user = {
-          id: crypto.randomUUID(),
-          name: text(data, 'name'),
-          email,
-          role: text(data, 'role'),
-          status: '利用中',
-        };
-        draft.users.push(user);
-        draft.session = { name: user.name, email, role: user.role };
-      }, 'アカウントを作成しました。');
-    } else if (tab === 'ログイン') {
-      const user = demo.state.users.find((entry) => entry.email === email && entry.status === '利用中');
-      if (!user) {
-        setError('利用中のアカウントがありません。新規登録してください。');
-        return;
-      }
-      demo.update((draft) => {
-        draft.session = { name: user.name, email, role: user.role };
-      }, 'ログイン状態を更新しました。');
-    } else if (tab === '住所管理') {
-      demo.update((draft) => {
-        draft.address = {
-          postal: text(data, 'postal'),
-          address: text(data, 'address'),
-          recipient: text(data, 'recipient'),
-        };
-      }, '住所を更新しました。');
-    } else if (tab === 'パスワードリセット' && !resetReady) {
-      setResetReady(true);
-      demo.setNotice('パスワード再設定の入力画面を表示しました。');
-    } else {
-      if (password !== text(data, 'confirmation')) {
-        setError('確認用パスワードが一致しません。');
-        return;
-      }
-      demo.setNotice('パスワードの入力内容を確認しました。');
-      setResetReady(false);
-    }
-    form.reset();
+    const input = values(event.currentTarget);
+    const password = tab === 'パスワード変更';
+    if (
+      (await resource.run(() => write(password ? '/account/password' : '/account/address', 'PUT', input))) &&
+      password
+    )
+      login();
   }
-  function remove() {
-    demo.update((draft) => {
-      draft.users = draft.users.filter((user) => user.email !== draft.session.email);
-      draft.session = { name: '', email: '', role: '' };
-    }, 'アカウントを削除しました。');
-    setConfirmDelete(false);
-  }
+  if (tab === '新規登録') return <button onClick={() => login(true)}>Cognitoで新規登録</button>;
+  if (tab === 'パスワードリセット')
+    return <a href="/api/auth/login?managed=true&returnTo=%2Faccount">Cognitoでパスワードを再設定</a>;
+  if (tab === 'ログイン' || tab === 'アカウント情報') return <AuthPanel />;
   return (
-    <>
-      {demo.state.session.email && (
-        <div className="workspace-card">
-          <strong>{demo.state.session.name}</strong> · {demo.state.session.role}
+    <section className="workspace-card">
+      <ResourceStatus resource={resource} />
+      {tab === '住所管理' && resource.data && (
+        <form key={JSON.stringify(resource.data)} className="workspace-form" onSubmit={save}>
+          <Input label="受取人" name="recipient" value={resource.data.recipient} maxLength={100} />
+          <Input label="郵便番号" name="postal" value={resource.data.postal} maxLength={8} />
+          <Input label="住所" name="address" value={resource.data.address} />
+          <button disabled={resource.busy}>住所を保存</button>
           <button
-            onClick={() =>
-              demo.update((draft) => {
-                draft.session = { name: '', email: '', role: '' };
-              }, 'ログアウトしました。')
-            }
+            type="button"
+            disabled={resource.busy}
+            onClick={() => void resource.run(() => write('/account/address', 'DELETE'))}
           >
-            ログアウト
+            住所を削除
           </button>
-        </div>
+        </form>
       )}
-      <section className="workspace-card">
-        <h2>{tab}</h2>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {tab !== '退会' && (
-          <form key={`${tab}-${resetReady}`} className="workspace-form" onSubmit={submit}>
-            {tab === '新規登録' && (
-              <>
-                <Field label="お名前・担当者名" name="name" />
-                <label>
-                  アカウント種別
-                  <select name="role">
-                    <option>一般</option>
-                    <option>事業者</option>
-                  </select>
-                </label>
-              </>
-            )}
-            {['ログイン', '新規登録', 'パスワードリセット'].includes(tab) && !resetReady && (
-              <Field label="メールアドレス" name="email" type="email" />
-            )}
-            {tab === '住所管理' && (
-              <>
-                <Field label="受取人" name="recipient" value={demo.state.address.recipient} />
-                <Field label="郵便番号" name="postal" value={demo.state.address.postal} />
-                <Field label="住所" name="address" value={demo.state.address.address} />
-              </>
-            )}
-            {(['ログイン', '新規登録', 'パスワード変更'].includes(tab) || resetReady) && (
-              <Field label="パスワード（8文字以上）" name="password" type="password" />
-            )}
-            {(tab === 'パスワード変更' || resetReady) && (
-              <Field label="確認用パスワード" name="confirmation" type="password" />
-            )}
-            {resetReady && <p>新しいパスワードを入力してください。</p>}
-            <button className="primary-button" type="submit">
-              {tab === 'パスワードリセット' && !resetReady ? '再設定メールを送信' : '内容を送信'}
-            </button>
-          </form>
-        )}
-        {tab === '退会' && (
-          <>
-            <p>ログイン中のアカウントを削除します。</p>
-            <button disabled={!demo.state.session.email} onClick={() => setConfirmDelete(true)}>
-              退会手続きへ
-            </button>
-            {confirmDelete && (
-              <div role="alertdialog" aria-label="退会の確認">
-                <p>アカウントを削除しますか？</p>
-                <button onClick={remove}>削除を確定</button>
-                <button onClick={() => setConfirmDelete(false)}>取消</button>
-              </div>
-            )}
-          </>
-        )}
-      </section>
-    </>
+      {tab === 'パスワード変更' && (
+        <form className="workspace-form" onSubmit={save}>
+          <Input label="現在のパスワード" name="currentPassword" type="password" maxLength={256} />
+          <Input label="新しいパスワード" name="newPassword" type="password" maxLength={256} />
+          <p>変更後は再ログインしてください。</p>
+          <button disabled={resource.busy}>パスワードを変更</button>
+        </form>
+      )}
+      {tab === '退会' && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (await resource.run(() => write('/account', 'DELETE'), '退会しました。')) window.location.assign('/');
+          }}
+        >
+          <p>このアカウントでKusakariを利用できなくなります。過去の注文記録は保持されます。</p>
+          <label>
+            <input type="checkbox" required />
+            退会を確定することを確認しました
+          </label>
+          <button disabled={resource.busy}>退会を確定</button>
+        </form>
+      )}
+    </section>
   );
 }

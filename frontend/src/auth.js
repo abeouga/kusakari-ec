@@ -21,7 +21,25 @@ export async function authFetch(url, init = {}) {
 
 /** @param {boolean} [signup] */
 export function login(signup = false) {
-  window.location.assign(`/api/auth/login?signup=${signup}&returnTo=${encodeURIComponent(window.location.href.split('#')[0])}`);
+  const returnTo =
+    window.location.pathname === '/account/login'
+      ? new URLSearchParams(window.location.search).get('returnTo') || '/'
+      : window.location.href.split('#')[0];
+  window.location.assign(
+    `${signup ? '/api/auth/login?signup=true&' : '/account/login?'}returnTo=${encodeURIComponent(returnTo)}`,
+  );
+}
+
+/** @param {string} email @param {string} password @param {string} returnTo */
+export async function passwordLogin(email, password, returnTo) {
+  const response = await authFetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnTo }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.message || 'ログインできませんでした。時間をおいて再試行してください。');
+  window.location.replace(result.returnTo);
 }
 
 export async function logout() {
