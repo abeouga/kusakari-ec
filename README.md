@@ -1,5 +1,7 @@
 # Kusakari — 植物と、暮らす。
 
+別PCで実Cognito認証を使う場合は[認証セットアップ手順](docs/cognito-setup.md)を参照してください。公開可能な共用プールの接続設定は`config/cognito.development.json`、秘密情報は各PCのGit対象外`.env`で管理します。
+
 Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニングECサイトのローカルMVPです。Kusakari Canvas（仮称）の3D庭づくり機能は、商品選びを支援する同じサイト内の機能として扱います。
 
 現在、ECと3D庭づくり機能の試作コード・開発ポート・DBは別々です。Canvasの配置数量をECの商品候補画面へ渡し、利用者が選んだ商品を既存カートへ追加できます。この技術上の試作分割は、利用者向けサービスを分ける方針ではありません。

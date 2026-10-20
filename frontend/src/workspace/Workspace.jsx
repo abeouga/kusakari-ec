@@ -31,6 +31,8 @@ import { ProductManager } from '../components/ProductManager';
 import { Materials } from '../components/Materials';
 import { PageLink } from './Common';
 import { navigate, goBack } from './navigation';
+import { useAuth } from '../useAuth';
+import { AuthPanel } from '../components/AuthPanel';
 
 const sellerMenu = [
   ['/seller', 'ダッシュボード'],
@@ -160,6 +162,17 @@ function Dashboard({ demo }) {
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,demo:import('./useDemo').Demo,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, demo, path, header }) {
+  const { session, error: authError } = useAuth();
+  if (authError) return <>{header}<main><p role="alert">{authError}</p></main></>;
+  if (!session) return <>{header}<main>ログイン状態を確認しています。</main></>;
+  const protectedPage = path.startsWith('/seller') || path.startsWith('/operator') || path === '/purchases' || path === '/materials';
+  if (session.mode === 'cognito' && protectedPage) {
+    if (!session.authenticated) return <>{header}<main><AuthPanel /></main></>;
+    if ((path.startsWith('/seller') && !['SELLER', 'ADMIN'].includes(session.role || '')) ||
+        (path.startsWith('/operator') && session.role !== 'ADMIN')) {
+      return <>{header}<main><p role="alert">この画面を利用する権限がありません。</p></main></>;
+    }
+  }
   const seller = path.startsWith('/seller');
   const operator = path.startsWith('/operator');
   const account = path === '/account' || path.startsWith('/account/');

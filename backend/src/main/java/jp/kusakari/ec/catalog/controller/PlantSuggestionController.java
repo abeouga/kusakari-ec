@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.*;
 public class PlantSuggestionController {
 
   private final PlantSuggestionService service;
+  private final jp.kusakari.ec.auth.AuthService auth;
 
   @PostMapping("/api/products/plant-model-suggestions")
   public PlantSuggestionView suggest(@Valid @RequestBody PlantSuggestionRequest input) {
+    auth.requireSellerRole();
     return service.suggest(input);
   }
 }

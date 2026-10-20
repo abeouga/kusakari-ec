@@ -19,14 +19,17 @@ public class SellerProductService {
   private final jp.kusakari.ec.catalog.mapper.ProductMapper mapper;
   private final InventoryRepository inventory;
   private final ProductRepository products;
+  private final jp.kusakari.ec.auth.AuthService auth;
 
   @Transactional(readOnly = true)
   public List<ProductView> list(long storeId) {
+    auth.requireSeller(storeId);
     return catalog.allProducts(storeId).stream()
       .filter(p -> !p.publicationStatus().equals("DELETED")).map(mapper::toSellerView).toList();
   }
 
   public void update(ProductStatusRequest request) {
+    auth.requireSeller(request.storeId());
     catalog.requireStore(request.storeId());
     if (new HashSet<>(request.productIds()).size() != request.productIds().size()) {
       throw new ApiException(400, "DUPLICATE_PRODUCT", "商品IDが重複しています。");

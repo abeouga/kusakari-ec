@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
+import { login } from './auth';
 
 export function useShop() {
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
@@ -19,7 +20,15 @@ export function useShop() {
   const operation = useRef(false);
 
   const refresh = useCallback(async () => {
-    const nextCart = await api.cart();
+    let nextCart;
+    try { nextCart = await api.cart(); }
+    catch (reason) {
+      if (!(reason instanceof ApiError) || reason.status !== 401) throw reason;
+      setCart(null);
+      setOrders([]);
+      setProducts(await api.products(1));
+      return;
+    }
     setCart(nextCart);
     const nextProducts = await api.products(nextCart.storeId);
     const nextOrders = await api.orders();
@@ -87,7 +96,7 @@ export function useShop() {
 
   /** @param {string} id @param {number} [quantity] */
   function add(id, quantity = 1) {
-    if (!cart) return;
+    if (!cart) { login(); return; }
     let currentQuantity = 0;
     const line = cart.items.find((item) => item.product.id === id);
     if (line) currentQuantity = line.quantity;

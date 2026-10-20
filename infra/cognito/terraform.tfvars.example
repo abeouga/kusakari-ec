@@ -1,0 +1,5 @@
+region        = "ap-northeast-1"
+account_id    = "497746198728"
+domain_prefix = "kusakari-497746198728-dev"
+callback_urls = ["http://127.0.0.1:5186/api/auth/callback/cognito"]
+logout_urls   = ["http://127.0.0.1:5186/"]

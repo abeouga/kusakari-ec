@@ -1,0 +1,10 @@
+{
+  "SPRING_PROFILES_ACTIVE": "cognito",
+  "KUSAKARI_COGNITO_ISSUER": "https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_HvkWp5qwE",
+  "KUSAKARI_COGNITO_DOMAIN": "https://kusakari-497746198728-dev.auth.ap-northeast-1.amazoncognito.com",
+  "KUSAKARI_COGNITO_CLIENT_ID": "1pmnu6u8nh1g4o63e7t0tjlu5m",
+  "KUSAKARI_EC_WEB_ORIGIN": "http://127.0.0.1:5186",
+  "KUSAKARI_EC_CANVAS_ORIGIN": "http://127.0.0.1:5173",
+  "VITE_KUSAKARI_CANVAS_URL": "http://127.0.0.1:5173/",
+  "KUSAKARI_CANVAS_API_URL": "http://127.0.0.1:8080"
+}

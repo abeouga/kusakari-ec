@@ -44,6 +44,9 @@ public class ProductEntity {
   @Column(length = 40)
   private String id;
 
+  @Column(name = "owner_member_id", length = 36, columnDefinition = "CHAR(36)")
+  private String ownerMemberId;
+
   @Column(nullable = false, length = 50)
   private String sku;
 

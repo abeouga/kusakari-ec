@@ -61,7 +61,7 @@ public class LocalApiFilter extends OncePerRequestFilter {
       response.setHeader("Access-Control-Allow-Credentials", "true");
       if ("OPTIONS".equals(request.getMethod())) {
         response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-CSRF-TOKEN");
         response.setStatus(204);
         return;
       }

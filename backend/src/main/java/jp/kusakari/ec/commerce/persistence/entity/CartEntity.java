@@ -21,6 +21,9 @@ public class CartEntity {
   @Column(length = 36, columnDefinition = "CHAR(36)")
   private String id;
 
+  @Column(name = "member_id", length = 36, columnDefinition = "CHAR(36)")
+  private String memberId;
+
   @Column(name = "store_id", nullable = false)
   private long storeId = 1;
 

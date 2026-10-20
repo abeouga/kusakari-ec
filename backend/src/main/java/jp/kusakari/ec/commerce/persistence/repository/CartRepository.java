@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CartRepository extends JpaRepository<CartEntity, String> {
+  Optional<CartEntity> findByMemberId(String memberId);
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select c from CartEntity c where c.id = :id")
   Optional<CartEntity> findLocked(@Param("id") String id);

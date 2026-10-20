@@ -17,10 +17,13 @@ public class CartSessionResolver {
 
   private static final String COOKIE = "kusakari_cart";
   private final CartRepository carts;
+  private final jp.kusakari.ec.auth.AuthService auth;
+  private final jp.kusakari.ec.auth.MemberCartService memberCarts;
   @Value("${kusakari.ec.secure-cookie:false}")
   private boolean secureCookie;
 
   public String resolve(HttpServletRequest request, HttpServletResponse response) {
+    if (auth.enabled()) return memberCarts.resolve(auth.current().getId());
     if (request.getCookies() != null) {
       for (var cookie : request.getCookies()) {
         String id = cookie.getValue();

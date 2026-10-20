@@ -6,9 +6,13 @@ import { e2eDatabasePort, importRuntimeTools } from './runtime-tools.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 importRuntimeTools(root);
+const explicitSpringProfile = process.env.SPRING_PROFILES_ACTIVE;
 if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
 const mode = process.argv[2] || 'dev';
 if (mode === 'e2e') {
+  // A developer's Cognito .env must not turn ordinary DB/UI tests into live AWS logins.
+  // Auth E2E opts in explicitly through its webServer environment.
+  process.env.SPRING_PROFILES_ACTIVE = explicitSpringProfile || '';
   // Paid AI verification is opt-in and never inherits the development credential.
   process.env.KUSAKARI_EC_OPENAI_API_KEY = process.env.KUSAKARI_EC_E2E_OPENAI_API_KEY || '';
   const url = process.env.KUSAKARI_EC_E2E_DB_URL;

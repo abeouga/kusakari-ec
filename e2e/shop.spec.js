@@ -71,7 +71,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
 
 test('nearest store, stock shortage, material match and cart removal', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'モンステラをカートに追加' }).click();
+  await page.getByTestId('product-monstera').getByRole('button', { name: 'モンステラをカートに追加', exact: true }).click();
   await expect(page.getByRole('link', { name: 'カートを開く（1点）' })).toBeVisible();
   await page.getByRole('link', { name: /カートを開く/ }).click();
   await page.locator('.cart-store').getByRole('button', { name: '変更', exact: true }).click();
@@ -82,7 +82,7 @@ test('nearest store, stock shortage, material match and cart removal', async ({ 
   await expect(page.locator('.store-card').first()).toContainText('選択中');
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'モンステラをカートに追加' })).toBeDisabled();
+  await expect(page.getByTestId('product-monstera').getByRole('button', { name: 'モンステラをカートに追加', exact: true })).toBeDisabled();
   await page.getByRole('link', { name: /カートを開く/ }).click();
   await expect(page.locator('.cart-content')).toContainText('在庫不足');
   await expect(page.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
@@ -126,7 +126,9 @@ test('mobile layout, images, keyboard dialog and empty search', async ({ page })
   await page.getByRole('heading', { level: 1 }).click();
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await mkdir('artifacts/e2e', { recursive: true });
-  await page.screenshot({ path: 'artifacts/e2e/catalog-mobile.png', fullPage: true });
+  // Preserved test products can make the full catalog exceed Chromium's capture limits.
+  // Width overflow and every image are checked above; retain the actual mobile viewport as evidence.
+  await page.screenshot({ path: 'artifacts/e2e/catalog-mobile.png', fullPage: false });
 });
 
 test('visible error and retry after an explicitly injected network outage', async ({ page }) => {

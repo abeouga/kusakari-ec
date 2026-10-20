@@ -15,6 +15,19 @@ public class CanvasClientConfiguration {
       .connectTimeout(Duration.ofSeconds(3)).build();
     var factory = new JdkClientHttpRequestFactory(http);
     factory.setReadTimeout(Duration.ofSeconds(10));
-    return RestClient.builder().baseUrl(url).requestFactory(factory).build();
+    return RestClient.builder().baseUrl(url).requestFactory(factory).requestInterceptor((request, body, execution) -> {
+      var context = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+      if (context instanceof org.springframework.web.context.request.ServletRequestAttributes attributes) {
+        var source = attributes.getRequest();
+        if (source.getCookies() != null) {
+          for (var cookie : source.getCookies()) if ("KUSAKARI_SESSION".equals(cookie.getName())) {
+            request.getHeaders().set("Cookie", "KUSAKARI_SESSION=" + cookie.getValue());
+          }
+        }
+        String csrf = source.getHeader("X-CSRF-TOKEN");
+        if (csrf != null) request.getHeaders().set("X-CSRF-TOKEN", csrf);
+      }
+      return execution.execute(request, body);
+    }).build();
   }
 }

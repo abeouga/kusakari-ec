@@ -30,11 +30,14 @@ public class ProductEditorService {
   private final EntityManager entityManager;
   private final CanvasModelClient models;
   private final MaterialProductRepository materials;
+  private final jp.kusakari.ec.auth.AuthService auth;
 
   public ProductView create(ProductRequest input) {
+    auth.requireSeller(input.getStoreId());
     catalog.requireStore(input.getStoreId());
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
+    if (auth.enabled()) product.setOwnerMemberId(auth.current().getId());
     if (products.existsBySku(product.getSku())) throw duplicateSku();
     resolveModel(product, input, null, true);
     saveProduct(product, true);
@@ -50,10 +53,12 @@ public class ProductEditorService {
   }
 
   public ProductView update(String id, ProductRequest input) {
+    auth.requireSeller(input.getStoreId());
     catalog.requireStore(input.getStoreId());
     ProductEntity product = products
       .findLocked(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+    auth.requireProductOwner(product.getOwnerMemberId());
     if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
     if (products.existsBySkuAndIdNot(input.getSku(), id)) throw duplicateSku();
     var previousProfile = product.getPlantModelProfile();
@@ -98,6 +103,11 @@ public class ProductEditorService {
   }
 
   public void delete(String id) {
+    if (auth.enabled()) {
+      var product = products.findLocked(id).orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+      auth.requireProductOwner(product.getOwnerMemberId());
+      auth.requireSeller(auth.current().getStoreId());
+    }
     if (products.archiveById(id) == 0 && !products.existsById(id)) {
       throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
     }

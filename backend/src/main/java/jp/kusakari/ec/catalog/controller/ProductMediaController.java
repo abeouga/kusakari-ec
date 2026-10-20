@@ -13,9 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProductMediaController {
 
   private final ProductMediaService media;
+  private final jp.kusakari.ec.auth.AuthService auth;
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public Map<String, String> upload(@RequestParam("file") MultipartFile file) {
+    auth.requireSellerRole();
     return Map.of("imageUrl", media.upload(file));
   }
 

@@ -11,6 +11,15 @@ frontend/dist/
 .runtime/
 artifacts/
 .tools/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!terraform.tfvars.example
+*.pem
+*.key
+*accessKeys*.csv
 *.log
 sysover-ray2/SysOverRay/bin/
 sysover-ray2/SysOverRay/obj/

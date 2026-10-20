@@ -1,3 +1,5 @@
+import { authFetch } from './auth';
+
 export class ApiError extends Error {
   /** @param {string} message @param {number} status */
   constructor(message, status) {
@@ -10,7 +12,7 @@ export class ApiError extends Error {
 async function request(path, method = 'GET', body) {
   let response;
   try {
-    response = await fetch(`/api${path}`, {
+    response = await authFetch(`/api${path}`, {
       method,
       body,
       credentials: 'same-origin',
@@ -35,7 +37,7 @@ export const api = {
     body.append('file', file);
     let response;
     try {
-      response = await fetch('/api/product-images', { method: 'POST', body, credentials: 'same-origin' });
+      response = await authFetch('/api/product-images', { method: 'POST', body, credentials: 'same-origin' });
     } catch {
       throw new ApiError('画像を保存できません。接続を確認して再試行してください。', 0);
     }

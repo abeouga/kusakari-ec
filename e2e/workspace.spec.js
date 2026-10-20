@@ -1,24 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-test('account mock validates input, shares state and resets on reload', async ({ page }) => {
+test('unconfigured Cognito does not claim registration or login success', async ({ page }) => {
   await page.goto('/account');
+  await expect(page.getByText('Cognitoが未設定のため、ログイン・新規登録は利用できません。')).toBeVisible();
   await page.getByRole('link', { name: '新規登録', exact: true }).click();
-  await page.getByLabel('お名前・担当者名').fill('モック確認利用者');
-  await page.getByLabel('メールアドレス', { exact: true }).fill('workspace-test@example.jp');
-  await page.getByLabel('パスワード（8文字以上）').fill('short');
-  await page.getByRole('button', { name: '内容を送信' }).click();
-  await expect(page.getByRole('alert')).toContainText('8文字以上');
-  await page.getByLabel('パスワード（8文字以上）').fill('mock-only-password');
-  await page.getByRole('button', { name: '内容を送信' }).click();
-  await expect(page.getByRole('status')).toContainText('作成しました');
-  await page.getByRole('button', { name: '戻る', exact: true }).click();
-  await page.getByRole('link', { name: '管理者画面', exact: true }).click();
-  await expect(page.locator('.kusakari-site-header')).toContainText('管理者画面');
-  await page.getByRole('link', { name: '会員管理', exact: true }).click();
-  await expect(page.locator('table')).toContainText('workspace-test@example.jp');
+  await expect(page.locator('input[type=password]')).toHaveCount(0);
+  await expect(page.getByText('Cognitoが未設定のため、ログイン・新規登録は利用できません。')).toBeVisible();
   await page.reload();
-  await expect(page.locator('table')).not.toContainText('workspace-test@example.jp');
+  await expect(page.getByText('Cognitoが未設定のため、ログイン・新規登録は利用できません。')).toBeVisible();
+  expect((await (await page.request.get('/api/auth/me')).json()).authenticated).toBe(false);
 });
 
 test('seller application, review, store pickup and buyer notifications share mock state', async ({ page }) => {

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Field, text } from './Common';
+import { AuthPanel } from '../components/AuthPanel';
+import { useAuth } from '../useAuth';
 
 export const accountActions = [
   ['/account/login', 'ログイン'],
@@ -12,9 +14,14 @@ export const accountActions = [
 
 /** @param {{demo:import('./useDemo').Demo,tab:string}} props */
 export function AccountPage({ demo, tab }) {
+  const { session, error: authError } = useAuth();
   const [resetReady, setResetReady] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  if (authError) return <p role="alert">{authError}</p>;
+  if (!session) return <p>ログイン状態を確認しています。</p>;
+  if (['ログイン', '新規登録', 'パスワード変更', 'パスワードリセット'].includes(tab)) return <AuthPanel />;
+  if (session.mode === 'cognito') return <section className="workspace-card"><AuthPanel /><p>住所管理・退会は未実装です。住所は注文時に入力してください。</p></section>;
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   function submit(event) {
     event.preventDefault();
