@@ -358,6 +358,7 @@ function Initialize-Database([string]$mode, [switch]$reconfigure) {
         if ($savedMode) { $mode = $savedMode.Matches[0].Groups[1].Value }
     }
     if ((Test-Path -LiteralPath $settings) -and -not $reconfigure) {
+        Add-MissingPublicLoginSettings $settings
         Import-LocalSettings
         $port = [int]$env:KUSAKARI_EC_DB_PORT
         $script:mysqlBin = Get-KusakariEcMySqlBin -Portable:($env:KUSAKARI_EC_DATABASE_MODE -eq 'managed')
