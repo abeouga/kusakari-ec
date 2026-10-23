@@ -110,7 +110,7 @@ test('guest cart requires checkout login, merges only after authentication and r
     expect(importCalls).toBe(1);
     await expect(page.locator('.cart-line').filter({ hasText: product.name })).toBeVisible();
     await page.getByRole('button', { name: '注文内容を確認する', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '注文内容の確認', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'お支払い・受け取りの確認', exact: true })).toBeVisible();
     await page.screenshot({ path: `${evidence}/authenticated-confirmation.png`, fullPage: true });
     await writeFile(`${evidence}/authenticated-cart.json`, JSON.stringify({ before: saved, after: cart, expected, importCalls }, null, 2));
   } finally { await existingContext.close(); }

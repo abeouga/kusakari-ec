@@ -187,16 +187,18 @@ export function useShop() {
     return ready;
   }
 
-  function checkout() {
+  /** @param {string} paymentMethod */
+  function checkout(paymentMethod) {
     return run(async () => {
       const current = await checkoutCart();
       if (!current) return;
-      // 応答が届かなかった場合の再試行では、同じ注文要求を送ります。
-      if (!checkoutRequest.current) {
+      // 応答が届かなかった場合の再試行では、同じ注文要求を送ります。支払い方法を変えた場合は別の注文要求です。
+      if (checkoutRequest.current?.paymentMethod !== paymentMethod) {
         checkoutRequest.current = {
           requestId: crypto.randomUUID(),
           revision: current.revision,
           expectedTotalYen: current.totalYen,
+          paymentMethod,
         };
       }
       const order = await api.checkout(checkoutRequest.current);
@@ -245,23 +247,6 @@ export function useShop() {
       setNotice('商品を一覧から削除しました。');
     });
   }
-  /** @param {import('./types').PickupInput} details */
-  function saveDetails(details) {
-    return run(async () => {
-      if (!cart) return;
-      setCart(await api.saveDetails(details, cart.revision));
-      checkoutRequest.current = null;
-      setNotice('受取連絡先を保存しました。');
-    });
-  }
-  function clearDetails() {
-    return run(async () => {
-      if (!cart) return;
-      setCart(await api.clearDetails(cart.revision));
-      checkoutRequest.current = null;
-      setNotice('入力情報を削除しました。');
-    });
-  }
   /** @param {string} id @param {import('./types').PickupInput} details */
   function updateOrder(id, details) {
     return run(async () => {
@@ -303,8 +288,6 @@ export function useShop() {
     setShoppingTransfer,
     saveProduct,
     deleteProduct,
-    saveDetails,
-    clearDetails,
     updateOrder,
     deleteOrder,
     cart,

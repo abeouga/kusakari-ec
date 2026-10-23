@@ -11,7 +11,6 @@ import jp.kusakari.ec.commerce.dto.CommerceDtos.CartView;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CheckoutRequest;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
-import jp.kusakari.ec.commerce.persistence.entity.CartDetailsEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemEntity;
 import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
@@ -19,13 +18,13 @@ import jp.kusakari.ec.commerce.persistence.entity.OrderDetailsEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemId;
-import jp.kusakari.ec.commerce.persistence.repository.CartDetailsRepository;
 import jp.kusakari.ec.commerce.persistence.repository.CartItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderDetailsRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -42,12 +41,13 @@ public class CheckoutService {
   private final jp.kusakari.ec.catalog.persistence.repository.ProductRepository products;
   private final CartRepository carts;
   private final CartItemRepository cartItems;
-  private final CartDetailsRepository cartDetails;
+  private final PickupContactRepository pickupContacts;
   private final OrderRepository orders;
   private final OrderItemRepository orderItems;
   private final OrderDetailsRepository orderDetails;
   private final InventoryRepository inventory;
   private final CartService cartService;
+  private final DeliveryService delivery;
   private final OrderResponseMapper orderMapper;
 
   public OrderView placeOrder(String cartId, CheckoutRequest request) {
@@ -59,10 +59,15 @@ public class CheckoutService {
     var priorOrder = orders.findByCartIdAndRequestId(cartId, requestId);
     if (priorOrder.isPresent()) {
       OrderEntity order = priorOrder.get();
-      if (order.getRequestRevision() != request.revision() || order.getTotalYen() != request.expectedTotalYen()) {
+      OrderView prior = orderView(order);
+      if (
+        order.getRequestRevision() != request.revision() ||
+        order.getTotalYen() != request.expectedTotalYen() ||
+        !prior.details().paymentMethod().equals(request.paymentMethod())
+      ) {
         throw new ApiException(409, "REQUEST_REUSED", "同じ注文キーに異なる内容は指定できません。");
       }
-      return orderView(order);
+      return prior;
     }
 
     if (cart.getRevision() != request.revision()) {
@@ -102,22 +107,9 @@ public class CheckoutService {
     orders.save(order);
     notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
     notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
-    DeliveryFields details = cartDetails
-      .findById(cartId)
-      .map(CartDetailsEntity::getDetails)
-      .orElseGet(DeliveryFields::empty);
-    details = new DeliveryFields(
-      "PICKUP",
-      "NONE",
-      details.getRecipientName(),
-      details.getRecipientPhone(),
-      details.getContactEmail(),
-      "",
-      "",
-      "",
-      "",
-      "ANY"
-    );
+    DeliveryFields details = delivery.pickupFields(pickupContacts.findById(auth.current().getId()).orElse(null));
+    // Payment is a demo choice: it is recorded on the order, but no payment provider is called.
+    details.setPaymentMethod(request.paymentMethod());
     orderDetails.save(new OrderDetailsEntity(order.getId(), details));
 
     for (CartLine line : current.items()) {

@@ -12,18 +12,16 @@ import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.service.CatalogService;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.ItemRequest;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.StoreRequest;
-import jp.kusakari.ec.commerce.dto.DeliveryDtos.CartDetailsRequest;
-import jp.kusakari.ec.commerce.persistence.entity.CartDetailsEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemId;
 import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
-import jp.kusakari.ec.commerce.persistence.repository.CartDetailsRepository;
 import jp.kusakari.ec.commerce.persistence.repository.CartItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.shopping.ShoppingDtos.Addition;
 import jp.kusakari.ec.shopping.ShoppingDtos.Outcome;
+import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import jp.kusakari.ec.shopping.ShoppingDtos.TransferResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,7 +35,7 @@ public class CartService {
 
   private final CartRepository carts;
   private final CartItemRepository items;
-  private final CartDetailsRepository cartDetails;
+  private final PickupContactRepository pickupContacts;
   private final CatalogService catalog;
   private final DeliveryService delivery;
 
@@ -153,22 +151,6 @@ public class CartService {
     return view(cart);
   }
 
-  public CartView updateDetails(String id, CartDetailsRequest request) {
-    CartEntity cart = requireLockedCart(id);
-    checkRevision(cart, request.revision());
-    cartDetails.save(new CartDetailsEntity(id, delivery.validate(request.details())));
-    cart.incrementRevision();
-    return view(cart);
-  }
-
-  public CartView clearDetails(String id, long revision) {
-    CartEntity cart = requireLockedCart(id);
-    checkRevision(cart, revision);
-    cartDetails.deleteById(id);
-    cart.incrementRevision();
-    return view(cart);
-  }
-
   public CartView view(CartEntity cart) {
     List<CartItemEntity> cartItems = items.findAllForCart(cart.getId());
     var productIds = cartItems.stream().map(item -> item.getId().getProductId()).toList();
@@ -191,10 +173,9 @@ public class CartService {
       })
       .toList();
 
-    DeliveryFields details = cartDetails
-      .findById(cart.getId())
-      .map(CartDetailsEntity::getDetails)
-      .orElseGet(DeliveryFields::empty);
+    DeliveryFields details = delivery.pickupFields(
+      cart.getMemberId() == null ? null : pickupContacts.findById(cart.getMemberId()).orElse(null)
+    );
     int subtotal = lines.stream().mapToInt(CartLine::lineTotalYen).sum();
     int shipping = lines.isEmpty() ? 0 : delivery.shippingFee(details);
     String storeName = catalog.storeName(cart.getStoreId());

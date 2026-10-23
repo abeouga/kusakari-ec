@@ -6,7 +6,9 @@ import java.util.*;
 import jp.kusakari.ec.auth.*;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.member.persistence.entity.AddressEntity;
+import jp.kusakari.ec.member.persistence.entity.PickupContactEntity;
 import jp.kusakari.ec.member.persistence.repository.AddressRepository;
+import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +21,18 @@ public class MemberService {
   private final AuthService auth;
   private final AuthMemberRepository members;
   private final AddressRepository addresses;
+  private final PickupContactRepository pickupContacts;
 
   public record Address(
     @NotBlank @Size(max = 100) String recipient,
     @NotNull @Pattern(regexp = "[0-9]{3}-?[0-9]{4}") String postal,
     @NotBlank @Size(max = 200) String address
+  ) {}
+
+  public record PickupContact(
+    @NotNull @Size(max = 100) String recipientName,
+    @NotNull @Pattern(regexp = "[0-9+() -]{0,30}") String recipientPhone,
+    @NotNull @Email @Size(max = 200) String contactEmail
   ) {}
 
   public record Member(
@@ -52,6 +61,25 @@ public class MemberService {
 
   public void deleteAddress() {
     addresses.deleteById(auth.current().getId());
+  }
+
+  @Transactional(readOnly = true)
+  public PickupContact pickupContact() {
+    return pickupContacts
+      .findById(auth.current().getId())
+      .map(c -> new PickupContact(c.getRecipientName(), c.getRecipientPhone(), c.getContactEmail()))
+      .orElse(new PickupContact("", "", ""));
+  }
+
+  public PickupContact savePickupContact(PickupContact input) {
+    var name = input.recipientName().trim();
+    var contact = new PickupContactEntity(auth.current().getId(), name, input.recipientPhone(), input.contactEmail());
+    pickupContacts.save(contact);
+    return new PickupContact(name, input.recipientPhone(), input.contactEmail());
+  }
+
+  public void deletePickupContact() {
+    pickupContacts.deleteById(auth.current().getId());
   }
 
   public void withdraw() {

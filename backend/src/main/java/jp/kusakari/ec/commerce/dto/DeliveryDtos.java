@@ -1,6 +1,5 @@
 package jp.kusakari.ec.commerce.dto;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 public final class DeliveryDtos {
@@ -12,8 +11,6 @@ public final class DeliveryDtos {
     @NotNull @Pattern(regexp = "[0-9+() -]{0,30}") String recipientPhone,
     @NotNull @Email @Size(max = 200) String contactEmail
   ) {}
-
-  public record CartDetailsRequest(@PositiveOrZero long revision, @NotNull @Valid DetailsRequest details) {}
 
   public record DetailsView(
     String fulfillmentMethod,

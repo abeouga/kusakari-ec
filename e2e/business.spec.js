@@ -107,11 +107,26 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
 
     await buyer.goto(`${ec}/cart`);
     await buyer.getByRole('button', { name: '注文内容を確認する' }).click();
+    // The confirmation step replaces the editable cart with the pickup store and a demo payment choice.
+    await expect(buyer.getByRole('heading', { name: 'お支払い・受け取りの確認' })).toBeVisible();
+    await expect(buyer.getByTestId('checkout-store')).toContainText(
+      (await call(buyer.request, '/cart').then((r) => r.json())).storeName,
+    );
+    await expect(buyer.getByRole('button', { name: /を1個増やす$/ })).toHaveCount(0);
+    await expect(buyer.getByRole('radio', { name: /店舗でお支払い/ })).toBeChecked();
+    await buyer.getByRole('radio', { name: /PayPay/ }).check();
+    await expect(buyer.getByTestId('checkout-payment')).toContainText('PayPay');
+    await buyer.screenshot({ path: 'artifacts/business/checkout-confirm.png', fullPage: true });
     const ordered = buyer.waitForResponse((r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
     await buyer.getByRole('button', { name: '注文を確定する', exact: true }).click();
     const response = await ordered;
     expect(response.status()).toBe(200);
+    expect(response.request().postDataJSON().paymentMethod).toBe('PAYPAY');
     const order = await response.json();
+    expect(order.details.paymentMethod).toBe('PAYPAY');
+    await expect(buyer.getByTestId('order-payment')).toContainText('PayPay');
+    const changedPayment = { ...response.request().postDataJSON(), paymentMethod: 'CREDIT_CARD' };
+    expect((await call(buyer.request, '/orders', 'POST', changedPayment)).status()).toBe(409);
     const stock = () =>
       call(buyer.request, '/products?storeId=1')
         .then((r) => r.json())
@@ -139,13 +154,11 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await buyer.goto(`${ec}/purchases`);
     await buyer.screenshot({ path: 'artifacts/business/purchases-reloaded.png', fullPage: true });
     await seller.screenshot({ path: 'artifacts/business/seller-orders-reloaded.png', fullPage: true });
+    const persistedOrder = await call(buyer.request, `/orders/${order.id}`).then((r) => r.json());
+    expect(persistedOrder.details.paymentMethod).toBe('PAYPAY');
     await writeFile(
       'artifacts/business/flow.json',
-      JSON.stringify(
-        { order: await call(buyer.request, `/orders/${order.id}`).then((r) => r.json()), garden, stock: await stock() },
-        null,
-        2,
-      ),
+      JSON.stringify({ order: persistedOrder, garden, stock: await stock() }, null, 2),
     );
   } finally {
     await buyerContext.close();

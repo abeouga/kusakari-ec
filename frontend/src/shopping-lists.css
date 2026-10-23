@@ -33,6 +33,8 @@
 .shopping-list-option.is-added .shopping-option-action { background: #dfeeda; }
 .shopping-list-option p { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 9px 4px 4px; color: #426044; font-size: 12px; line-height: 1.7; }
 .shopping-list-option a { display: inline-flex; align-items: center; gap: 6px; color: #285746; text-decoration: none; font-weight: 600; }
+.shopping-list-option.is-new > button { border-style: dashed; background: #fafcf8; }
+.shopping-new-icon { display: grid; place-items: center; width: 92px; height: 68px; flex: 0 0 auto; border-radius: 9px; background: #edf3e7; color: #365d46; }
 .shopping-picker-footnote { border-top: 1px solid #edf0e8; padding-top: 16px; margin: 22px 0 0; color: #838c7f; font-size: 11px; }
 .shopping-picker-empty { display: grid; justify-items: center; gap: 10px; padding: 28px 12px; color: #7b8577; text-align: center; font-size: 13px; }
 .shopping-picker-empty p { margin: 0; }
@@ -60,10 +62,9 @@
 .garden-transfer-result { margin: 20px 0; padding: 20px; background: #edf3e7; border: 1px solid #c9d9bf; border-radius: 10px; }
 /* The cart and garden list share one page surface; only the total is emphasized. */
 .standalone-cart-main { padding-top: 38px; }
-.shopping-page-intro { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 28px; }
-.shopping-page-intro h1 { margin: 8px 0; font-family: var(--serif); font-size: clamp(23px, 3vw, 34px); font-weight: 500; }
-.shopping-page-intro .text-link { white-space: nowrap; }
-.shopping-segments { display: inline-flex; gap: 5px; padding: 5px; margin-bottom: 32px; border-radius: 12px; background: #e9ede5; }
+.shopping-page-intro { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 32px; }
+.shopping-page-intro .back-link { white-space: nowrap; }
+.shopping-segments { display: inline-flex; gap: 5px; padding: 5px; border-radius: 12px; background: #e9ede5; }
 .shopping-segments button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 10px 24px; border: 0; border-radius: 8px; background: transparent; color: #536352; font-size: 14px; }
 .shopping-segments button[aria-selected="true"] { background: #285746; color: white; box-shadow: 0 2px 5px #254b3520; }
 .shopping-segments button:focus-visible { outline: 3px solid #b98b42; outline-offset: 3px; }
@@ -88,9 +89,8 @@
 .garden-list-thumbnail { width: 180px; height: 112px; object-fit: cover; border-radius: 8px; background: #edf1e7; }
 .garden-list-description { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  .shopping-page-intro { display: block; margin-bottom: 20px; }
-  .shopping-page-intro .eyebrow { font-size: 9px; }
-  .shopping-page-intro .text-link { display: inline-block; margin-top: 8px; }
+  .shopping-page-intro { flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 20px; }
+  .shopping-page-intro .back-link { align-self: flex-start; }
   .shopping-segments { display: flex; width: 100%; }
   .shopping-segments button { flex: 1; gap: 6px; padding: 10px 7px; font-size: 12px; }
   .garden-shopping-section { padding: 0; }

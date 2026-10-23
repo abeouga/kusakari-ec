@@ -1,4 +1,5 @@
 import { AuthPanel } from '../components/AuthPanel';
+import { DeliveryForm } from '../components/DeliveryForm';
 import { useResource, write } from './useResource';
 import { Input, ResourceStatus, values } from './ResourceView';
 import { login } from '../auth';
@@ -6,13 +7,16 @@ export const accountActions = [
   ['/account/login', 'ログイン'],
   ['/account/register', '新規登録'],
   ['/account/address', '住所管理'],
+  ['/account/pickup-contact', '受取連絡先'],
   ['/account/password', 'パスワード変更'],
   ['/account/reset', 'パスワードリセット'],
   ['/account/delete', '退会'],
 ];
 /** @param {{tab:string}} props */
 export function AccountPage({ tab }) {
-  const resource = useResource(tab === '住所管理' ? '/account/address' : '/auth/me');
+  const resource = useResource(
+    tab === '住所管理' ? '/account/address' : tab === '受取連絡先' ? '/account/pickup-contact' : '/auth/me',
+  );
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   async function save(event) {
     event.preventDefault();
@@ -45,6 +49,17 @@ export function AccountPage({ tab }) {
             住所を削除
           </button>
         </form>
+      )}
+      {tab === '受取連絡先' && resource.data && (
+        <DeliveryForm
+          key={JSON.stringify(resource.data)}
+          details={resource.data}
+          busy={resource.busy}
+          onSave={(details) =>
+            resource.run(() => write('/account/pickup-contact', 'PUT', details), '受取連絡先を保存しました。')
+          }
+          onReset={() => resource.run(() => write('/account/pickup-contact', 'DELETE'), '受取連絡先を消去しました。')}
+        />
       )}
       {tab === 'パスワード変更' && (
         <form className="workspace-form" onSubmit={save}>

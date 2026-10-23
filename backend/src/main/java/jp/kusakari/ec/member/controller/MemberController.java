@@ -30,6 +30,22 @@ public class MemberController {
     return Map.of("deleted", true);
   }
 
+  @GetMapping("/api/account/pickup-contact")
+  public MemberService.PickupContact pickupContact() {
+    return service.pickupContact();
+  }
+
+  @PutMapping("/api/account/pickup-contact")
+  public MemberService.PickupContact savePickupContact(@Valid @RequestBody MemberService.PickupContact input) {
+    return service.savePickupContact(input);
+  }
+
+  @DeleteMapping("/api/account/pickup-contact")
+  public Map<String, Boolean> deletePickupContact() {
+    service.deletePickupContact();
+    return Map.of("deleted", true);
+  }
+
   @DeleteMapping("/api/account")
   public Map<String, Boolean> withdraw(jakarta.servlet.http.HttpServletRequest request) {
     service.withdraw();

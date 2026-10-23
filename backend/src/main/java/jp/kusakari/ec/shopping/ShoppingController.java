@@ -33,6 +33,11 @@ public class ShoppingController {
     return shopping.add(gardenId, productId, sessions.resolve(request, response));
   }
 
+  @PostMapping("/api/shopping-lists/items/{productId}")
+  public Detail createAndAdd(@PathVariable String productId, HttpServletRequest request, HttpServletResponse response) {
+    return shopping.createAndAdd(productId, sessions.resolve(request, response));
+  }
+
   @GetMapping("/api/shopping-lists/{gardenId}")
   public Detail detail(@PathVariable String gardenId, HttpServletRequest request, HttpServletResponse response) {
     return shopping.detail(gardenId, sessions.resolve(request, response));

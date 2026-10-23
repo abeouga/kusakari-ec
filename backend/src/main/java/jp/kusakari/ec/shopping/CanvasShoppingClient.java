@@ -1,6 +1,8 @@
 package jp.kusakari.ec.shopping;
 
 import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,14 @@ public class CanvasShoppingClient {
     } catch (RestClientResponseException error) {
       if (error.getStatusCode().value() == 404) throw new ApiException(404, "GARDEN_NOT_FOUND", "庭が見つかりません。");
       throw unavailable();
+    } catch (RestClientException error) { throw unavailable(); }
+  }
+  public CreatedGarden createGarden(String name) {
+    try {
+      var result = client.post().uri("/api/gardens").contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("name", name)).retrieve().body(CreatedGarden.class);
+      if (result == null || result.id() == null) throw unavailable();
+      return result;
     } catch (RestClientException error) { throw unavailable(); }
   }
   public byte[] thumbnail(String id) {

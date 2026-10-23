@@ -4,6 +4,8 @@ import { api, yen } from '../api';
 import { Dialog } from './Dialog';
 import { useShoppingData } from './useShoppingData';
 
+const NEW_LIST = '__new__';
+
 /** @param {{product:import('../types').Product,onClose:()=>void}} props */
 export function AddToShoppingList({ product, onClose }) {
   const data = useShoppingData('');
@@ -18,11 +20,13 @@ export function AddToShoppingList({ product, onClose }) {
   async function add(gardenId) {
     if (pending.current) return;
     pending.current = true;
-    setSaving(gardenId);
+    setSaving(gardenId || NEW_LIST);
     setError('');
     try {
-      await api.addShoppingListItem(gardenId, product.id);
-      setAdded((current) => [...current, gardenId]);
+      const result = gardenId
+        ? await api.addShoppingListItem(gardenId, product.id)
+        : await api.createShoppingListWithItem(product.id);
+      setAdded((current) => [...current, result.gardenId]);
       await data.reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '買い物リストに追加できませんでした。');
@@ -86,7 +90,7 @@ export function AddToShoppingList({ product, onClose }) {
           <div className="shopping-picker-empty">
             <Sprout size={28} aria-hidden="true" />
             <strong>庭プロジェクトがありません</strong>
-            <p>Canvasで庭を作成すると、ここに表示されます。</p>
+            <p>下のカードから新しい庭プロジェクトを作成できます。</p>
           </div>
         )}
         {!data.loading && !data.error && data.lists.length > 0 && !lists.length && (
@@ -137,6 +141,28 @@ export function AddToShoppingList({ product, onClose }) {
               </div>
             );
           })}
+          {!data.loading && !data.error && (
+            <div className="shopping-list-option is-new">
+              <button
+                type="button"
+                disabled={!!saving}
+                onClick={() => add('')}
+                aria-label="新しい庭プロジェクトを作成して買い物リストに追加"
+              >
+                <span className="shopping-new-icon">
+                  {saving === NEW_LIST ? (
+                    <LoaderCircle size={22} className="shopping-picker-spinner" aria-hidden="true" />
+                  ) : (
+                    <Plus size={22} aria-hidden="true" />
+                  )}
+                </span>
+                <span>
+                  <strong>新しい庭プロジェクトを作成</strong>
+                  <small>「買い物リスト」と自動で名付けて追加します</small>
+                </span>
+              </button>
+            </div>
+          )}
         </div>
         <p className="shopping-picker-footnote">同じ商品は重複して追加されません。</p>
       </div>

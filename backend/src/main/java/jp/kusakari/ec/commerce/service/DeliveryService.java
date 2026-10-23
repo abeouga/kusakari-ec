@@ -6,10 +6,19 @@ import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsRequest;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsView;
 import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.member.persistence.entity.PickupContactEntity;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DeliveryService {
+
+  /** The store pickup contact is kept on the member account and applied to every cart and order. */
+  public DeliveryFields pickupFields(PickupContactEntity contact) {
+    if (contact == null) return DeliveryFields.empty();
+    return validate(
+      new DetailsRequest(contact.getRecipientName(), contact.getRecipientPhone(), contact.getContactEmail())
+    );
+  }
 
   public DeliveryFields validate(DetailsRequest input) {
     return new DeliveryFields(

@@ -55,6 +55,8 @@ export const api = {
   /** @param {string} gardenId @param {string} productId @returns {Promise<import('./types').ShoppingDetail>} */
   addShoppingListItem: (gardenId, productId) =>
     request(`/shopping-lists/${encodeURIComponent(gardenId)}/items/${encodeURIComponent(productId)}`, 'PUT'),
+  /** @param {string} productId @returns {Promise<import('./types').ShoppingDetail>} */
+  createShoppingListWithItem: (productId) => request(`/shopping-lists/items/${encodeURIComponent(productId)}`, 'POST'),
   /** @param {string} id @param {import('./types').ShoppingTransferInput} input @returns {Promise<import('./types').ShoppingTransfer>} */
   transferShoppingList: (id, input) =>
     request(`/cart/shopping-lists/${encodeURIComponent(id)}/items`, 'POST', JSON.stringify(input)),
@@ -88,10 +90,6 @@ export const api = {
   updateProduct: (id, input) => request(`/products/${encodeURIComponent(id)}`, 'PUT', JSON.stringify(input)),
   /** @param {string} id */
   deleteProduct: (id) => request(`/products/${encodeURIComponent(id)}`, 'DELETE'),
-  /** @param {import('./types').PickupInput} details @param {number} revision @returns {Promise<import('./types').Cart>} */
-  saveDetails: (details, revision) => request('/cart/details', 'PUT', JSON.stringify({ details, revision })),
-  /** @param {number} revision @returns {Promise<import('./types').Cart>} */
-  clearDetails: (revision) => request(`/cart/details?revision=${revision}`, 'DELETE'),
   /** @param {string} id @param {import('./types').PickupInput} details @returns {Promise<import('./types').Order>} */
   updateOrder: (id, details) => request(`/orders/${encodeURIComponent(id)}`, 'PUT', JSON.stringify(details)),
   /** @param {string} id */

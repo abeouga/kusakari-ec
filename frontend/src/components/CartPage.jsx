@@ -25,14 +25,13 @@ export function CartPage({ shop, onStores, gardenId = '', showGardens, header })
     {header}
     <main className="standalone-cart-main">
       <div className="shopping-page-intro">
-        <div><p className="eyebrow">FROM YOUR GARDEN TO YOUR HOME</p><h1>庭の計画を、暮らしの中へ。</h1></div>
-        <PageLink className="text-link" href="/#plants">植物を探す →</PageLink>
-      </div>
-      <div className="shopping-segments" role="tablist" aria-label="お買い物の表示" onKeyDown={moveTab}>
-        <button type="button" role="tab" id="cart-tab" aria-controls="cart-panel" aria-selected={!gardens} tabIndex={gardens ? -1 : 0}
-          onClick={() => navigate('/cart')}><ShoppingCart size={18} aria-hidden="true"/>カート<span>{shop.cart?.itemCount ?? 0}</span></button>
-        <button type="button" role="tab" id="gardens-tab" aria-controls="gardens-panel" aria-selected={gardens} tabIndex={gardens ? 0 : -1}
-          onClick={() => navigate('/cart#garden-shopping-lists')}><Sprout size={18} aria-hidden="true"/>庭の買い物リスト</button>
+        <PageLink className="text-link back-link" href="/#plants">戻る</PageLink>
+        <div className="shopping-segments" role="tablist" aria-label="お買い物の表示" onKeyDown={moveTab}>
+          <button type="button" role="tab" id="cart-tab" aria-controls="cart-panel" aria-selected={!gardens} tabIndex={gardens ? -1 : 0}
+            onClick={() => navigate('/cart')}><ShoppingCart size={18} aria-hidden="true"/>カート<span>{shop.cart?.itemCount ?? 0}</span></button>
+          <button type="button" role="tab" id="gardens-tab" aria-controls="gardens-panel" aria-selected={gardens} tabIndex={gardens ? 0 : -1}
+            onClick={() => navigate('/cart#garden-shopping-lists')}><Sprout size={18} aria-hidden="true"/>庭の買い物リスト</button>
+        </div>
       </div>
       <div role="tabpanel" id={gardens ? 'gardens-panel' : 'cart-panel'} aria-labelledby={gardens ? 'gardens-tab' : 'cart-tab'}>
         {gardens && shop.isGuest ? <section className="cart-content">

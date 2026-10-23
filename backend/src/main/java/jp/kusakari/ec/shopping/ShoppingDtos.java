@@ -23,6 +23,8 @@ public final class ShoppingDtos {
 
   public record SourceList(String gardenId, String name, long revision, String updatedAt, List<SourceRow> items) {}
 
+  public record CreatedGarden(String id, String name) {}
+
   public record Product(String id, String name, String imageUrl, int priceYen, int stock, boolean active) {}
 
   public record Line(String key, String name, int quantity, String unit, List<Product> products) {}

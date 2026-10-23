@@ -2,13 +2,15 @@ import { productCanvasUrl } from '../canvasLink';
 import { useState } from 'react';
 import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { yen } from '../api';
-import { DeliveryForm } from './DeliveryForm';
 import { DeliverySummary } from './DeliverySummary';
+import { CheckoutConfirm } from './CheckoutConfirm';
+import { paymentLabel, paymentStatus } from '../payment';
 import { PageLink } from '../workspace/Common';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void}} props */
 export function Cart({ shop, onStores }) {
   const [confirming, setConfirming] = useState(false);
+  const [payment, setPayment] = useState('PAY_AT_STORE');
   const cart = shop.cart;
   if (shop.lastOrder) {
     return (
@@ -65,17 +67,20 @@ export function Cart({ shop, onStores }) {
   }
   let title = `ショッピングカート (${cart.itemCount})`;
   let checkoutLabel = '注文を確定する';
-  if (confirming) title = '注文内容の確認';
+  if (confirming) title = 'お支払い・受け取りの確認';
   if (shop.busy) checkoutLabel = '保存中…';
   return (
     <section className="cart-content">
       <h2>{title}</h2>
-      <p className="cart-page-lead">商品と受取方法をご確認ください。</p>
-      {shop.isGuest && <p role="status" className="fine-print">このカートは一時的なものです。再読み込みやECを離れると消えます。ログイン後に価格・在庫を再確認します。</p>}
-      <ol className="step-list">
-        <li>1 カート確認</li>
-        <li>2 店舗受け取り</li>
-        <li>3 注文確認</li>
+      {shop.isGuest && (
+        <p role="status" className="fine-print">
+          このカートは一時的なものです。再読み込みやECを離れると消えます。ログイン後に価格・在庫を再確認します。
+        </p>
+      )}
+      <ol className="checkout-steps" aria-label="購入の手順">
+        <li aria-current={confirming ? undefined : 'step'}>カート</li>
+        <li aria-current={confirming ? 'step' : undefined}>お支払い・受け取り</li>
+        <li>注文完了</li>
       </ol>
       {shop.error && (
         <p className="error" role="alert">
@@ -83,27 +88,28 @@ export function Cart({ shop, onStores }) {
         </p>
       )}
       <div className="checkout-layout">
-        <div>
-          <div className="cart-store">
-            <MapPin size={18} />
-            <div>
-              <small>店舗受け取り</small>
-              <strong>{cart.storeName}</strong>
+        {confirming && <CheckoutConfirm shop={shop} cart={cart} payment={payment} onPayment={setPayment} />}
+        {!confirming && (
+          <div>
+            <div className="cart-store">
+              <MapPin size={18} />
+              <div>
+                <small>店舗受け取り</small>
+                <strong>{cart.storeName}</strong>
+              </div>
+              <button className="text-button" disabled={shop.busy} onClick={onStores}>
+                変更
+              </button>
             </div>
-            <button className="text-button" disabled={shop.busy} onClick={onStores}>
-              変更
-            </button>
-          </div>
-          <div className="cart-items">
-            {cart.items.map((line) => (
-              <article className="cart-line" key={line.product.id}>
-                <img src={line.product.imageUrl} alt={line.product.name} />
-                <div className="cart-line-main">
-                  <h3>{line.product.name}</h3>
-                  <a href={productCanvasUrl(line.product.id)}>この商品を庭に配置</a>
-                  <p>{yen(line.product.priceYen)} / 1鉢</p>
-                  {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
-                  {!confirming && (
+            <div className="cart-items">
+              {cart.items.map((line) => (
+                <article className="cart-line" key={line.product.id}>
+                  <img src={line.product.imageUrl} alt={line.product.name} />
+                  <div className="cart-line-main">
+                    <h3>{line.product.name}</h3>
+                    <a href={productCanvasUrl(line.product.id)}>この商品を庭に配置</a>
+                    <p>{yen(line.product.priceYen)} / 1鉢</p>
+                    {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
                     <div className="quantity-control">
                       <button
                         aria-label={`${line.product.name}を1個減らす`}
@@ -121,12 +127,9 @@ export function Cart({ shop, onStores }) {
                         <Plus size={14} />
                       </button>
                     </div>
-                  )}
-                  {confirming && <p>数量：{line.quantity} 鉢</p>}
-                </div>
-                <div className="cart-line-end">
-                  <strong>{yen(line.lineTotalYen)}</strong>
-                  {!confirming && (
+                  </div>
+                  <div className="cart-line-end">
+                    <strong>{yen(line.lineTotalYen)}</strong>
                     <button
                       className="icon-button"
                       aria-label={`${line.product.name}を削除`}
@@ -135,22 +138,12 @@ export function Cart({ shop, onStores }) {
                     >
                       <Trash2 size={17} />
                     </button>
-                  )}
-                </div>
-              </article>
-            ))}
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
-          {!confirming && !shop.isGuest && (
-            <DeliveryForm
-              key={cart.revision}
-              details={cart.details}
-              busy={shop.busy}
-              onSave={shop.saveDetails}
-              onReset={shop.clearDetails}
-            />
-          )}
-          {confirming && <DeliverySummary details={cart.details} />}
-        </div>
+        )}
         <aside className="checkout-summary">
           <p className="eyebrow">ORDER SUMMARY</p>
           <h3>ご請求内容</h3>
@@ -181,7 +174,14 @@ export function Cart({ shop, onStores }) {
           )}
           {confirming && (
             <>
-              <button className="primary-button full" disabled={shop.busy || !cart.canCheckout} onClick={shop.checkout}>
+              <p className="checkout-payment-choice" data-testid="checkout-payment">
+                お支払い方法<strong>{paymentLabel(payment)}</strong>
+              </p>
+              <button
+                className="primary-button full"
+                disabled={shop.busy || !cart.canCheckout}
+                onClick={() => shop.checkout(payment)}
+              >
                 {checkoutLabel}
                 <CheckCircle2 size={18} />
               </button>
@@ -194,7 +194,9 @@ export function Cart({ shop, onStores }) {
             <button
               className="primary-button full"
               disabled={shop.busy || !cart.canCheckout}
-              onClick={async () => { if (await shop.beginCheckout()) setConfirming(true); }}
+              onClick={async () => {
+                if (await shop.beginCheckout()) setConfirming(true);
+              }}
             >
               注文内容を確認する
               <ArrowRight size={18} />
@@ -215,7 +217,15 @@ export function OrderSummary({ order }) {
       </div>
       <p className="order-id">注文番号：{order.id}</p>
       <p>{order.storeName}</p>
+      {order.pickupAddress && <p className="fine-print">{order.pickupAddress}</p>}
       <DeliverySummary details={order.details} />
+      {order.details?.paymentMethod && order.details.paymentMethod !== 'NONE' && (
+        <p data-testid="order-payment">
+          お支払い方法：{paymentLabel(order.details.paymentMethod)}
+          <br />
+          <small>{paymentStatus(order.details.paymentMethod)}</small>
+        </p>
+      )}
       {order.items.map((item) => (
         <div className="order-row" key={item.productId}>
           <span>

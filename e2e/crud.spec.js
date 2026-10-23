@@ -193,23 +193,17 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     } finally {
       await other.dispose();
     }
-    const cart = await page.request.get('/api/cart').then((r) => r.json());
-    const different = { ...cart.details, recipientName: '別のカート受取者' };
-    const invalidDate = { ...different, requestedDate: '2026-02-30' };
+    const contact = {
+      recipientName: '別のアカウント受取者',
+      recipientPhone: '03-0000-0000',
+      contactEmail: 'pickup@example.com',
+    };
     expect(
       (
-        await page.request.put('/api/cart/details', { data: { revision: cart.revision, details: invalidDate } })
+        await page.request.put('/api/account/pickup-contact', { data: { ...contact, contactEmail: 'not-an-email' } })
       ).status(),
     ).toBe(400);
-    const invalidPayment = { ...different, paymentMethod: 'STORE' };
-    expect(
-      (
-        await page.request.put('/api/cart/details', { data: { revision: cart.revision, details: invalidPayment } })
-      ).status(),
-    ).toBe(400);
-    expect(
-      (await page.request.put('/api/cart/details', { data: { revision: cart.revision, details: different } })).status(),
-    ).toBe(200);
+    expect((await page.request.put('/api/account/pickup-contact', { data: contact })).status()).toBe(200);
     const unchanged = await page.request.get('/api/orders').then((r) => r.json());
     expect(unchanged[0].details.recipientName).toBe('変更後デモ受取者');
     await page.reload();

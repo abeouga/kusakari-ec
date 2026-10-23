@@ -1,7 +1,7 @@
 package jp.kusakari.ec.commerce.dto;
 
-import jakarta.validation.constraints.*;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import java.util.List;
 import java.util.UUID;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
@@ -25,7 +25,8 @@ public final class CommerceDtos {
   public record CheckoutRequest(
     @NotNull UUID requestId,
     @PositiveOrZero long revision,
-    @Positive int expectedTotalYen
+    @Positive int expectedTotalYen,
+    @NotNull @Pattern(regexp = "CREDIT_CARD|PAYPAY|RAKUTEN_PAY|PAY_AT_STORE") String paymentMethod
   ) {}
 
   public record CartLine(ProductView product, int quantity, int lineTotalYen, boolean available) {}

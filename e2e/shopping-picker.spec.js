@@ -110,6 +110,59 @@ test('product picker saves to one owned garden, remains after reload and transfe
   }
 });
 
+test('picker creates a numbered garden project and saves the product into it', async ({ page, browser }) => {
+  await mkdir(evidence, { recursive: true });
+  await login(page, 'test.user@example.com');
+  const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
+  const product = products.find((p) => p.active);
+  expect(product).toBeTruthy();
+  const beforeCart = await call(page.request, '/cart').then((r) => r.json());
+  const before = await call(page.request, '/shopping-lists').then((r) => r.json());
+  const created = [];
+  const other = await browser.newContext();
+  try {
+    await page.goto(ec);
+    await page
+      .getByTestId(`product-${product.id}`)
+      .getByRole('button', { name: `${product.name}を買い物リストに追加`, exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', { name: '買い物リストに追加', exact: true });
+    const create = dialog.getByRole('button', {
+      name: '新しい庭プロジェクトを作成して買い物リストに追加',
+      exact: true,
+    });
+    await expect(create).toBeVisible();
+    await page.screenshot({ path: `${evidence}/create-card.png` });
+    await create.dblclick();
+    await expect(dialog.getByRole('status')).toContainText('に保存しました');
+    const after = await call(page.request, '/shopping-lists').then((r) => r.json());
+    const added = after.filter((list) => !before.some((old) => old.gardenId === list.gardenId));
+    created.push(...added);
+    expect(added).toHaveLength(1);
+    const numbers = before.map((l) => /^買い物リスト(\d+)$/.exec(l.name)).filter(Boolean).map((m) => Number(m[1]));
+    expect(added[0].name).toBe(`買い物リスト${Math.max(0, ...numbers) + 1}`);
+    await page.screenshot({ path: `${evidence}/create-done.png` });
+    const garden = await call(page.request, `/gardens/${added[0].gardenId}`, 'GET', undefined, canvas).then((r) =>
+      r.json(),
+    );
+    expect(garden.objects).toHaveLength(0);
+    const detail = await call(page.request, `/shopping-lists/${added[0].gardenId}`).then((r) => r.json());
+    expect(detail.items).toHaveLength(1);
+    expect(detail.items[0].products[0].id).toBe(product.id);
+    expect(detail.items[0].quantity).toBe(1);
+    expect(await call(page.request, '/cart').then((r) => r.json())).toEqual(beforeCart);
+    await page.goto(`${ec}/cart/gardens/${added[0].gardenId}`);
+    await expect(page.getByTestId(`ec-shopping-line-product:${product.id}`)).toContainText(product.name);
+    const otherPage = await other.newPage();
+    await login(otherPage, 'test.seller@example.com');
+    expect((await call(otherPage.request, `/shopping-lists/${added[0].gardenId}`)).status()).toBe(404);
+    await writeFile(`${evidence}/created-garden.json`, JSON.stringify({ garden, detail }, null, 2));
+  } finally {
+    await other.close();
+    for (const list of created) await call(page.request, `/gardens/${list.gardenId}`, 'DELETE', undefined, canvas);
+  }
+});
+
 test('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
   expect((await request.get(`${ec}/api/shopping-lists`)).status()).toBe(401);
   await login(page, 'test.user@example.com');

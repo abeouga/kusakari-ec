@@ -51,6 +51,7 @@ public class OrderService {
       throw new ApiException(409, "ORDER_METHOD_FIXED", "注文後は受取・配送区分を変更できません。");
     }
     DeliveryFields updated = delivery.validate(request);
+    updated.setPaymentMethod(previous.getPaymentMethod());
     details.save(new OrderDetailsEntity(orderId, updated));
     return mapper.toView(order, items.findAllForOrder(orderId), updated);
   }

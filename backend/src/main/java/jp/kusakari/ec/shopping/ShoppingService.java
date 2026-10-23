@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ShoppingService {
 
+  private static final java.util.regex.Pattern AUTO_NAME = java.util.regex.Pattern.compile("買い物リスト(\\d{1,6})");
+
   private final CanvasShoppingClient canvas;
   private final CatalogService catalog;
   private final MaterialProductRepository materials;
@@ -54,6 +56,26 @@ public class ShoppingService {
     saved.add(cartId, gardenId, productId);
     var snapshot = saved.read(cartId, gardenId);
     return resolve(supplement(source, snapshot), carts.read(cartId).storeId(), snapshot.revision());
+  }
+
+  /** Creates a garden named "買い物リストN" for the member and puts the product in its list. */
+  public Detail createAndAdd(String productId, String cartId) {
+    int next = canvas
+      .summaries()
+      .stream()
+      .map(summary -> AUTO_NAME.matcher(summary.name()))
+      .filter(java.util.regex.Matcher::matches)
+      .mapToInt(match -> {
+        try {
+          return Integer.parseInt(match.group(1));
+        } catch (NumberFormatException tooLarge) {
+          return 0;
+        }
+      })
+      .max()
+      .orElse(0) + 1;
+    var garden = canvas.createGarden("買い物リスト" + next);
+    return add(garden.id(), productId, cartId);
   }
 
   public Detail detail(String gardenId, String cartId) {

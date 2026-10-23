@@ -6,6 +6,7 @@ import './mockup.css';
 import './workspace/workspace.css';
 import './plant-model.css';
 import './shopping-lists.css';
+import './checkout.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Application root is missing.');
