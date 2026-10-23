@@ -73,6 +73,11 @@ export function AuthPanel({ onAuthenticated } = {}) {
       ) : (
         <>
           <form className="auth-form" onSubmit={submit} aria-busy={submitting}>
+            {(failure || params.get('auth') === 'failed') && (
+              <p className="auth-error" role="alert">
+                {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
+              </p>
+            )}
             <label>
               メールアドレス
               <input name="email" type="email" autoComplete="username" required maxLength={254} disabled={submitting} />
@@ -101,11 +106,6 @@ export function AuthPanel({ onAuthenticated } = {}) {
             </button>
           </div>
         </>
-      )}
-      {(failure || params.get('auth') === 'failed') && (
-        <p className="auth-error" role="alert">
-          {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
-        </p>
       )}
     </section>
   );
