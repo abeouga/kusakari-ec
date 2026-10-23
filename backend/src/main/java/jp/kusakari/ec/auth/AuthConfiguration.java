@@ -6,6 +6,8 @@ import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.*;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -78,8 +80,11 @@ public class AuthConfiguration {
     AuthService members,
     ClientRegistrationRepository clients,
     ObjectMapper json,
-    AuthUrls urls
+    AuthUrls urls,
+    CognitoPasswordLogin passwords
   ) throws Exception {
+    // Holds the Cognito refresh token only until the success handler moves it into the HTTP session.
+    var authorizedClients = new InMemoryOAuth2AuthorizedClientService(clients);
     var resolver = new DefaultOAuth2AuthorizationRequestResolver(clients, "/api/auth/authorize");
     resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
     var requests = new OAuth2AuthorizationRequestResolver() {
@@ -101,7 +106,7 @@ public class AuthConfiguration {
     return http
       .csrf(csrf -> csrf.ignoringRequestMatchers("/api/products/references", "/api/materials/quote"))
       .addFilterBefore(
-        new SessionValidityFilter(members, json),
+        new SessionValidityFilter(members, passwords, json),
         org.springframework.security.web.access.intercept.AuthorizationFilter.class
       )
       .requestCache(cache -> cache.disable())
@@ -136,10 +141,21 @@ public class AuthConfiguration {
         login
           .authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(requests))
           .redirectionEndpoint(endpoint -> endpoint.baseUri("/api/auth/callback/*"))
+          .authorizedClientService(authorizedClients)
           .successHandler((request, response, authentication) -> {
             try {
               members.provision((OidcUser) authentication.getPrincipal());
               members.current();
+              var token = (OAuth2AuthenticationToken) authentication;
+              var client = authorizedClients.loadAuthorizedClient(
+                token.getAuthorizedClientRegistrationId(),
+                token.getName()
+              );
+              authorizedClients.removeAuthorizedClient(token.getAuthorizedClientRegistrationId(), token.getName());
+              if (client == null || client.getRefreshToken() == null) throw new IllegalStateException(
+                "Cognito refresh token is required."
+              );
+              CognitoRefreshSession.store(request, client.getRefreshToken().getTokenValue());
               var session = request.getSession();
               Object target = session.getAttribute("AUTH_RETURN_TO");
               session.removeAttribute("AUTH_RETURN_TO");

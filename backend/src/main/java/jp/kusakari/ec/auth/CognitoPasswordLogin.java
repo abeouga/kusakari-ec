@@ -73,15 +73,46 @@ public class CognitoPasswordLogin {
     );
   }
 
-  private record Tokens(OidcUser user, String accessToken) {
+  /** The refresh token is kept server-side and must never be returned to the browser. */
+  public record Login(OidcUser user, String refreshToken) {
+    @Override
+    public String toString() {
+      return "Login[redacted]";
+    }
+  }
+
+  private record Tokens(OidcUser user, String accessToken, String refreshToken) {
     @Override
     public String toString() {
       return "Tokens[redacted]";
     }
   }
 
-  public OidcUser authenticate(String email, String password) {
-    return authenticateTokens(email, password).user();
+  public Login authenticate(String email, String password) {
+    var tokens = authenticateTokens(email, password);
+    if (tokens.refreshToken() == null || tokens.refreshToken().isBlank()) throw new ApiException(
+      503,
+      "AUTH_UNAVAILABLE",
+      "認証を確認できません。時間をおいて再試行してください。"
+    );
+    return new Login(tokens.user(), tokens.refreshToken());
+  }
+
+  /**
+   * Renews the ID token with the stored refresh token. Cognito does not rotate the refresh token on this flow,
+   * so the original one stays valid until its own expiry.
+   */
+  public OidcUser refresh(String refreshToken, String subject) {
+    OidcUser user;
+    try {
+      var result = initiateAuth("REFRESH_TOKEN_AUTH", Map.of("REFRESH_TOKEN", refreshToken));
+      user = toUser(result.path("IdToken").asText(""));
+    } catch (ApiException error) {
+      if (error.status() == 401) throw new ApiException(401, "LOGIN_REQUIRED", "ログインしてください。");
+      throw error;
+    }
+    if (!user.getSubject().equals(subject)) throw new ApiException(401, "LOGIN_REQUIRED", "ログインしてください。");
+    return user;
   }
 
   public void changePassword(String email, String subject, String previous, String proposed) {
@@ -112,22 +143,22 @@ public class CognitoPasswordLogin {
   }
 
   private Tokens authenticateTokens(String email, String password) {
+    var result = initiateAuth("USER_PASSWORD_AUTH", Map.of("USERNAME", email, "PASSWORD", password));
+    return new Tokens(
+      toUser(result.path("IdToken").asText("")),
+      result.path("AccessToken").asText(""),
+      result.path("RefreshToken").asText(null)
+    );
+  }
+
+  private JsonNode initiateAuth(String flow, Map<String, String> parameters) {
     try {
       var result = client
         .post()
         .uri("/")
         .header("Content-Type", "application/x-amz-json-1.1")
         .header("X-Amz-Target", "AWSCognitoIdentityProviderService.InitiateAuth")
-        .body(
-          Map.of(
-            "ClientId",
-            clientId,
-            "AuthFlow",
-            "USER_PASSWORD_AUTH",
-            "AuthParameters",
-            Map.of("USERNAME", email, "PASSWORD", password)
-          )
-        )
+        .body(Map.of("ClientId", clientId, "AuthFlow", flow, "AuthParameters", parameters))
         .retrieve()
         .body(JsonNode.class);
       if (result == null) throw new ApiException(503, "AUTH_UNAVAILABLE", "認証サービスに接続できません。");
@@ -136,13 +167,7 @@ public class CognitoPasswordLogin {
         "AUTH_CHALLENGE_REQUIRED",
         "追加の本人確認またはパスワード変更が必要です。認証画面で手続きを完了してください。"
       );
-      String value = result.path("AuthenticationResult").path("IdToken").asText("");
-      Jwt jwt = decoder.decode(value);
-      var token = new OidcIdToken(value, jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims());
-      return new Tokens(
-        new DefaultOidcUser(List.of(new OidcUserAuthority(token)), token),
-        result.path("AuthenticationResult").path("AccessToken").asText()
-      );
+      return result.path("AuthenticationResult");
     } catch (RestClientResponseException error) {
       String type = "";
       try {
@@ -165,7 +190,17 @@ public class CognitoPasswordLogin {
         );
       }
       throw new ApiException(503, "AUTH_UNAVAILABLE", "認証サービスに接続できません。時間をおいて再試行してください。");
-    } catch (RestClientException | JwtException | IllegalArgumentException error) {
+    } catch (RestClientException error) {
+      throw new ApiException(503, "AUTH_UNAVAILABLE", "認証を確認できません。時間をおいて再試行してください。");
+    }
+  }
+
+  private OidcUser toUser(String idToken) {
+    try {
+      Jwt jwt = decoder.decode(idToken);
+      var token = new OidcIdToken(idToken, jwt.getIssuedAt(), jwt.getExpiresAt(), jwt.getClaims());
+      return new DefaultOidcUser(List.of(new OidcUserAuthority(token)), token);
+    } catch (JwtException | IllegalArgumentException error) {
       throw new ApiException(503, "AUTH_UNAVAILABLE", "認証を確認できません。時間をおいて再試行してください。");
     }
   }

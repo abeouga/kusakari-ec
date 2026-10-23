@@ -15,7 +15,7 @@ CognitoとSpring Securityで本人確認し、ECとCanvasを同一利用者と�
 - 通常ログインはECの`/account/login`でメール/パスワードを入力し、CSRF保護された`POST /api/auth/login`からCognitoの`USER_PASSWORD_AUTH`を呼びます。ID tokenの署名/issuer/audience/token_use/期限/必須claimを検証して既存のSpring Securityセッションを発行し、セッションIDとCSRFを更新します。パスワードは保存せず、OAuthトークンはブラウザーへ返しません。
 - 新規登録、再設定、追加の本人確認は従来のCognito Managed Loginを維持します。`GET /api/auth/login?managed=true`（登録は`signup=true`）から認証コード+S256 PKCE、state、nonceを使い、Spring Securityが検証します。追加確認を通常のログイン成功として扱いません。
 - ブラウザーにはHttpOnly・SameSite=Lax・Path=/の`KUSAKARI_SESSION`だけを渡します。公開用HTTPS設定ではSecure属性を付けます。OAuthトークンをlocalStorage等に保存しません。
-- セッションはECプロセス内に保持し、アイドル30分とID token有効期限の短い方で終了します。再起動すると再ログインが必要です。複数ECタスクへの拡張・永続セッションは今回の対象外です。
+- セッションはECプロセス内に保持し、アイドル30日で終了します。ID tokenの期限切れはCognitoのrefresh tokenで自動更新し、refresh tokenは30日で失効します。詳細は[認証の更新トークン方式](auth-token-renewal.md)を参照してください。再起動すると再ログインが必要です。複数ECタスクへの拡張・永続セッションは今回の対象外です。
 - `GET /api/auth/me`はmode/authenticated/id/email/name/role/storeIdsを返します。`GET /api/auth/csrf`で得た確認情報を更新系要求のヘッダーへ付け、`POST /api/auth/logout`でローカルセッションとCognitoのブラウザーセッションを終了します。
 - Canvasは受信Cookieを、設定済みECオリジンの`/api/auth/me`へ照会します。更新系は同じCSRFヘッダーを`POST /api/auth/verify`へ渡し、ECで検証します。認証確認に失敗した場合は401/403/503を返し、固定所有者へ戻しません。
 - ECからCanvasへの庭照会・モデル解決も同じセッション/CSRFを転送します。認証用HTTPクライアントはリダイレクトしません。クライアントから受け取ったownerIdやユーザーヘッダーは採用しません。

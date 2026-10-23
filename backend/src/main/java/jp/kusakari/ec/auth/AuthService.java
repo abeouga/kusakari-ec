@@ -46,8 +46,7 @@ public class AuthService {
     if (
       authentication == null ||
       !(authentication.getPrincipal() instanceof OidcUser user) ||
-      user.getIdToken().getExpiresAt() == null ||
-      !user.getIdToken().getExpiresAt().isAfter(Instant.now())
+      !idTokenValid(user)
     ) {
       throw new ApiException(401, "LOGIN_REQUIRED", "ログインしてください。");
     }
@@ -56,6 +55,11 @@ public class AuthService {
       .orElseThrow(() -> new ApiException(401, "LOGIN_REQUIRED", "再度ログインしてください。"));
     if (!member.isEnabled()) throw new ApiException(403, "ACCOUNT_DISABLED", "このアカウントは利用できません。");
     return member;
+  }
+
+  static boolean idTokenValid(OidcUser user) {
+    var expiresAt = user.getIdToken().getExpiresAt();
+    return expiresAt != null && expiresAt.isAfter(Instant.now());
   }
 
   public SessionView session() {

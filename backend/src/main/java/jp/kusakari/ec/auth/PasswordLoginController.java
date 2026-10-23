@@ -31,7 +31,8 @@ public class PasswordLoginController {
     HttpServletRequest request,
     HttpServletResponse response
   ) {
-    var user = passwords.authenticate(input.email().trim(), input.password());
+    var login = passwords.authenticate(input.email().trim(), input.password());
+    var user = login.user();
     members.provision(user);
     var context = SecurityContextHolder.createEmptyContext();
     context.setAuthentication(new OAuth2AuthenticationToken(user, user.getAuthorities(), "cognito"));
@@ -39,6 +40,7 @@ public class PasswordLoginController {
     try {
       members.current();
       if (request.getSession(false) != null) request.changeSessionId();
+      CognitoRefreshSession.store(request, login.refreshToken());
       new HttpSessionCsrfTokenRepository().saveToken(null, request, response);
       new HttpSessionSecurityContextRepository().saveContext(context, request, response);
       return Map.of("returnTo", urls.safeReturn(input.returnTo()));
