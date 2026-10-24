@@ -48,6 +48,11 @@ export function AuthPanel({ onAuthenticated } = {}) {
   if (session.mode === 'demo') return <p>Cognitoが未設定のため、ログイン・新規登録は利用できません。</p>;
   return (
     <section className="workspace-card">
+      {(failure || params.get('auth') === 'failed') && (
+        <p className="auth-error" role="alert">
+          {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
+        </p>
+      )}
       {destination ? <>
         <p>ログインしました。カートの価格・在庫を確認して引き継ぎます。</p>
         <button disabled={submitting} onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
@@ -73,11 +78,6 @@ export function AuthPanel({ onAuthenticated } = {}) {
       ) : (
         <>
           <form className="auth-form" onSubmit={submit} aria-busy={submitting}>
-            {(failure || params.get('auth') === 'failed') && (
-              <p className="auth-error" role="alert">
-                {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
-              </p>
-            )}
             <label>
               メールアドレス
               <input name="email" type="email" autoComplete="username" required maxLength={254} disabled={submitting} />
