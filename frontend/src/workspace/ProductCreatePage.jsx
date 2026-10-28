@@ -1,4 +1,5 @@
 import { ProductForm } from '../components/ProductForm';
+import { SellerStoreSelect } from '../components/SellerStoreSelect';
 import { navigate } from './navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>}} props */
@@ -19,24 +20,10 @@ export function ProductCreatePage({ shop }) {
       <ProductForm
         storeSelector={
           <div className="manager-toolbar">
-            <label>
-              在庫を登録する店舗
-              <select
-                aria-label="在庫を登録する店舗"
-                value={storeId}
-                disabled={disabled}
-                onChange={(event) => shop.setSellerStoreId(Number(event.target.value))}
-              >
-                {shop.stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SellerStoreSelect shop={shop} disabled={disabled} label="在庫を登録する店舗" />
           </div>
         }
-        storeName={shop.stores.find((store) => store.id === storeId)?.name}
+        storeName={shop.sellerStores.find((store) => store.id === storeId)?.name}
         product={null}
         storeId={storeId}
         busy={disabled}

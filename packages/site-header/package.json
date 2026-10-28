@@ -1,6 +1,6 @@
 {
   "name": "@kusakari/site-header",
-  "version": "0.1.9",
+  "version": "0.1.13",
   "private": true,
   "type": "module",
   "exports": {

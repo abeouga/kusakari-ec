@@ -1,5 +1,4 @@
 @media (min-width: 1600px) {
-  .site-header,
   .announcement {
     padding-inline: calc((100vw - 1360px) / 2);
   }
@@ -8,13 +7,6 @@
   }
 }
 @media (max-width: 1000px) {
-  .site-header {
-    gap: 20px;
-    padding-inline: 4%;
-  }
-  .site-header nav {
-    gap: 20px;
-  }
   .header-actions {
     gap: 12px;
   }

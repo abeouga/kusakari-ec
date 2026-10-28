@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, canvas, login, call } from './business-helpers.js';
+import { ec, canvas, login, call, add, prepareMember, productInput } from './business-helpers.js';
 
 const evidence = 'artifacts/shopping-picker';
 
@@ -163,6 +163,91 @@ test('picker creates a numbered garden project and saves the product into it', a
   }
 });
 
+test('a product saved from EC appears in the Canvas list and placing it does not count it twice', async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  await login(page, 'test.user@example.com');
+  const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
+  const product = products.find(
+    (p) =>
+      p.active &&
+      [1, 2, 3, 4].includes(p.modelComposition?.version) &&
+      p.modelComposition.catalogVersion === p.modelComposition.version,
+  );
+  expect(product, 'an active product with a Canvas plant model').toBeTruthy();
+  const created = await call(
+    page.request,
+    '/gardens',
+    'POST',
+    { name: `EC追加の配置 ${randomUUID().slice(0, 8)}` },
+    canvas,
+  );
+  expect(created.status()).toBe(201);
+  const garden = await created.json();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  try {
+    expect((await call(page.request, `/shopping-lists/${garden.id}/items/${product.id}`, 'PUT')).status()).toBe(200);
+    await page.goto(`${canvas}/gardens/${garden.id}`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: '3D庭', exact: true }).click();
+    await page.getByRole('tab', { name: '買い物リスト（1）', exact: true }).click();
+    const line = page.getByTestId(`shopping-line-${product.id}`);
+    await expect(line).toContainText(product.name);
+    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 1点');
+    await expect(line.getByTestId('unplaced-ec-item')).toBeVisible();
+    const target = page.getByTestId('garden-canvas').locator('canvas');
+    const drop = async (x) => {
+      const bounds = await target.boundingBox();
+      await line.dragTo(target, {
+        sourcePosition: { x: 35, y: 35 },
+        targetPosition: { x: bounds.width * x, y: bounds.height * 0.5 },
+      });
+    };
+    // Placement needs the Canvas product model, which loads with the EC catalog.
+    await expect(line.getByRole('button', { name: '庭に配置', exact: true })).toBeEnabled();
+    await drop(0.5);
+    await expect(page.getByTestId('save-status')).toHaveText('保存済み');
+    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 1点');
+    await expect(line.getByTestId('unplaced-ec-item')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: '買い物リスト（1）', exact: true })).toBeVisible();
+    const one = await call(page.request, `/shopping-lists/${garden.id}`).then((r) => r.json());
+    expect(one.items.map((item) => [item.key, item.quantity])).toEqual([[`product:${product.id}`, 1]]);
+    await drop(0.65);
+    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 2点');
+    await expect(page.getByTestId('save-status')).toHaveText('保存済み');
+    await expect
+      .poll(() =>
+        call(page.request, `/shopping-lists/${garden.id}`)
+          .then((r) => r.json())
+          .then((d) => d.items[0].quantity),
+      )
+      .toBe(2);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: '3D庭', exact: true }).click();
+    await page.getByRole('tab', { name: '買い物リスト（2）', exact: true }).click();
+    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 2点');
+    await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 2 / 2');
+    await expect.poll(() => line.locator('img').evaluate((img) => img.complete && img.naturalWidth > 0)).toBeTruthy();
+    await page.screenshot({ path: `${evidence}/canvas-ec-item-reloaded.png` });
+    const saved = await call(page.request, `/gardens/${garden.id}`, 'GET', undefined, canvas).then((r) => r.json());
+    expect(saved.objects.filter((o) => o.productId === product.id)).toHaveLength(2);
+    await writeFile(
+      `${evidence}/canvas-ec-item.json`,
+      JSON.stringify(
+        {
+          garden: saved,
+          savedItems: await call(page.request, `/shopping-lists/${garden.id}/saved-items`).then((r) => r.json()),
+          detail: await call(page.request, `/shopping-lists/${garden.id}`).then((r) => r.json()),
+        },
+        null,
+        2,
+      ),
+    );
+    expect(errors).toEqual([]);
+  } finally {
+    await call(page.request, `/gardens/${garden.id}`, 'DELETE', undefined, canvas);
+  }
+});
+
 test('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
   expect((await request.get(`${ec}/api/shopping-lists`)).status()).toBe(401);
   await login(page, 'test.user@example.com');
@@ -181,4 +266,97 @@ test('unavailable list shows an error with retry; signed-out users must log in',
   await expect(dialog.getByRole('alert')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+});
+
+test('EC-B24/B25 cart counts, stock with the cart, select-all reasons and retry after a lost transfer', async ({
+  page,
+  browser,
+}) => {
+  await mkdir(evidence, { recursive: true });
+  const sellerContext = await browser.newContext();
+  const seller = await sellerContext.newPage();
+  const products = [];
+  let garden;
+  try {
+    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
+    for (const stock of [2, 5]) {
+      const created = await call(seller.request, '/products', 'POST', { ...productInput(), stock });
+      expect(created.status(), await created.text()).toBe(200);
+      products.push(await created.json());
+    }
+    const [scarce, plenty] = products;
+    await login(page, 'test.user@example.com');
+    const cart = await call(page.request, '/cart').then((r) => r.json());
+    if (cart.storeId !== 1)
+      expect((await call(page.request, '/cart/store', 'PUT', { storeId: 1, revision: cart.revision })).status()).toBe(200);
+    const created = await call(page.request, '/gardens', 'POST', { name: `在庫判定 ${randomUUID().slice(0, 8)}` }, canvas);
+    expect(created.status()).toBe(201);
+    garden = await created.json();
+    for (const product of products)
+      expect((await call(page.request, `/shopping-lists/${garden.id}/items/${product.id}`, 'PUT')).status()).toBe(200);
+    await add(page.request, scarce.id, 1);
+
+    // EC-B24: "カートにn点" only for products in the cart; stock is short when stock < cart + list quantity.
+    await page.goto(`${ec}/cart/gardens/${garden.id}`);
+    const scarceLine = page.getByTestId(`ec-shopping-line-product:${scarce.id}`);
+    const plentyLine = page.getByTestId(`ec-shopping-line-product:${plenty.id}`);
+    await expect(scarceLine).toContainText('店舗在庫 2点・カートに1点');
+    await expect(scarceLine).not.toContainText('在庫不足');
+    await expect(plentyLine).toContainText('店舗在庫 5点');
+    await expect(plentyLine).not.toContainText('カートに');
+    await add(page.request, scarce.id, 2);
+    await page.reload();
+    await expect(scarceLine).toContainText('カートに2点');
+    await expect(scarceLine).toContainText('在庫不足');
+    await expect(scarceLine.getByRole('checkbox')).toBeDisabled();
+
+    // EC-B25: select-all says which products it left out and why.
+    await page.getByRole('button', { name: '全選択', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: '追加できないため選択していません' })).toContainText(
+      `${scarce.name}（在庫不足）`,
+    );
+    await expect(plentyLine.getByRole('checkbox')).toBeChecked();
+    await expect(scarceLine.getByRole('checkbox')).not.toBeChecked();
+
+    // 4a (fault injection): a lost request keeps the selection and can be retried.
+    await page.route('**/api/cart/shopping-lists/**', (route) => route.abort());
+    await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'カートに追加されていません' })).toBeVisible();
+    await expect(plentyLine.getByRole('checkbox')).toBeChecked();
+    const unchanged = await call(page.request, '/cart').then((r) => r.json());
+    expect(unchanged.items.some((item) => item.product.id === plenty.id)).toBe(false);
+    await page.unroute('**/api/cart/shopping-lists/**');
+    await page.getByRole('button', { name: '再実行', exact: true }).click();
+    await expect(page).toHaveURL(`${ec}/cart`);
+    const after = await call(page.request, '/cart').then((r) => r.json());
+    expect(after.items.find((item) => item.product.id === plenty.id)?.quantity).toBe(1);
+    expect(after.items.find((item) => item.product.id === scarce.id)?.quantity).toBe(2);
+    await page.goto(`${ec}/cart/gardens/${garden.id}`);
+    await page.reload();
+    await expect(plentyLine).toContainText('カートに1点');
+    await page.screenshot({ path: `${evidence}/stock-and-retry-reloaded.png` });
+    await writeFile(
+      `${evidence}/stock-and-retry.json`,
+      JSON.stringify(
+        { cart: after, list: await call(page.request, `/shopping-lists/${garden.id}`).then((r) => r.json()) },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    // Only this test's products leave the shared buyer's cart and the catalogue.
+    for (const product of products) {
+      const current = await call(page.request, '/cart').then((r) => r.json());
+      if (current.items.some((item) => item.product.id === product.id))
+        await call(page.request, `/cart/items/${product.id}`, 'PUT', { quantity: 0, revision: current.revision });
+    }
+    if (products.length)
+      await call(seller.request, '/seller/products/status', 'PATCH', {
+        storeId: 1,
+        productIds: products.map((p) => p.id),
+        status: 'HIDDEN',
+      });
+    if (garden) await call(page.request, `/gardens/${garden.id}`, 'DELETE', undefined, canvas);
+    await sellerContext.close();
+  }
 });

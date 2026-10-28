@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { call, login, prepareMember, productInput, add, checkout } from './business-helpers.js';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { ec, call, login, prepareMember, productInput, add, checkout } from './business-helpers.js';
 
 test('price changes, store suspension, private attachments and pickup cancellation race', async ({ browser }) => {
   const contexts = await Promise.all([browser.newContext(), browser.newContext(), browser.newContext()]);
@@ -23,6 +24,7 @@ test('price changes, store suspension, private attachments and pickup cancellati
       requestId: randomUUID(),
       revision: original.revision,
       expectedTotalYen: original.totalYen,
+      paymentMethod: 'PAY_AT_STORE',
     });
     expect(stale.status()).toBe(409);
     expect((await stale.json()).code).toBe('PRICE_CHANGED');
@@ -35,6 +37,7 @@ test('price changes, store suspension, private attachments and pickup cancellati
             requestId: randomUUID(),
             revision: cart.revision,
             expectedTotalYen: cart.totalYen,
+            paymentMethod: 'PAY_AT_STORE',
           })
         ).status(),
       ).toBe(409);
@@ -73,6 +76,60 @@ test('price changes, store suspension, private attachments and pickup cancellati
       expect((await call(seller.request, `/account/store-applications/${id}/document`)).status()).toBe(404);
       expect((await call(admin.request, `/account/store-applications/${id}/document`)).status()).toBe(200);
     }
+  } finally {
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+});
+
+test('pickup status changes are confirmed, cancellable and show the latest order after a conflict', async ({
+  browser,
+}) => {
+  const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+  const [buyer, seller] = await Promise.all(contexts.map((c) => c.newPage()));
+  try {
+    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
+    const created = await call(seller.request, '/products', 'POST', productInput());
+    expect(created.status(), await created.text()).toBe(200);
+    await add(buyer.request, (await created.json()).id);
+    const { order } = await checkout(buyer.request);
+    const persisted = async () =>
+      (await call(seller.request, `/seller/orders/${order.id}`).then((r) => r.json())).status;
+
+    await seller.goto(`${ec}/seller/orders`);
+    const card = seller.getByTestId(`order-${order.id}`);
+    const ready = seller.getByRole('alertdialog', { name: '受取準備完了の確認' });
+    // EC-S09 3a: cancelling the confirmation leaves the order unchanged.
+    await card.getByRole('button', { name: '受取準備完了にする', exact: true }).click();
+    await expect(ready).toContainText(order.id);
+    await ready.getByRole('button', { name: '取消', exact: true }).click();
+    await expect(ready).toHaveCount(0);
+    await expect(card).toContainText('注文状態：注文受付');
+    expect(await persisted()).toBe('ACCEPTED');
+
+    // EC-S09 4a: the order changes after the confirmation opens; the update is refused and the latest state shown.
+    await card.getByRole('button', { name: '受取準備完了にする', exact: true }).click();
+    const elsewhere = await call(seller.request, `/seller/orders/${order.id}/status`, 'PUT', {
+      expectedStatus: 'ACCEPTED',
+      status: 'READY',
+    });
+    expect(elsewhere.status(), await elsewhere.text()).toBe(200);
+    await ready.getByRole('button', { name: '受取準備完了を確定', exact: true }).click();
+    await expect(seller.getByRole('alert')).toContainText('注文状態が変わりました');
+    await expect(card).toContainText('注文状態：受取準備完了');
+
+    // EC-S10: confirmed hand-over persists after reload.
+    await card.getByRole('button', { name: '引き渡し完了にする', exact: true }).click();
+    const handOver = seller.getByRole('alertdialog', { name: '引き渡し完了の確認' });
+    await handOver.getByRole('button', { name: '引き渡し完了を確定', exact: true }).click();
+    await expect(card).toContainText('注文状態：引き渡し完了');
+    await seller.reload();
+    await expect(card).toContainText('注文状態：引き渡し完了');
+    expect(await persisted()).toBe('COMPLETED');
+    await mkdir('artifacts/business', { recursive: true });
+    await seller.screenshot({ path: 'artifacts/business/pickup-confirm-reloaded.png', fullPage: true });
+    const saved = await call(seller.request, `/seller/orders/${order.id}`).then((r) => r.json());
+    await writeFile('artifacts/business/pickup-confirm.json', JSON.stringify(saved, null, 2));
   } finally {
     await Promise.all(contexts.map((c) => c.close()));
   }

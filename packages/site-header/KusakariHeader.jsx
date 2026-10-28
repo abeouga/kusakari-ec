@@ -41,7 +41,7 @@ export function KusakariHeader({
   }
 
   return (
-    <div className="kusakari-site-chrome" data-header-version="0.1.9">
+    <div className="kusakari-site-chrome" data-header-version="0.1.13">
       <div className="announcement">
         <span>GREEN FOR YOUR EVERYDAY</span>
         <span>ひと鉢からはじまる、緑のある暮らし。</span>
@@ -59,6 +59,7 @@ export function KusakariHeader({
           {panelAction('guide', 'Kusakariについて')}
           {showSeller && <a href={shopUrl('/seller')} onClick={follow}>出店者</a>}
         </nav>
+        <div className="header-end">
         <div className="workspace-entry-links">
           {!authenticated && panelAction('login', <><LogIn size={16} aria-hidden="true" />ログイン</>, 'login-entry')}
           {authenticated && <a className="account-entry" href={shopUrl('/account')} onClick={follow}>
@@ -68,12 +69,15 @@ export function KusakariHeader({
           {showAdmin && <a href={shopUrl('/operator')} onClick={follow}>管理者画面</a>}
         </div>
         <div className="header-actions">
-          {panelAction('orders', <><History size={18} aria-hidden="true" />注文履歴</>, 'history-button')}
+          <a className="history-button" href={shopUrl('/purchases')} onClick={follow}>
+            <History size={18} aria-hidden="true" />注文履歴
+          </a>
           <a className="bag-button" href={shopUrl('/cart')} aria-label={cartLabel} onClick={follow}>
             <ShoppingCart size={20} aria-hidden="true" />
             <span className="bag-text">{cartText}</span>
             <span className="bag-count" title={countTitle}>{countText}</span>
           </a>
+        </div>
         </div>
       </header>
     </div>

@@ -22,6 +22,8 @@ public class MemberService {
   private final AuthMemberRepository members;
   private final AddressRepository addresses;
   private final PickupContactRepository pickupContacts;
+  private final WithdrawalGuard withdrawalGuard;
+  private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
 
   public record Address(
     @NotBlank @Size(max = 100) String recipient,
@@ -90,6 +92,26 @@ public class MemberService {
       "ADMIN_REQUIRED",
       "管理者はこの画面から退会できません。"
     );
+    var purchases = withdrawalGuard.openPurchases(id);
+    if (!purchases.isEmpty()) throw new WithdrawalBlockedException(
+      "WITHDRAWAL_OPEN_ORDERS",
+      "受け渡しが完了していない注文があるため退会できません。",
+      purchases
+    );
+    if (m.getRole().equals("SELLER") && m.getStoreId() != null) {
+      // Checkout locks the same store row, so no new order for this store can slip past the check.
+      stores.lock(m.getStoreId());
+      if (withdrawalGuard.hasListedProducts(m.getStoreId())) throw new WithdrawalBlockedException(
+        "WITHDRAWAL_LISTED_PRODUCTS",
+        "出品中の商品があるため退会できません。すべての商品を販売停止にしてから再度お試しください。",
+        List.of()
+      );
+      if (withdrawalGuard.hasOpenStoreOrders(m.getStoreId())) throw new WithdrawalBlockedException(
+        "WITHDRAWAL_STORE_ORDERS",
+        "引き渡しが完了していない注文、または処理していないキャンセル申請があるため退会できません。",
+        List.of()
+      );
+    }
     m.withdraw();
   }
 

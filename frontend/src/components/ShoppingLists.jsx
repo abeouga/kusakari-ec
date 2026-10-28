@@ -35,6 +35,8 @@ export function ShoppingListDetail({ shop, gardenId }) {
   const [selection, setSelection] = useState(/** @type {Record<string,string>} */ ({}));
   const [choices, setChoices] = useState(/** @type {Record<string,string>} */ ({}));
   const [changed, setChanged] = useState('');
+  const [selectNote, setSelectNote] = useState(/** @type {string[]} */ ([]));
+  const [transferFailed, setTransferFailed] = useState(false);
   const previousRevision = useRef(/** @type {string|null} */ (null));
   const detail = data.detail;
   const cart = shop.cart;
@@ -45,6 +47,8 @@ export function ShoppingListDetail({ shop, gardenId }) {
     if (previousRevision.current !== null && previousRevision.current !== revision) {
       setSelection({});
       setChoices({});
+      setSelectNote([]);
+      setTransferFailed(false);
       setChanged('庭の買い物リストが更新されました。必要な商品を選び直してください。');
     }
     previousRevision.current = revision;
@@ -52,11 +56,17 @@ export function ShoppingListDetail({ shop, gardenId }) {
   useEffect(() => {
     if (detail && cart && detail.storeId !== cart.storeId) void initialize();
   }, [detail, cart, initialize]);
-  /** @param {import('../types').ShoppingProduct} product @param {number} quantity */
+  /** @param {string} productId */
+  function inCart(productId) {
+    return cart?.items.find((item) => item.product.id === productId)?.quantity ?? 0;
+  }
+  /** EC-B24: stock is short when it is below the cart's quantity plus the list's quantity. The server checks the same.
+   * @param {import('../types').ShoppingProduct} product @param {number} quantity */
   function unavailable(product, quantity) {
     if (!product.active) return '販売終了';
-    if (quantity > 99) return '必要数がカート上限99点を超えています';
-    if (product.stock < quantity) return '在庫不足';
+    const total = inCart(product.id) + quantity;
+    if (total > 99) return 'カートの数量と合わせると上限99点を超えます';
+    if (product.stock < total) return '在庫不足';
     return '';
   }
   /** @param {import('../types').ShoppingLine} line */
@@ -65,19 +75,26 @@ export function ShoppingListDetail({ shop, gardenId }) {
   }
   function selectAll() {
     const next = /** @type {Record<string,string>} */ ({});
+    const left = [];
     for (const line of detail?.items ?? []) {
       const product = chosenProduct(line);
-      if (product && !unavailable(product, line.quantity)) next[line.key] = product.id;
+      const reason = product ? unavailable(product, line.quantity) : line.products.length ? '購入商品を選択してください' : '対応する販売商品がありません';
+      if (product && !reason) next[line.key] = product.id;
+      else left.push(`${product?.name ?? line.name}（${reason}）`);
     }
     setSelection(next);
+    setSelectNote(left);
   }
   async function transfer() {
     if (!detail || !cart || shop.busy || data.error || detail.storeId !== cart.storeId) return;
     const items = Object.entries(selection).map(([key, productId]) => ({ key, productId }));
     if (!items.length) return;
+    setTransferFailed(false);
     const result = await shop.transferShoppingList(gardenId, { gardenRevision: detail.revision, listRevision: detail.listRevision, cartRevision: cart.revision, items });
-    if (!result) { setSelection({}); await data.reload(); return; }
+    // EC-B25 4a: keep the selection so the same request can be retried. A changed list clears it (effect above).
+    if (!result) { setTransferFailed(true); await data.reload(); return; }
     setSelection({});
+    setSelectNote([]);
     if (result.added.length) navigate('/cart');
   }
   return <section className="garden-shopping-section" aria-label="庭の買い物リスト詳細">
@@ -89,11 +106,15 @@ export function ShoppingListDetail({ shop, gardenId }) {
     {data.error && <p role="alert">{data.error}<button type="button" onClick={data.reload}>再取得</button></p>}
     {shop.error && <p role="alert">{shop.error}</p>}
     {changed && <p role="status">{changed}</p>}
+    {transferFailed && Object.keys(selection).length > 0 && <p role="alert" className="error">選択した商品はカートに追加されていません。選択はそのまま残っています。
+      <button type="button" disabled={shop.busy} onClick={transfer}>再実行</button></p>}
+    {selectNote.length > 0 && <div role="status" className="garden-select-note"><p>次の商品は追加できないため選択していません。</p>
+      <ul>{selectNote.map(note => <li key={note}>{note}</li>)}</ul></div>}
     <ShoppingTransferNotice shop={shop}/>
     {detail?.items.length === 0 && <p>この庭の買い物リストは空です。</p>}
     {detail && <>
       <div className="garden-shopping-actions"><button type="button" disabled={shop.busy || !!data.error} onClick={selectAll}>全選択</button>
-        <button type="button" disabled={shop.busy} onClick={() => setSelection({})}>選択解除</button></div>
+        <button type="button" disabled={shop.busy} onClick={() => { setSelection({}); setSelectNote([]); }}>選択解除</button></div>
       {detail.items.map(line => {
         const product = chosenProduct(line);
         const reason = product ? unavailable(product, line.quantity) : line.products.length ? '購入商品を選択してください' : '対応する販売商品がありません';
@@ -115,7 +136,7 @@ export function ShoppingListDetail({ shop, gardenId }) {
                 setSelection(next);
               }}><option value="">選択してください</option>{line.products.map(p => <option key={p.id} value={p.id}>{p.name} / {yen(p.priceYen)}</option>)}</select></label>}
             {product && <><p>{yen(product.priceYen)} / 点・小計 {yen(product.priceYen * line.quantity)}</p>
-              <p>店舗在庫 {product.stock}点・カートに {cart?.items.find(item => item.product.id === product.id)?.quantity ?? 0}点</p></>}
+              <p>店舗在庫 {product.stock}点{inCart(product.id) > 0 && `・カートに${inCart(product.id)}点`}</p></>}
             {reason && <p className="error">{reason}</p>}
           </div>
         </article>;

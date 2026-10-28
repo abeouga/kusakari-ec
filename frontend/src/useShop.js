@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { login, readSession } from './auth';
 import { repriceGuestCart, setGuestQuantity } from './guestCart';
+import { useAuth } from './useAuth';
 
 export function useShop() {
+  const { session } = useAuth();
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
-  const [sellerStoreId, setSellerStoreId] = useState(1);
+  const [chosenSellerStoreId, setSellerStoreId] = useState(0);
   const [products, setProducts] = useState(/** @type {import('./types').Product[]} */ ([]));
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
@@ -79,7 +81,8 @@ export function useShop() {
   }, [promoteGuestCart, rememberGuest]);
 
   const run = useCallback(
-    /** @param {() => Promise<void>} action */ async (action) => {
+    /** @param {() => Promise<void>} action @param {boolean} [refreshOnFailure] */
+    async (action, refreshOnFailure = false) => {
       if (operation.current) return;
       operation.current = true;
       setBusy(true);
@@ -92,8 +95,10 @@ export function useShop() {
         let message = '処理に失敗しました。';
         if (reason instanceof Error) message = reason.message;
         setError(message);
-        if (reason instanceof ApiError && reason.status === 409) {
-          checkoutRequest.current = null;
+        const conflict = reason instanceof ApiError && reason.status === 409;
+        if (conflict) checkoutRequest.current = null;
+        // EC-B09 3a / EC-B10 2a: after any failed cart write, show the server's latest cart again.
+        if (conflict || refreshOnFailure) {
           try {
             await refresh();
           } catch {
@@ -138,7 +143,7 @@ export function useShop() {
       } else {
         setNotice('カートを更新しました。');
       }
-    });
+    }, !!cart && !cart.guest);
   }
 
   /** @param {string} id @param {number} [quantity] */
@@ -276,11 +281,23 @@ export function useShop() {
     return result;
   }
 
+  // Sellers manage only the store recorded on their member account; administrators may choose any store.
+  const ownStoreIds = session?.role === 'ADMIN' ? null : (session?.storeIds ?? []);
+  /** @type {{id:number,name:string}[]} */
+  const sellerStores = ownStoreIds
+    ? ownStoreIds.map((id) => stores.find((store) => store.id === id) ?? { id, name: `店舗 ${id}` })
+    : stores;
+  const sellerStoreId = sellerStores.some((store) => store.id === chosenSellerStoreId)
+    ? chosenSellerStoreId
+    : (sellerStores[0]?.id ?? 0);
+
   return {
     isGuest: !!cart?.guest,
     promoteGuestCart,
     beginCheckout,
     sellerStoreId,
+    sellerStores,
+    sellerStoresLoading: !session || (!ownStoreIds && !stores.length),
     setSellerStoreId,
     refreshProducts: refresh,
     transferShoppingList,

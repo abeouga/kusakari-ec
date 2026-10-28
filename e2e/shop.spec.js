@@ -53,14 +53,13 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('link', { name: 'カートを開く（0点）' })).toBeVisible();
-    await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
-    await expect(page.getByRole('dialog')).toContainText(order.id);
+    await page.getByRole('link', { name: '注文履歴', exact: true }).first().click();
+    await expect(page.getByTestId(`order-${order.id}`)).toBeVisible();
     const history = await page.request.get('/api/orders');
     expect((await history.json())[0].id).toBe(order.id);
     await mkdir('artifacts/e2e', { recursive: true });
     await writeFile('artifacts/e2e/order-after-reload.json', JSON.stringify(await history.json(), null, 2));
     await page.screenshot({ path: 'artifacts/e2e/order-after-reload.png', fullPage: true });
-    await page.getByRole('button', { name: '閉じる', exact: true }).click();
     await page.goto('/');
     await page.screenshot({ path: 'artifacts/e2e/catalog-desktop.png', fullPage: true });
     expect(errors).toEqual([]);
@@ -177,8 +176,8 @@ test('checkout retry after an explicitly lost response keeps the same order', as
     expect(payloads[1]).toEqual(payloads[0]);
     await page.reload();
     await expect(page.getByRole('link', { name: 'カートを開く（0点）' })).toBeVisible();
-    await page.getByRole('button', { name: '注文履歴', exact: true }).first().click();
-    await expect(page.getByRole('dialog')).toContainText(order.id);
+    await page.getByRole('link', { name: '注文履歴', exact: true }).first().click();
+    await expect(page.getByTestId(`order-${order.id}`)).toBeVisible();
     const historyResponse = await page.request.get('/api/orders');
     const history = await historyResponse.json();
     expect(history).toHaveLength(1);

@@ -54,6 +54,14 @@ public class ProductRequest {
   @Max(10000)
   private Integer stock;
 
+  /**
+   * Update only: the selected store's stock when the edit form opened. When omitted, the current stock
+   * must equal {@code stock}; a stale form therefore cannot overwrite stock changed by orders (EC-S05 5b).
+   */
+  @Min(0)
+  @Max(10000)
+  private Integer expectedStock;
+
   @NotBlank
   @Size(max = 250)
   @Pattern(regexp = "/images/[a-zA-Z0-9_.-]+|/api/product-images/[a-f0-9-]{36}|https://[^\\s]+")

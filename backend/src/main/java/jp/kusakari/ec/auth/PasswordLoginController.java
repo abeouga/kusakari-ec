@@ -54,6 +54,11 @@ public class PasswordLoginController {
   @PutMapping("/api/account/password")
   public Map<String, Boolean> changePassword(@Valid @RequestBody PasswordRequest input, HttpServletRequest request) {
     var member = members.current();
+    if (!input.newPassword().equals(input.confirmPassword())) throw new ApiException(
+      400,
+      "PASSWORD_MISMATCH",
+      "新しいパスワードと確認用パスワードが一致しません。"
+    );
     passwords.changePassword(member.getEmail(), member.getSubject(), input.currentPassword(), input.newPassword());
     request.getSession().invalidate();
     SecurityContextHolder.clearContext();
@@ -62,7 +67,8 @@ public class PasswordLoginController {
 
   public record PasswordRequest(
     @NotBlank @Size(max = 256) String currentPassword,
-    @NotBlank @Size(min = 8, max = 256) String newPassword
+    @NotBlank @Size(min = 8, max = 256) String newPassword,
+    @NotBlank @Size(max = 256) String confirmPassword
   ) {
     @Override
     public String toString() {

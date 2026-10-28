@@ -103,7 +103,12 @@ export async function add(request, productId, quantity = 1) {
 
 export async function checkout(request) {
   const cart = await call(request, '/cart').then((r) => r.json());
-  const payload = { requestId: randomUUID(), revision: cart.revision, expectedTotalYen: cart.totalYen };
+  const payload = {
+    requestId: randomUUID(),
+    revision: cart.revision,
+    expectedTotalYen: cart.totalYen,
+    paymentMethod: 'PAY_AT_STORE',
+  };
   const response = await call(request, '/orders', 'POST', payload);
   expect(response.status(), await response.text()).toBe(200);
   return { order: await response.json(), payload };

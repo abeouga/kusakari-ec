@@ -1,6 +1,10 @@
 import { AccountPage, accountActions } from './AccountPage';
-import { ApplicationPage, ProfilePage } from './PartnerForms';
+import { ProfilePage } from './PartnerForms';
+import { ApplicationPage, ApplicationStatusPage, applicationPaths, applicationsChanged } from './StoreApplication';
+import { useResource } from './useResource';
+import { useEffect } from 'react';
 import { OrderPage, SalesPage } from './OrderPages';
+import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { Notices } from './Notices';
 import { ProductInventory } from './ProductInventory';
@@ -30,15 +34,34 @@ const operatorMenu = [
 ];
 const buyerMenu = [
   ['/account', 'アカウント情報'],
-  ['/purchases', '注文状況'],
+  ['/purchases', '注文履歴'],
   ['/notifications', '通知一覧'],
 ];
 const accountSettings = accountActions.filter(([url]) =>
   ['/account/address', '/account/pickup-contact', '/account/password', '/account/delete'].includes(url),
 );
+/** @type {Record<string,string>} Pages whose sidebar link may be absent or labelled differently. */
+const pageTitles = {
+  '/materials': '配置素材の商品候補',
+  [applicationPaths.form]: '出店申請',
+  [applicationPaths.status]: '出店申請状況',
+};
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
   const { session, error } = useAuth();
+  // EC-B18: buyers see "出店申請" until they apply, then "出店申請状況" (also after a rejection).
+  const applications = useResource(
+    session?.authenticated && session.role === 'USER' ? '/account/store-applications' : null,
+  );
+  const reloadApplications = applications.reload;
+  useEffect(() => {
+    const reload = () => void reloadApplications();
+    window.addEventListener(applicationsChanged, reload);
+    return () => window.removeEventListener(applicationsChanged, reload);
+  }, [reloadApplications]);
+  const applicationLink = applications.data?.length
+    ? [applicationPaths.status, '出店申請状況']
+    : [applicationPaths.form, '出店申請'];
   if (error)
     return (
       <>
@@ -56,7 +79,7 @@ export function Workspace({ shop, path, header }) {
       </>
     );
   const publicStore = path.startsWith('/store/');
-  const application = path === '/seller/application';
+  const application = path === applicationPaths.form || path === applicationPaths.status;
   const seller = path.startsWith('/seller') && !application;
   const operator = path.startsWith('/operator');
   if (!publicStore && !session.authenticated && !['/account/register', '/account/reset'].includes(path))
@@ -77,7 +100,7 @@ export function Workspace({ shop, path, header }) {
         </main>
       </>
     );
-  const storeId = session.storeIds[0] ?? shop.sellerStoreId ?? 1;
+  const storeId = session.storeIds[0] ?? shop.sellerStoreId;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
@@ -85,20 +108,21 @@ export function Workspace({ shop, path, header }) {
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
-          ...(session.role === 'USER' ? [{ label: '出店をご検討の方', items: [['/seller/application', '出店申請']] }] : []),
+          ...(session.role === 'USER' ? [{ label: '出店をご検討の方', items: [applicationLink] }] : []),
         ];
   const menu = groups.flatMap((group) => group.items);
   let content;
   const action = accountActions.find((a) => a[0] === path);
   if (path === '/account' || action) content = <AccountPage key={path} tab={action?.[1] || 'アカウント情報'} />;
-  else if (path === '/purchases') content = <OrderPage buyer />;
+  else if (path === '/purchases') content = <BuyerOrders />;
   else if (path.endsWith('/notifications')) content = <Notices />;
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
   else if (path === '/seller/inventory') content = <ProductInventory shop={shop} />;
   else if (path === '/seller/profile') content = <ProfilePage storeId={storeId} />;
-  else if (application) content = <ApplicationPage />;
+  else if (path === applicationPaths.status) content = <ApplicationStatusPage role={session.role} />;
+  else if (application) content = <ApplicationPage role={session.role} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
     content = <OrderPage storeId={storeId} operator={operator} />;
   else if (path === '/seller/sales' || path === '/seller') content = <SalesPage storeId={storeId} />;
@@ -129,7 +153,7 @@ export function Workspace({ shop, path, header }) {
             ))}
           </aside>
           <main className="workspace-main">
-            <h1>{action?.[1] || menu.find(([url]) => url === path)?.[1] || (path === '/materials' ? '配置素材の商品候補' : 'Kusakari')}</h1>
+            <h1>{action?.[1] || menu.find(([url]) => url === path)?.[1] || pageTitles[path] || 'Kusakari'}</h1>
             {content}
           </main>
         </div>

@@ -18,10 +18,12 @@ Canvasは既存FastAPI / SQLAlchemy / Alembicを維持する。今回Canvas DB�
 - カートをロックし、requestIdとrevisionを照合。店舗・商品・店舗在庫をロックして価格・公開・販売停止・在庫を再確認する。在庫減算、注文と商品スナップショット、カート消去、宛先通知を同一トランザクションで保存する。
 - 注文受付→受取準備完了→引き渡し完了。前状態が一致しない操作は409。キャンセル申請は受付中のみ。申請中の準備操作を拒否する。承認時は注文行ロックと商品ID順の在庫ロックで、一度だけ在庫を戻す。却下後の再申請は可能。
 - 購入者の履歴非表示はdeleted_atだけを設定し、出店者・運営者・集計・在庫へ影響しない。匿名旧注文は会員へ推測で割り当てない。
-- 未認証401、権限不足403、他人の個別注文・庭404、状態競合409。停止会員は既存セッションも無効。退会はアプリ利用終了を保存し注文・庭は残す。
+- 未認証401、権限不足403、他人の個別注文・庭404、状態競合409。停止会員は既存セッションも無効。退会はアプリ利用終了を保存し注文・庭は残す。退会は削除ボタン押下時に、購入者の未完了注文、出店者の出品中商品・自店舗の未完了注文・未処理キャンセル申請を確認し、ある場合は409で拒否する（[記録](decisions/2026-10-28-buyer-account-use-cases.md)）。
 - 出店申請は会員行をロックして重複申請を拒否。承認は申請行・会員行をロックし店舗作成・SELLER付与・結果通知をまとめて保存。確認書類は5MBまでのPDF/PNG/JPEGをDBへ保存し、本人・管理者だけがダウンロードできる。
 - 商品公開は店舗別PUBLISHED/HIDDEN/DELETED。運営者のsuspendedは別属性で、出店者の再公開では解除できない。
-- カテゴリは商品登録・管理で共通。使用中カテゴリの削除を拒否し、名称変更は商品にも反映する。
+- カテゴリは商品登録・管理で共通。いずれかの店舗で削除されていない商品が使うカテゴリの削除を拒否し、名称変更は商品にも反映する。削除済み商品だけが参照するカテゴリは`deleted_at`で非表示にする（V13、[記録](decisions/2026-10-28-stock-and-category-deletion.md)）。
+- 在庫更新は在庫だけのAPIで、画面表示時点の在庫数と照合する。変わっていれば409で保存せず、画面は最新在庫を再表示する。
+- 出店者の店舗選択は会員の所属店舗だけ（運営者は全店舗）。
 - 通知は宛先会員IDで取得し、既読日時を保存する。メール配信は追加しない。
 
 ## API
@@ -38,7 +40,7 @@ Canvasは既存FastAPI / SQLAlchemy / Alembicを維持する。今回Canvas DB�
 | 管理 | /api/operator/members、/api/operator/products、/api/operator/categories |
 | 通知 | GET /api/notifications、PUT /api/notifications/{id}/read |
 
-実Cognitoを通常起動の必須条件とする。設定不足やECとの通信失敗を固定所有者へ切り替えない。カスタムログインを維持し、登録・リセットはCognitoの導線を使用する。パスワード変更は現在の資格情報を再確認し、[Cognito ChangePassword](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ChangePassword.html)へ渡す。トークン・パスワードを応答やログへ含めない。
+実Cognitoを通常起動の必須条件とする。設定不足やECとの通信失敗を固定所有者へ切り替えない。カスタムログインを維持し、登録・リセットはCognitoの導線を使用する。パスワード変更は確認用パスワードの一致と現在の資格情報を確認し（誤りは400）、[Cognito ChangePassword](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ChangePassword.html)へ渡す。トークン・パスワードを応答やログへ含めない。
 
 ## 移行と管理コマンド
 

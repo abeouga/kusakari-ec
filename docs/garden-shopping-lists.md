@@ -75,3 +75,18 @@ Canvasで `npm run test:shopping`。ECの既存購入・出品の回帰は `npm 
 ### Consequences
 
 CanvasのDB・庭JSONの形式は変更しない。Canvasが応答しない場合は既存と同じ503を返し、庭は作成されない。
+
+## 2026-10-23: EC追加分を配置数と二重に数えない
+
+### Context
+
+EC追加分を配置数に1点加算していたため、ECで追加した商品をCanvasで1個置くと2点になっていた。また、Canvasの右パネルにはEC追加分が表示されなかった。
+
+### Decision
+
+- 上記「Canvasの配置数とEC追加分を合算する」を改め、EC追加分は「1点以上必要」として必要数を `max(配置数, 1)` とする。
+- `GET /api/shopping-lists/{gardenId}/saved-items` を追加し、会員カートIDのEC追加分（商品ID・商品名）と `listRevision` を返す。Canvasはこれと編集中の配置を画面上で合成する。保存行はサーバーで解決したカートIDだけで絞り込むため、他会員の追加分は返らない。Canvasへの通信は行わない。
+
+### Consequences
+
+DBスキーマは変更しない。既存の保存行は、配置済みの商品では配置数のみ、未配置の商品では1点として表示される。経緯と検証はCanvas側の `docs/garden-shopping-lists.md` に記録する。

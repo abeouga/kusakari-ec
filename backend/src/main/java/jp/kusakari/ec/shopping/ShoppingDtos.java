@@ -25,6 +25,10 @@ public final class ShoppingDtos {
 
   public record CreatedGarden(String id, String name) {}
 
+  public record SavedItem(String productId, String name) {}
+
+  public record SavedItems(long listRevision, List<SavedItem> items) {}
+
   public record Product(String id, String name, String imageUrl, int priceYen, int stock, boolean active) {}
 
   public record Line(String key, String name, int quantity, String unit, List<Product> products) {}

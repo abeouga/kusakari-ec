@@ -3,6 +3,7 @@ import { DeliveryForm } from '../components/DeliveryForm';
 import { useResource, write } from './useResource';
 import { Input, ResourceStatus, values } from './ResourceView';
 import { login } from '../auth';
+import { PasswordForm, WithdrawalForm } from './AccountSecurity';
 export const accountActions = [
   ['/account/login', 'ログイン'],
   ['/account/register', '新規登録'],
@@ -21,17 +22,19 @@ export function AccountPage({ tab }) {
   async function save(event) {
     event.preventDefault();
     const input = values(event.currentTarget);
-    const password = tab === 'パスワード変更';
-    if (
-      (await resource.run(() => write(password ? '/account/password' : '/account/address', 'PUT', input))) &&
-      password
-    )
-      login();
+    await resource.run(() => write('/account/address', 'PUT', input));
   }
   if (tab === '新規登録') return <button onClick={() => login(true)}>Cognitoで新規登録</button>;
   if (tab === 'パスワードリセット')
     return <a href="/api/auth/login?managed=true&returnTo=%2Faccount">Cognitoでパスワードを再設定</a>;
   if (tab === 'ログイン' || tab === 'アカウント情報') return <AuthPanel />;
+  if (tab === 'パスワード変更')
+    return (
+      <section className="workspace-card">
+        <PasswordForm />
+      </section>
+    );
+  if (tab === '退会') return <WithdrawalForm />;
   return (
     <section className="workspace-card">
       <ResourceStatus resource={resource} />
@@ -60,29 +63,6 @@ export function AccountPage({ tab }) {
           }
           onReset={() => resource.run(() => write('/account/pickup-contact', 'DELETE'), '受取連絡先を消去しました。')}
         />
-      )}
-      {tab === 'パスワード変更' && (
-        <form className="workspace-form" onSubmit={save}>
-          <Input label="現在のパスワード" name="currentPassword" type="password" maxLength={256} />
-          <Input label="新しいパスワード" name="newPassword" type="password" maxLength={256} />
-          <p>変更後は再ログインしてください。</p>
-          <button disabled={resource.busy}>パスワードを変更</button>
-        </form>
-      )}
-      {tab === '退会' && (
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (await resource.run(() => write('/account', 'DELETE'), '退会しました。')) window.location.assign('/');
-          }}
-        >
-          <p>このアカウントでKusakariを利用できなくなります。過去の注文記録は保持されます。</p>
-          <label>
-            <input type="checkbox" required />
-            退会を確定することを確認しました
-          </label>
-          <button disabled={resource.busy}>退会を確定</button>
-        </form>
       )}
     </section>
   );

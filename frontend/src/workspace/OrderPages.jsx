@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { yen } from '../api';
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 /** @type {Record<string,string>} */
 export const orderLabels = {
   ACCEPTED: '注文受付',
@@ -10,6 +11,8 @@ export const orderLabels = {
   CANCELLED: 'キャンセル',
   DEMO_CONFIRMED: '旧注文',
 };
+/** @type {Record<string,string>} */
+export const cancellationLabels = { PENDING: '申請中', APPROVED: '承認', REJECTED: '却下' };
 /** @param {{order:import('../types').Order}} props */
 export function PickupDetails({ order }) {
   return (
@@ -23,16 +26,10 @@ export function PickupDetails({ order }) {
     </>
   );
 }
-/** @param {{order:import('../types').Order,resource:ReturnType<typeof useResource>,seller:boolean,readonly?:boolean}} props */
-function OrderActions({ order, resource, seller, readonly = false }) {
+/** @param {{order:import('../types').Order,resource:ReturnType<typeof useResource>,readonly?:boolean}} props */
+function OrderActions({ order, resource, readonly = false }) {
   const pending = order.cancellationStatus === 'PENDING';
-  const reason = order.cancellationReason;
-  /** @param {import('react').FormEvent<HTMLFormElement>} event */
-  function request(event) {
-    event.preventDefault();
-    const input = values(event.currentTarget);
-    void resource.run(() => write(`/orders/${order.id}/cancellation`, 'POST', input), 'キャンセル申請を保存しました。');
-  }
+  const [confirming, setConfirming] = useState('');
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   function decide(event) {
     event.preventDefault();
@@ -48,60 +45,13 @@ function OrderActions({ order, resource, seller, readonly = false }) {
   return (
     <>
       <p>注文状態：{orderLabels[order.status] || order.status}</p>
-      {!readonly && !seller && (
-        <details>
-          <summary>購入履歴を非表示にする</summary>
-          <p>この履歴だけを非表示にします。注文・在庫・出店者の受注記録は変更されません。</p>
-          <button
-            disabled={resource.busy}
-            onClick={() => void resource.run(() => write(`/orders/${order.id}`, 'DELETE'), '履歴を非表示にしました。')}
-          >
-            非表示を確定
-          </button>
-        </details>
-      )}
-      {!readonly && !seller && order.status === 'ACCEPTED' && (
-        <details>
-          <summary>受取連絡先を編集</summary>
-          <form
-            className="workspace-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const input = values(event.currentTarget);
-              void resource.run(() => write(`/orders/${order.id}`, 'PUT', input));
-            }}
-          >
-            <Input label="受取人氏名" name="recipientName" value={order.details.recipientName} required={false} />
-            <Input label="電話番号" name="recipientPhone" value={order.details.recipientPhone} required={false} />
-            <Input
-              label="連絡先メール"
-              name="contactEmail"
-              type="email"
-              value={order.details.contactEmail}
-              required={false}
-            />
-            <button disabled={resource.busy}>連絡先を保存</button>
-          </form>
-        </details>
-      )}
-      {reason && (
+      {order.cancellationReason && (
         <p>
-          キャンセル申請：{reason} /{' '}
-          {
-            /** @type {Record<string,string>} */ ({ PENDING: '申請中', APPROVED: '承認', REJECTED: '却下' })[
-              order.cancellationStatus
-            ]
-          }{' '}
+          キャンセル申請：{order.cancellationReason} / {cancellationLabels[order.cancellationStatus]}{' '}
           {order.cancellationResponse}
         </p>
       )}
-      {!readonly && !seller && order.status === 'ACCEPTED' && !pending && (
-        <form className="workspace-form" onSubmit={request}>
-          <Input label="キャンセル理由" name="reason" maxLength={500} />
-          <button disabled={resource.busy}>キャンセルを申請</button>
-        </form>
-      )}
-      {!readonly && seller && pending && (
+      {!readonly && pending && (
         <form className="workspace-form" onSubmit={decide}>
           <Input label="キャンセル回答" name="reason" required={false} maxLength={500} />
           <button name="decision" value="approve" disabled={resource.busy}>
@@ -112,27 +62,44 @@ function OrderActions({ order, resource, seller, readonly = false }) {
           </button>
         </form>
       )}
-      {!readonly && seller && ['ACCEPTED', 'READY'].includes(order.status) && (
-        <button
-          disabled={resource.busy || pending}
-          onClick={() =>
-            void resource.run(() =>
-              write(`/seller/orders/${order.id}/status`, 'PUT', {
-                expectedStatus: order.status,
-                status: order.status === 'ACCEPTED' ? 'READY' : 'COMPLETED',
-              }),
-            )
-          }
-        >
+      {!readonly && ['ACCEPTED', 'READY'].includes(order.status) && (
+        <button disabled={resource.busy || pending} onClick={() => setConfirming(order.status)}>
           {order.status === 'ACCEPTED' ? '受取準備完了にする' : '引き渡し完了にする'}
         </button>
+      )}
+      {confirming && (
+        <ConfirmDialog
+          title={confirming === 'ACCEPTED' ? '受取準備完了の確認' : '引き渡し完了の確認'}
+          confirmLabel={confirming === 'ACCEPTED' ? '受取準備完了を確定' : '引き渡し完了を確定'}
+          busy={resource.busy}
+          onCancel={() => setConfirming('')}
+          onConfirm={async () => {
+            // The status seen when the dialog opened is sent; a changed order is rejected (EC-S09/S10 4a).
+            await resource.run(
+              () =>
+                write(`/seller/orders/${order.id}/status`, 'PUT', {
+                  expectedStatus: confirming,
+                  status: confirming === 'ACCEPTED' ? 'READY' : 'COMPLETED',
+                }),
+              confirming === 'ACCEPTED' ? '受取準備完了にし、購入者に通知しました。' : '引き渡し完了にしました。',
+            );
+            setConfirming('');
+          }}
+        >
+          <p>注文番号：{order.id}</p>
+          <p>
+            {confirming === 'ACCEPTED'
+              ? '注文状態を「受取準備完了」に更新し、購入者に受け取りの準備ができたことを通知します。'
+              : '購入者が商品を受け取ったことを確認しましたか。注文状態を「引き渡し完了」に更新します。'}
+          </p>
+        </ConfirmDialog>
       )}
     </>
   );
 }
-/** @param {{storeId?:number,operator?:boolean,buyer?:boolean}} props */
-export function OrderPage({ storeId, operator = false, buyer = false }) {
-  const resource = useResource(buyer ? '/orders' : operator ? '/operator/orders' : `/seller/orders?storeId=${storeId}`);
+/** @param {{storeId:number,operator?:boolean}} props */
+export function OrderPage({ storeId, operator = false }) {
+  const resource = useResource(operator ? '/operator/orders' : `/seller/orders?storeId=${storeId}`);
   const [filter, setFilter] = useState('');
   const orders = /** @type {import('../types').Order[]} */ (resource.data ?? []);
   return (
@@ -163,7 +130,7 @@ export function OrderPage({ storeId, operator = false, buyer = false }) {
             ))}
             <p>注文金額：{yen(order.totalYen)}</p>
             <PickupDetails order={order} />
-            <OrderActions order={order} resource={resource} seller={!buyer} readonly={operator} />
+            <OrderActions order={order} resource={resource} readonly={operator} />
           </section>
         ))}
     </>
@@ -184,6 +151,7 @@ export function SalesPage({ storeId }) {
         </p>
         <p>注文金額：{yen(active.reduce((sum, o) => sum + o.totalYen, 0))}</p>
         <p>決済・精算の記録は扱いません。</p>
+        {resource.data && orders.length === 0 && <p>この店舗の注文はまだありません。</p>}
         {orders.map((o) => (
           <p key={o.id}>
             {o.id} / {orderLabels[o.status] || o.status} / {yen(o.totalYen)}

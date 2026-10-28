@@ -67,6 +67,16 @@ public class ProductEditorService {
     auth.requireProductOwner(product.getOwnerMemberId());
     if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
     if (products.existsBySkuAndIdNot(input.getSku(), id)) throw duplicateSku();
+    // Check the store stock before changing anything: a form opened before an order or a cancellation
+    // restock must not overwrite the current quantity (EC-S05 5b).
+    InventoryEntity stock = inventory
+      .lockAtStore(input.getStoreId(), id)
+      .orElseGet(() -> new InventoryEntity(new InventoryId(input.getStoreId(), id), 0));
+    if (stock.getPublicationStatus().equals("DELETED")) {
+      throw new ApiException(409, "PRODUCT_ARCHIVED", "この店舗では取り扱いを終了しています。");
+    }
+    int expected = input.getExpectedStock() == null ? input.getStock() : input.getExpectedStock();
+    if (stock.getQuantity() != expected) throw SellerProductService.stockChanged(stock.getQuantity());
     var previousProfile = product.getPlantModelProfile();
     boolean profileProvided = input.isPlantModelProfileProvided();
     if (!input.isPlantModelProfileProvided()) input.setPlantModelProfile(previousProfile);
@@ -74,12 +84,6 @@ public class ProductEditorService {
     resolveModel(product, input, previousProfile, profileProvided);
     saveProduct(product, false);
 
-    InventoryEntity stock = inventory
-      .lockAtStore(input.getStoreId(), id)
-      .orElseGet(() -> new InventoryEntity(new InventoryId(input.getStoreId(), id), 0));
-    if (stock.getPublicationStatus().equals("DELETED")) {
-      throw new ApiException(409, "PRODUCT_ARCHIVED", "この店舗では取り扱いを終了しています。");
-    }
     stock.setQuantity(input.getStock());
     inventory.save(stock);
     linkMaterial(product);

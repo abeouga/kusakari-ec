@@ -30,7 +30,10 @@ test('account header link is hidden for guests and visible after login in EC and
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(canvas + '/');
-  for (const [name, url] of [['ec', ec], ['canvas', canvas]]) {
+  for (const [name, url] of [
+    ['ec', ec],
+    ['canvas', canvas],
+  ]) {
     await page.goto(url);
     await page.reload();
     await expect(account).toBeVisible();
@@ -41,7 +44,9 @@ test('account header link is hidden for guests and visible after login in EC and
   expect(member.authenticated).toBe(true);
   const gardens = await (await page.request.get(`${canvas}/api/gardens`)).json();
   const csrf = await (await page.request.get(`${ec}/api/auth/csrf`)).json();
-  expect((await page.request.post(`${ec}/api/auth/logout`, { headers: { [csrf.headerName]: csrf.token } })).status()).toBe(200);
+  expect(
+    (await page.request.post(`${ec}/api/auth/logout`, { headers: { [csrf.headerName]: csrf.token } })).status(),
+  ).toBe(200);
   await page.goto(ec);
   await expect(page.locator('.login-entry')).toBeVisible();
   await expect(account).toHaveCount(0);
@@ -111,14 +116,30 @@ test('custom EC login shares a real Cognito session with Canvas and redirects ag
   );
   expect((await page.request.post(`${ec}/api/auth/logout`, { headers })).status()).toBe(200);
   // Either an in-flight EC request or the next autosave may detect the expired session first.
+  // Without unsaved edits Canvas redirects to the EC login; with an unsaved edit (UC-07 3d) it keeps the
+  // editor, shows the expiry banner and opens the EC login in a separate window.
   try {
     await page.getByRole('button', { name: '土台に適用', exact: true }).click({ timeout: 5000 });
   } catch {
     await expect(page).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
   }
   await denied;
-  await expect(page).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
-  await expect(page.getByLabel('パスワード', { exact: true })).toBeVisible();
+  const expired = page.getByText('ログインの有効期限が切れました。', { exact: false });
+  const passwordField = page.getByLabel('パスワード', { exact: true });
+  await expect(expired.or(passwordField)).toBeVisible();
+  if (await expired.isVisible()) {
+    await expect(page).toHaveURL(new RegExp(`${canvas}/gardens/${gardenId}$`));
+    await expect(page.getByLabel('幅 (m)', { exact: true })).toHaveValue('13');
+    await page.getByRole('button', { name: '土台設定を閉じる', exact: true }).click();
+    const loginWindow = page.waitForEvent('popup');
+    await page.getByRole('button', { name: 'ECに再ログイン', exact: true }).click();
+    const popup = await loginWindow;
+    await expect(popup).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
+    const loginUrl = popup.url();
+    await popup.close();
+    await page.goto(loginUrl);
+  }
+  await expect(passwordField).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(page.getByLabel('パスワード', { exact: true })).toBeVisible();
@@ -144,7 +165,9 @@ test('custom login rejects external return targets and preserves EC sessions aft
     await page.goto(path);
     await expect(page.locator('.kusakari-site-header')).toBeVisible();
     await expect(page.locator('.kusakari-site-header .login-entry')).toHaveCount(0);
-    await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '出店者', exact: true })).toBeVisible();
+    await expect(
+      page.locator('.kusakari-site-header').getByRole('link', { name: '出店者', exact: true }),
+    ).toBeVisible();
     await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '管理者画面' })).toHaveCount(0);
     if (path === '/account') {
       await expect(page.locator('.workspace-main h1')).toHaveText('アカウント情報');
@@ -175,7 +198,9 @@ test('only the designated admin sees the admin header link in EC and Canvas', as
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(ec + '/');
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
-    authenticated: true, email: 'test.admin@example.com', role: 'ADMIN',
+    authenticated: true,
+    email: 'test.admin@example.com',
+    role: 'ADMIN',
   });
   for (const url of [ec + '/', ec + '/account', ec + '/operator', canvas + '/']) {
     await page.goto(url);
@@ -199,9 +224,14 @@ test('account entry from Canvas shows member settings without guest or technical
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(ec + '/');
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
-    authenticated: true, email: 'test.user@example.com', role: 'USER',
+    authenticated: true,
+    email: 'test.user@example.com',
+    role: 'USER',
   });
-  for (const [name, url] of [['ec', ec], ['canvas', canvas]]) {
+  for (const [name, url] of [
+    ['ec', ec],
+    ['canvas', canvas],
+  ]) {
     await page.goto(url);
     await page.reload();
     const header = page.locator('.kusakari-site-header');
@@ -218,19 +248,22 @@ test('account entry from Canvas shows member settings without guest or technical
     await page.reload();
     await expect(page.locator('.workspace-main h1')).toHaveText('アカウント情報');
     await expect(sidebar.getByRole('navigation', { name: 'マイページ', exact: true }).getByRole('link')).toHaveText([
-      'アカウント情報', '注文状況', '通知一覧',
+      'アカウント情報',
+      '注文履歴',
+      '通知一覧',
     ]);
-    await expect(sidebar.getByRole('navigation', { name: 'アカウント設定', exact: true }).getByRole('link')).toHaveText([
-      '住所管理', 'パスワード変更', '退会',
-    ]);
-    await expect(sidebar.getByRole('link', { name: '出店申請', exact: true })).toBeVisible();
+    await expect(sidebar.getByRole('navigation', { name: 'アカウント設定', exact: true }).getByRole('link')).toHaveText(
+      ['住所管理', '受取連絡先', 'パスワード変更', '退会'],
+    );
+    // EC-B18: the label becomes 出店申請状況 once this shared account has applied in another spec.
+    await expect(sidebar.getByRole('link', { name: /^出店申請(状況)?$/ })).toBeVisible();
     for (const name of ['ログイン', '新規登録', 'パスワードリセット', '配置素材の商品候補']) {
       await expect(sidebar.getByRole('link', { name, exact: true })).toHaveCount(0);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `artifacts/custom-login/account-sidebar-${width}.png`, fullPage: true });
   }
-  for (const name of ['注文状況', '通知一覧', '住所管理', 'パスワード変更', '退会', 'アカウント情報']) {
+  for (const name of ['注文履歴', '通知一覧', '住所管理', '受取連絡先', 'パスワード変更', '退会', 'アカウント情報']) {
     await sidebar.getByRole('link', { name, exact: true }).click();
     await expect(page.locator('.workspace-main h1')).toHaveText(name);
     await expect(sidebar.getByRole('link', { name, exact: true })).toHaveClass('is-active');

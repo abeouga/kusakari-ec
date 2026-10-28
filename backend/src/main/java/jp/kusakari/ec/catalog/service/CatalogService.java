@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.Candidate;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.MaterialMatch;
@@ -75,12 +76,18 @@ public class CatalogService {
       .stream()
       .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row));
     boolean open = stores.findById(storeId).map(StoreEntity::isEnabled).orElse(false);
-    var enabledOwners = members
-      .findAll()
+    var allMembers = members.findAll();
+    var enabledOwners = allMembers
       .stream()
       .filter(m -> m.isEnabled())
       .map(m -> m.getId())
       .collect(toSet());
+    // EC-B05: a seller's product is introduced by the seller's own store; Kusakari's shared products
+    // (no owner) are sold by whichever store lists them, i.e. the store being viewed.
+    Map<String, Long> ownerStores = allMembers
+      .stream()
+      .filter(m -> m.getStoreId() != null)
+      .collect(java.util.stream.Collectors.toMap(m -> m.getId(), m -> m.getStoreId()));
     return selected
       // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
       // The comparator below already provides the complete, deterministic display order.
@@ -99,7 +106,8 @@ public class CatalogService {
             ? "DELETED"
             : !open || (product.getOwnerMemberId() != null && !enabledOwners.contains(product.getOwnerMemberId()))
               ? "HIDDEN"
-              : stock.getPublicationStatus()
+              : stock.getPublicationStatus(),
+          ownerStores.getOrDefault(Objects.toString(product.getOwnerMemberId(), ""), storeId)
         );
       })
       .toList();
@@ -129,9 +137,11 @@ public class CatalogService {
 
   public List<StoreView> stores(Double latitude, Double longitude) {
     validateCoordinates(latitude, longitude);
+    // EC-B12: suspended stores are not offered as pickup candidates; checkout still rejects them.
     return stores
       .findAllByOrderByIdAsc()
       .stream()
+      .filter(StoreEntity::isEnabled)
       .map(store ->
         new StoreView(
           store.getId(),

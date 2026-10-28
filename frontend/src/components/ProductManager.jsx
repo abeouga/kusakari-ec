@@ -3,15 +3,29 @@ import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
 import { SellerProductList } from './SellerProductList';
 import { useSellerCatalog } from './useSellerCatalog';
+import { SellerStoreSelect } from './SellerStoreSelect';
 import { navigate } from '../workspace/navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
 export function ProductManager({ shop, onClose, embedded = false }) {
   const catalog = useSellerCatalog(shop);
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
-  const storeName = shop.stores.find((s) => s.id === catalog.storeId)?.name ?? '';
+  // Stock shown when the form opened; refreshed after a conflict so the seller can re-check it (EC-S05 5b).
+  const [expectedStock, setExpectedStock] = useState(0);
+  const storeName = shop.sellerStores.find((s) => s.id === catalog.storeId)?.name ?? '';
   function resetEditor() {
     setEditing(null);
+  }
+  /** @param {import('../types').Product} product */
+  function edit(product) {
+    setExpectedStock(product.stock);
+    setEditing(product);
+  }
+  /** @param {string} id @param {import('../types').ProductInput} input */
+  async function save(id, input) {
+    const result = await catalog.save(id, { ...input, expectedStock });
+    if (result.latest) setExpectedStock(result.latest.stock);
+    return result.saved;
   }
   return (
     <ManagerFrame embedded={embedded} onClose={onClose}>
@@ -29,24 +43,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
         </p>
       )}
       <div className="manager-toolbar">
-        <label>
-          管理する店舗
-          <select
-            aria-label="管理する店舗"
-            value={catalog.storeId}
-            disabled={catalog.busy || !!editing}
-            onChange={(e) => {
-              resetEditor();
-              shop.setSellerStoreId(Number(e.target.value));
-            }}
-          >
-            {shop.stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SellerStoreSelect shop={shop} disabled={catalog.busy || !!editing} onChange={resetEditor} />
         <button
           className="secondary-button"
           disabled={catalog.busy}
@@ -66,7 +63,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           products={catalog.products}
           storeName={storeName}
           busy={catalog.busy}
-          onEdit={setEditing}
+          onEdit={edit}
           onStatus={catalog.changeStatus}
         />
       </div>
@@ -75,6 +72,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           商品一覧へ戻る
         </button>
       )}
+      {editing && <p className="muted">変更前の在庫数：{expectedStock}</p>}
       {editing && (
         <ProductForm
           key={`${editing.id}-${catalog.storeId}`}
@@ -82,7 +80,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           storeName={storeName}
           storeId={catalog.storeId}
           busy={catalog.busy}
-          onSave={catalog.save}
+          onSave={save}
           onDone={resetEditor}
         />
       )}

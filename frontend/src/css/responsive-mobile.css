@@ -8,27 +8,11 @@
   .announcement span:last-child {
     display: none;
   }
-  .site-header {
-    height: auto;
-    min-height: 74px;
-    justify-content: space-between;
-    gap: 10px;
-  }
   .brand {
     font-size: 31px;
   }
   .brand svg {
     width: 26px;
-  }
-  .site-header nav {
-    justify-content: flex-start;
-    gap: 18px;
-    overflow-x: auto;
-  }
-  .site-header .workspace-entry-links {
-    order: 4;
-    width: 100%;
-    margin: 0;
   }
   .history-button {
     font-size: 10px;

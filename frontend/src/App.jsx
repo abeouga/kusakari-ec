@@ -9,7 +9,6 @@ import { Workspace } from './workspace/Workspace';
 import { PageLink } from './workspace/Common';
 import { Catalog } from './components/Catalog';
 import { ProductManager } from './components/ProductManager';
-import { Orders } from './components/Orders';
 import { ProductDetail } from './components/ProductDetail';
 import { HeroProductCarousel } from './components/HeroProductCarousel';
 import { Dialog } from './components/Dialog';
@@ -17,6 +16,7 @@ import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
 import { LoginPage } from './components/LoginPage';
+import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { login } from './auth';
 import { useAuth } from './useAuth';
 
@@ -40,7 +40,7 @@ function navigateFromHeader(url) {
 
 function requestedPanel() {
   const panel = new URLSearchParams(window.location.search).get('panel');
-  if (panel === 'stores' || panel === 'guide' || panel === 'orders' || panel === 'login') return panel;
+  if (panel === 'stores' || panel === 'guide' || panel === 'login') return panel;
   return '';
 }
 
@@ -51,6 +51,7 @@ export default function App() {
   const path = location.split('#')[0];
   const [panel, setPanel] = useState(requestedPanel);
   const [detailId, setDetailId] = useState('');
+  const [flash, setFlash] = useState(flashNotice);
   const detail = shop.products.find((product) => product.id === detailId);
   let itemCount = 0;
   let storeName = '';
@@ -93,18 +94,29 @@ export default function App() {
     open(next);
   }
   const header = (
-    <KusakariHeader
-      ecUrl={window.location.origin}
-      canvasUrl={canvasUrl}
-      logoUrl="/icon/kusakari_ico.png"
-      activeSection={path === '/' ? 'plants' : ''}
-      cartCount={itemCount}
-      authenticated={session?.authenticated ?? false}
-      showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
-      showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
-      onPanel={openHeaderPanel}
-      onNavigate={navigateFromHeader}
-    />
+    <>
+      <KusakariHeader
+        ecUrl={window.location.origin}
+        canvasUrl={canvasUrl}
+        logoUrl="/icon/kusakari_ico.png"
+        activeSection={path === '/' ? 'plants' : ''}
+        cartCount={itemCount}
+        authenticated={session?.authenticated ?? false}
+        showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
+        showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
+        onPanel={openHeaderPanel}
+        onNavigate={navigateFromHeader}
+      />
+      <SessionNotice />
+      {flash && (
+        <p className="flash-notice" role="status">
+          {flash}{' '}
+          <button type="button" className="text-button" onClick={() => setFlash('')}>
+            閉じる
+          </button>
+        </p>
+      )}
+    </>
   );
   if (path === '/account/login' || panel === 'login') return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
   if (workspace) {
@@ -122,7 +134,6 @@ export default function App() {
           onStores={() => open('stores')}
         />
         {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-        {panel === 'orders' && <Orders shop={shop} onClose={close} />}
       </>
     );
   }
@@ -234,7 +245,7 @@ export default function App() {
           <button onClick={() => open('manage')}>商品管理</button>
           <button onClick={() => open('guide')}>ご利用ガイド</button>
           <button onClick={() => open('stores')}>店舗一覧</button>
-          <button onClick={() => open('orders')}>注文履歴</button>
+          <PageLink href="/purchases">注文履歴</PageLink>
         </div>
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Kusakari</span>
@@ -270,7 +281,6 @@ export default function App() {
       )}
       {panel === 'stores' && <Stores shop={shop} onClose={close} />}
       {panel === 'materials' && <Materials shop={shop} onClose={close} />}
-      {panel === 'orders' && <Orders shop={shop} onClose={close} />}
       {panel === 'manage' && <ProductManager shop={shop} onClose={close} />}
       {panel === 'guide' && (
         <Dialog title="Kusakariについて" onClose={close}>

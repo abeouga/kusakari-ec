@@ -102,3 +102,6 @@
   .standalone-cart-main .cart-line > img { width: 64px; height: 84px; }
   .standalone-cart-main .checkout-layout { gap: 24px; }
 }
+.garden-select-note { margin: 16px 0; padding: 14px 18px; background: #fbf6ea; border: 1px solid #e6d7b0; border-radius: 10px; }
+.garden-select-note p, .garden-select-note ul { margin: 0; }
+.garden-select-note ul { padding-left: 1.2em; }

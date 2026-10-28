@@ -46,6 +46,9 @@ export function AuthPanel({ onAuthenticated } = {}) {
   if (error) return <p role="alert">{error}</p>;
   if (!session) return <p>ログイン状態を確認しています。</p>;
   if (session.mode === 'demo') return <p>Cognitoが未設定のため、ログイン・新規登録は利用できません。</p>;
+  if (destination && submitting) {
+    return <div className="auth-redirecting" role="status" aria-label="移動しています"><span /></div>;
+  }
   return (
     <section className="workspace-card">
       {(failure || params.get('auth') === 'failed') && (
@@ -54,8 +57,7 @@ export function AuthPanel({ onAuthenticated } = {}) {
         </p>
       )}
       {destination ? <>
-        <p>ログインしました。カートの価格・在庫を確認して引き継ぎます。</p>
-        <button disabled={submitting} onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
+        <button onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
         <PageLink href="/cart">カートに戻る</PageLink>
       </> : session.authenticated ? (
         <>

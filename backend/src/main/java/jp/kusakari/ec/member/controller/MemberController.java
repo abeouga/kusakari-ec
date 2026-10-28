@@ -3,7 +3,9 @@ package jp.kusakari.ec.member.controller;
 import jakarta.validation.Valid;
 import java.util.*;
 import jp.kusakari.ec.member.service.MemberService;
+import jp.kusakari.ec.member.service.WithdrawalBlockedException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -52,6 +54,19 @@ public class MemberController {
     request.getSession().invalidate();
     org.springframework.security.core.context.SecurityContextHolder.clearContext();
     return Map.of("withdrawn", true);
+  }
+
+  public record WithdrawalBlockedView(
+    String code,
+    String message,
+    List<WithdrawalBlockedException.BlockingOrder> orders
+  ) {}
+
+  @ExceptionHandler(WithdrawalBlockedException.class)
+  public ResponseEntity<WithdrawalBlockedView> withdrawalBlocked(WithdrawalBlockedException error) {
+    return ResponseEntity.status(error.status()).body(
+      new WithdrawalBlockedView(error.code(), error.getMessage(), error.orders())
+    );
   }
 
   @GetMapping("/api/operator/members")

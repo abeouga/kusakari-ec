@@ -78,6 +78,15 @@ public class ShoppingService {
     return add(garden.id(), productId, cartId);
   }
 
+  /** EC selections only, so Canvas can merge them with its unsaved placements. */
+  public SavedItems savedItems(String gardenId, String cartId) {
+    var snapshot = saved.read(cartId, gardenId);
+    return new SavedItems(
+      snapshot.revision(),
+      snapshot.products().stream().map(p -> new SavedItem(p.id(), p.name())).toList()
+    );
+  }
+
   public Detail detail(String gardenId, String cartId) {
     long storeId = carts.read(cartId).storeId();
     var source = canvas.detail(gardenId);
@@ -139,11 +148,9 @@ public class ShoppingService {
     source.items().forEach(row -> rows.put(row.key(), row));
     for (var product : snapshot.products()) {
       String key = "product:" + product.id();
-      var previous = rows.get(key);
-      rows.put(
-        key,
-        new SourceRow(key, product.name(), product.id(), "", previous == null ? 1 : previous.quantity() + 1, "piece")
-      );
+      // An EC selection asks for at least one; placing it in Canvas does not add another.
+      if (rows.containsKey(key)) continue;
+      rows.put(key, new SourceRow(key, product.name(), product.id(), "", 1, "piece"));
     }
     return new SourceList(
       source.gardenId(),

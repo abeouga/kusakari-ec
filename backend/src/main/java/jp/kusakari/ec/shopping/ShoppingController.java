@@ -43,6 +43,15 @@ public class ShoppingController {
     return shopping.detail(gardenId, sessions.resolve(request, response));
   }
 
+  @GetMapping("/api/shopping-lists/{gardenId}/saved-items")
+  public SavedItems savedItems(
+    @PathVariable String gardenId,
+    HttpServletRequest request,
+    HttpServletResponse response
+  ) {
+    return shopping.savedItems(gardenId, sessions.resolve(request, response));
+  }
+
   @GetMapping("/api/shopping-lists/{gardenId}/thumbnail")
   public ResponseEntity<byte[]> thumbnail(@PathVariable String gardenId) {
     return ResponseEntity.ok()

@@ -50,7 +50,7 @@ export function ProductDetail({ product, storeName, storeId = 1, onClose, onAdd,
           <div className="spec-chips">
             <div>
               <small>出店者・生産者</small>
-              <PageLink href={`/store/${storeId}`}>販売店舗の紹介を見る</PageLink>
+              <PageLink href={`/store/${product.sellerStoreId ?? storeId}`}>販売店舗の紹介を見る</PageLink>
               <strong>{catalogText(product.nurseryName) || '未設定'}</strong>
               <small>{catalogText(product.nurseryAddress)}</small>
             </div>

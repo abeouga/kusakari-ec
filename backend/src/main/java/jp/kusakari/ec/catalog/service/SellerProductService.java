@@ -3,7 +3,9 @@ package jp.kusakari.ec.catalog.service;
 import java.util.List;
 import java.util.HashSet;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
+import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.dto.ProductStatusRequest;
+import jp.kusakari.ec.catalog.dto.StockUpdateRequest;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.common.web.ApiException;
@@ -44,5 +46,31 @@ public class SellerProductService {
       throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は再公開・非表示に変更できません。");
     }
     rows.forEach(row -> row.setPublicationStatus(request.status()));
+  }
+
+  /**
+   * EC-S05: changes only this store's stock. The row is locked like checkout and cancellation restock,
+   * and the update is rejected when the quantity the seller saw is no longer current (5b).
+   */
+  public ProductView updateStock(String id, StockUpdateRequest request) {
+    auth.requireSeller(request.storeId());
+    catalog.requireStore(request.storeId());
+    var row = inventory.lockAtStore(request.storeId(), id).orElseThrow(() ->
+      new ApiException(404, "PRODUCT_NOT_FOUND", "選択店舗の商品が見つかりません。"));
+    boolean active = products.findImageReferences(List.of(id)).stream().anyMatch(ProductImageReference::active);
+    if (!active || row.getPublicationStatus().equals("DELETED")) {
+      throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品の在庫は変更できません。");
+    }
+    if (row.getQuantity() != request.expectedStock()) throw stockChanged(row.getQuantity());
+    row.setQuantity(request.stock());
+    return mapper.toSellerView(catalog.product(id, request.storeId()));
+  }
+
+  static ApiException stockChanged(int current) {
+    return new ApiException(
+      409,
+      "STOCK_CHANGED",
+      "在庫数が変更されています（現在の在庫数：" + current + "）。最新の在庫数を確認して、もう一度保存してください。"
+    );
   }
 }

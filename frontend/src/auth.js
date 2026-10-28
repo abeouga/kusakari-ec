@@ -2,11 +2,19 @@ import { navigate } from './workspace/navigation';
 
 /** @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,role:string|null,storeIds:number[]}} AuthSession */
 
+let signedIn = false;
+
+/** A later 401 means the login expired only if this page had a signed-in session; guests just are not logged in. */
+export const wasSignedIn = () => signedIn;
+
 /** @returns {Promise<AuthSession>} */
 export async function readSession() {
   const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
   if (!response.ok) throw new Error('ログイン状態を確認できません。');
-  return response.json();
+  /** @type {AuthSession} */
+  const session = await response.json();
+  if (session.authenticated) signedIn = true;
+  return session;
 }
 
 /** @param {string} url @param {RequestInit} [init] */

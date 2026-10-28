@@ -43,13 +43,14 @@ test('seller application, review, store pickup and buyer notifications share moc
   await expect(page.getByText(/配送先|発送日|配送会社|追跡番号/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '受取準備完了にする', exact: true }).click();
+  await page.getByRole('button', { name: '受取準備完了を確定', exact: true }).click();
   await expect(page.getByRole('button', { name: '受取準備完了にする', exact: true })).toBeDisabled();
   await expect(page.getByRole('table')).toContainText('受取準備完了');
   await page.getByRole('combobox', { name: '注文状態', exact: true }).selectOption('受取準備完了');
   await expect(page.getByRole('table')).toContainText('SAMPLE-1001');
   await expect(page.getByRole('table')).not.toContainText('SAMPLE-1002');
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
-  await page.getByRole('link', { name: '注文状況' }).click();
+  await page.getByRole('link', { name: '注文履歴' }).click();
   const preparingOrder = page
     .locator('section')
     .filter({ has: page.getByRole('heading', { name: 'SAMPLE-1001', exact: true }) });
@@ -61,6 +62,7 @@ test('seller application, review, store pickup and buyer notifications share moc
     .click();
   await page.getByRole('link', { name: '受注・店舗受け取り', exact: true }).click();
   await page.getByRole('button', { name: '引き渡し完了にする', exact: true }).click();
+  await page.getByRole('button', { name: '引き渡し完了を確定', exact: true }).click();
   await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
   await page.getByRole('combobox', { name: '注文状態', exact: true }).selectOption('引き渡し完了');
   await expect(page.getByRole('table')).toContainText('SAMPLE-1001');
@@ -72,7 +74,7 @@ test('seller application, review, store pickup and buyer notifications share moc
   await expect(page.getByRole('button', { name: /SAMPLE-1001の引き渡し完了/ })).toHaveCount(1);
   await page.getByRole('button', { name: /SAMPLE-1001の受取準備完了/ }).click();
   await expect(page.locator('.workspace-main')).toContainText('営業時間：10:00〜18:00');
-  await page.getByRole('link', { name: '注文状況' }).click();
+  await page.getByRole('link', { name: '注文履歴' }).click();
   await expect(page.locator('.workspace-main')).toContainText('引き渡し完了');
   await expect(page.locator('.workspace-main')).toContainText(
     '受取準備完了・引き渡し完了・キャンセル済みの注文は申請できません',

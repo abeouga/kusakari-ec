@@ -12,7 +12,6 @@ import {
   createPasswordTestAccount,
   deletePasswordTestAccount,
 } from './business-helpers.js';
-import { sql } from './database.js';
 
 test.use({ trace: 'off' });
 
@@ -141,10 +140,13 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await expect(buyer.getByTestId(`order-${order.id}`)).toContainText(input.name);
     await seller.goto(`${ec}/seller/orders`);
     const received = seller.getByTestId(`order-${order.id}`);
+    // EC-S09/S10: each status change is confirmed before it is saved.
     await received.getByRole('button', { name: '受取準備完了にする' }).click();
-    await expect(received).toContainText('受取準備完了');
+    await seller.getByRole('alertdialog').getByRole('button', { name: '受取準備完了を確定', exact: true }).click();
+    await expect(received).toContainText('注文状態：受取準備完了');
     await received.getByRole('button', { name: '引き渡し完了にする' }).click();
-    await expect(received).toContainText('引き渡し完了');
+    await seller.getByRole('alertdialog').getByRole('button', { name: '引き渡し完了を確定', exact: true }).click();
+    await expect(received).toContainText('注文状態：引き渡し完了');
     await seller.reload();
     await expect(received).toContainText('引き渡し完了');
     await buyer.goto(`${ec}/notifications`);
@@ -187,6 +189,7 @@ test('concurrent final stock, cancellation locking, access control and catalog m
           requestId: randomUUID(),
           revision: carts[i].revision,
           expectedTotalYen: carts[i].totalYen,
+          paymentMethod: 'PAY_AT_STORE',
         }),
       ),
     );
@@ -286,10 +289,11 @@ test('account, applications with private documents, store profile, categories an
     await user
       .locator('input[type=file]')
       .setInputFiles({ name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\\n%%EOF') });
+    await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     const submission = user.waitForResponse(
       (r) => r.url().endsWith('/api/account/store-applications') && r.request().method() === 'POST',
     );
-    await user.getByRole('button', { name: '出店を申請', exact: true }).click();
+    await user.getByRole('button', { name: '申請する', exact: true }).click();
     const submitted = await submission;
     expect(submitted.status(), await submitted.text()).toBe(200);
     const application = await submitted.json();
@@ -329,9 +333,8 @@ test('account, applications with private documents, store profile, categories an
     ).toBe(200);
     await login(user, 'test.user@example.com');
     expect((await call(user.request, '/orders')).status()).toBe(200);
-    expect((await call(user.request, '/account', 'DELETE')).status()).toBe(200);
-    expect((await call(user.request, '/orders')).status()).toBe(401);
-    expect(sql(`SELECT enabled FROM auth_members WHERE id='${member.id}'`)).toBe('0');
+    // Withdrawal is verified with dedicated accounts in business-account.spec.js: this shared buyer keeps
+    // open orders from other specs, which now correctly block withdrawal (EC-B21 7a).
     await admin.screenshot({ path: 'artifacts/business/categories-reloaded.png', fullPage: true });
   } finally {
     if (member) prepareMember(member, 'USER'); // Restore only this dedicated database's fixture identity.
@@ -348,16 +351,39 @@ test('Cognito password change requires current credentials and supports re-login
     expect(
       (
         await call(page.request, '/account/password', 'PUT', {
-          currentPassword: 'Incorrect-Password-123!',
+          currentPassword: account.secret,
           newPassword: changed,
+          confirmPassword: `${changed}x`,
         })
       ).status(),
-    ).toBe(401);
-    const response = await call(page.request, '/account/password', 'PUT', {
-      currentPassword: account.secret,
+    ).toBe(400);
+    const wrong = await call(page.request, '/account/password', 'PUT', {
+      currentPassword: 'Incorrect-Password-123!',
       newPassword: changed,
+      confirmPassword: changed,
     });
-    expect(response.status(), await response.text()).toBe(200);
+    expect(wrong.status()).toBe(400);
+    expect((await wrong.json()).message).toBe('現在のパスワードが正しくありません。');
+    expect((await call(page.request, '/auth/me').then((r) => r.json())).authenticated).toBe(true);
+    // EC-B19 through the screen: confirmation mismatch is caught before sending; success lands on the login page.
+    await page.goto(`${ec}/account/password`);
+    await page.getByLabel('現在のパスワード', { exact: true }).fill(account.secret);
+    await page.getByLabel('新しいパスワード（8文字以上）', { exact: true }).fill(changed);
+    await page.getByLabel('確認用パスワード', { exact: true }).fill(`${changed}x`);
+    await page.getByRole('button', { name: 'パスワードを変更', exact: true }).click();
+    await expect(page.getByRole('alert')).toHaveText('新しいパスワードと確認用パスワードが一致しません。');
+    await page.getByLabel('確認用パスワード', { exact: true }).fill(changed);
+    const change = page.waitForResponse((r) => r.url().endsWith('/api/account/password'));
+    await page.getByRole('button', { name: 'パスワードを変更', exact: true }).click();
+    expect((await change).status()).toBe(200);
+    await expect(page).toHaveURL(`${ec}/account/login`);
+    await expect(page.getByRole('status')).toHaveText(
+      'パスワードを変更しました。新しいパスワードでログインしてください。',
+    );
+    await page.reload();
+    await expect(page.getByText('パスワードを変更しました', { exact: false })).toHaveCount(0);
+    await mkdir('artifacts/business', { recursive: true });
+    await page.screenshot({ path: 'artifacts/business/password-changed-login.png' });
     await login(page, account.email, changed);
     expect((await call(page.request, '/auth/me').then((r) => r.json())).authenticated).toBe(true);
   } finally {

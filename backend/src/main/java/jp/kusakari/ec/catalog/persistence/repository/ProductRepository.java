@@ -16,6 +16,15 @@ import org.springframework.data.repository.query.Param;
 public interface ProductRepository extends JpaRepository<ProductEntity, String> {
   boolean existsByCategory(String category);
 
+  // A product is deleted when archived, or when every store row is DELETED (seller-side deletion).
+  @Query(
+    "select case when count(p) > 0 then true else false end from ProductEntity p " +
+      "where p.category = :category and p.active = true and (" +
+      "exists (select i.quantity from InventoryEntity i where i.id.productId = p.id and i.publicationStatus <> 'DELETED') " +
+      "or not exists (select i.quantity from InventoryEntity i where i.id.productId = p.id))"
+  )
+  boolean isCategoryInUse(@Param("category") String category);
+
   @org.springframework.data.jpa.repository.Modifying
   @org.springframework.data.jpa.repository.Query(
     "update ProductEntity p set p.category=:next where p.category=:previous"

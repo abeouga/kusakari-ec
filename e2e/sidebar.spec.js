@@ -40,8 +40,8 @@ test('direct account entry falls back to the shop and sidebars have icons on des
     await page.getByRole('link', { name: 'アカウント', exact: true }).click();
     await sidebar.getByRole('link', { name: '通知一覧', exact: true }).click();
     await expect(page.locator('.workspace-main h1')).toHaveText('通知一覧');
-    await sidebar.getByRole('link', { name: '注文状況', exact: true }).click();
-    await expect(page.locator('.workspace-main h1')).toHaveText('注文状況');
+    await sidebar.getByRole('link', { name: '注文履歴', exact: true }).click();
+    await expect(page.locator('.workspace-main h1')).toHaveText('注文履歴');
     await sidebar.getByRole('link', { name: '配置素材の商品候補', exact: true }).click();
     await expect(page.locator('.workspace-main h1')).toHaveText('配置素材の商品候補');
     await sidebar.getByRole('button', { name: '戻る', exact: true }).click();

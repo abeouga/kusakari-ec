@@ -43,7 +43,8 @@ public final class CatalogDtos {
     List<String> images,
     PlantModelProfile plantModelProfile,
     JsonNode modelComposition,
-    String canvasMaterialCode
+    String canvasMaterialCode,
+    Long sellerStoreId
   ) {}
 
   public record StoreView(long id, String name, String address, String hours, Double distanceKm) {}

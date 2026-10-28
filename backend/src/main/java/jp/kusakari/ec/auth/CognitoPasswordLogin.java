@@ -116,7 +116,18 @@ public class CognitoPasswordLogin {
   }
 
   public void changePassword(String email, String subject, String previous, String proposed) {
-    var tokens = authenticateTokens(email, previous);
+    Tokens tokens;
+    try {
+      tokens = authenticateTokens(email, previous);
+    } catch (ApiException error) {
+      // EC-B19 2a. A 401 here would read as an expired login; the session itself is still valid.
+      if (error.code().equals("INVALID_CREDENTIALS")) throw new ApiException(
+        400,
+        "CURRENT_PASSWORD_INVALID",
+        "現在のパスワードが正しくありません。"
+      );
+      throw error;
+    }
     if (!tokens.user().getSubject().equals(subject)) throw new ApiException(
       403,
       "FORBIDDEN",

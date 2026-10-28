@@ -50,7 +50,9 @@ public final class CommerceDtos {
     String name,
     int quantity,
     int unitPriceYen,
-    int lineTotalYen
+    int lineTotalYen,
+    // Current catalog image; null when the product was removed after ordering.
+    String imageUrl
   ) {}
 
   public record OrderView(

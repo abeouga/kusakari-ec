@@ -13,14 +13,6 @@
   font-size: 9px;
   letter-spacing: 1.8px;
 }
-.site-header {
-  height: 92px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 5%;
-  border-bottom: 1px solid var(--line);
-}
 .brand {
   text-decoration: none;
   display: inline-flex;
@@ -40,38 +32,6 @@
 }
 .brand-dot {
   color: #a88f6c;
-}
-.brand .brand-icon {
-  display: block;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  object-fit: contain;
-}
-@media (max-width: 700px) {
-  .brand .brand-icon {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-  }
-}
-.site-header nav {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  margin: auto;
-}
-.site-header nav button,
-.site-header nav a {
-  text-decoration: none;
-  background: none;
-  border: 0;
-  padding: 32px 0;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.site-header nav .active {
-  border-bottom: 2px solid var(--green);
 }
 .header-actions {
   display: flex;
@@ -113,22 +73,6 @@
   color: white;
 }
 @media (max-width: 1200px) {
-  .site-header {
-    height: auto;
-    min-height: 92px;
-    flex-wrap: wrap;
-    padding-block: 16px;
-    row-gap: 8px;
-  }
-  .site-header nav {
-    order: 3;
-    flex-basis: 100%;
-    justify-content: center;
-  }
-  .site-header nav a,
-  .site-header nav button {
-    padding-block: 12px;
-  }
   .header-actions {
     margin-left: auto;
   }

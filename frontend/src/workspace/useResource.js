@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { request } from '../api';
+import { ApiError, request } from '../api';
 /** @param {string|null} path */
 export function useResource(path) {
   const [data, setData] = useState(/** @type {any} */ (null));
@@ -38,6 +38,8 @@ export function useResource(path) {
       setNotice(message);
       return true;
     } catch (reason) {
+      // The record changed or disappeared meanwhile (e.g. EC-S09/S10 4a): show the latest state with the error.
+      if (reason instanceof ApiError && [404, 409].includes(reason.status)) await reload();
       setError(reason instanceof Error ? reason.message : '処理を完了できませんでした。');
       return false;
     } finally {

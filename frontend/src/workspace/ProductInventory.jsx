@@ -2,81 +2,46 @@ import { useState } from 'react';
 import { DataTable } from './Common';
 import { yen } from '../api';
 import { useSellerCatalog } from '../components/useSellerCatalog';
-
-/** @param {import('../types').Product} product @param {number} storeId @returns {import('../types').ProductInput} */
-function inventoryInput(product, storeId) {
-  return {
-    storeId,
-    plantModelProfile: product.plantModelProfile ?? null,
-    sku: product.sku,
-    name: product.name,
-    latinName: product.latinName,
-    category: product.category,
-    description: product.description,
-    sizeLabel: product.sizeLabel,
-    care: product.care,
-    priceYen: product.priceYen,
-    stock: product.stock,
-    imageUrl: product.imageUrl,
-    badge: product.badge,
-    nurseryName: product.nurseryName,
-    nurseryAddress: product.nurseryAddress,
-    sunlight: product.sunlight,
-    useCase: product.useCase,
-    careLevel: product.careLevel,
-    minTemperatureC: product.minTemperatureC,
-    heatTolerant: product.heatTolerant,
-    droughtTolerant: product.droughtTolerant,
-    ageYears: product.ageYears,
-    heightCm: product.heightCm,
-    potDiameterCm: product.potDiameterCm,
-    familyName: product.familyName,
-    images: product.images,
-  };
-}
+import { SellerStoreSelect } from '../components/SellerStoreSelect';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>}} props */
 export function ProductInventory({ shop }) {
   const catalog = useSellerCatalog(shop);
-  const [editing, setEditing] = useState('');
+  // `expected` is the stock shown when editing began; the server rejects the save if it has changed since.
+  const [editing, setEditing] = useState(/** @type {{id:string,expected:number}|null} */ (null));
   const [stock, setStock] = useState('0');
   const [stopId, setStopId] = useState('');
   const [error, setError] = useState('');
+  const editingProduct = editing ? catalog.products.find((entry) => entry.id === editing.id) : undefined;
   async function save() {
-    const product = catalog.products.find((entry) => entry.id === editing);
     const quantity = Number(stock);
-    if (!product) return;
-    if (!Number.isInteger(quantity) || quantity < 0 || quantity > 10000) {
+    if (!editing) return;
+    if (stock.trim() === '' || !Number.isInteger(quantity) || quantity < 0 || quantity > 10000) {
       setError('在庫は0〜10000の整数で入力してください。');
       return;
     }
-    const input = inventoryInput(product, catalog.storeId);
-    input.stock = quantity;
-    if (await catalog.save(product.id, input)) setEditing('');
+    setError('');
+    const result = await catalog.saveStock(editing.id, editing.expected, quantity);
+    if (result.saved) setEditing(null);
+    // EC-S05 5b: keep the entered value and ask the seller to confirm it against the latest stock.
+    else if (result.latest) setEditing({ id: editing.id, expected: result.latest.stock });
   }
   return (
     <section className="workspace-card">
       <h2>在庫・販売状態の管理</h2>
-      <label>
-        管理する店舗
-        <select
-          aria-label="管理する店舗"
-          value={catalog.storeId}
-          disabled={catalog.busy}
-          onChange={(e) => {
-            setEditing('');
-            setStopId('');
-            shop.setSellerStoreId(Number(e.target.value));
-          }}
-        >
-          {shop.stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {catalog.error && <p role="alert">{catalog.error}</p>}
+      <SellerStoreSelect
+        shop={shop}
+        disabled={catalog.busy}
+        onChange={() => {
+          setEditing(null);
+          setStopId('');
+        }}
+      />
+      {catalog.error && (
+        <p className="error" role="alert">
+          {catalog.error}
+        </p>
+      )}
 
       {(error || shop.error) && (
         <p className="error" role="alert">
@@ -95,7 +60,7 @@ export function ProductInventory({ shop }) {
             <button
               disabled={catalog.busy}
               onClick={() => {
-                setEditing(product.id);
+                setEditing({ id: product.id, expected: product.stock });
                 setStock(String(product.stock));
                 setError('');
               }}
@@ -109,7 +74,10 @@ export function ProductInventory({ shop }) {
         ])}
       />
       {editing && (
-        <div className="workspace-form">
+        <div className="workspace-form" role="group" aria-label="在庫数の変更">
+          <p>
+            {editingProduct?.name}：変更前の在庫数 {editing.expected}
+          </p>
           <label>
             在庫数
             <input
@@ -124,14 +92,14 @@ export function ProductInventory({ shop }) {
           <button disabled={catalog.busy} onClick={save}>
             在庫を保存
           </button>
-          <button disabled={catalog.busy} onClick={() => setEditing('')}>
+          <button disabled={catalog.busy} onClick={() => setEditing(null)}>
             取消
           </button>
         </div>
       )}
       {stopId && (
         <div role="alertdialog" aria-label="公開状態変更の確認">
-          <p>対象店舗：{shop.stores.find((s) => s.id === catalog.storeId)?.name}</p>
+          <p>対象店舗：{shop.sellerStores.find((s) => s.id === catalog.storeId)?.name}</p>
           <p>対象商品：{catalog.products.find((p) => p.id === stopId)?.name}</p>
           <p>
             {catalog.products.find((p) => p.id === stopId)?.publicationStatus === 'HIDDEN'

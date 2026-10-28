@@ -20,7 +20,8 @@ public interface ProductMapper {
     expression = "java(product.isActive() && !product.isSuspended() && publicationStatus.equals(\"PUBLISHED\"))"
   )
   @Mapping(target = "publicationStatus", expression = "java(product.isActive() ? publicationStatus : \"DELETED\")")
-  ProductView toView(ProductEntity product, int stock, String publicationStatus);
+  @Mapping(target = "sellerStoreId", source = "sellerStoreId")
+  ProductView toView(ProductEntity product, int stock, String publicationStatus, Long sellerStoreId);
 
   // Seller forms edit the profile, not the generated geometry. Avoid sending large meshes in list responses.
   @Mapping(target = "modelComposition", ignore = true)
