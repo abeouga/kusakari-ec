@@ -7,6 +7,9 @@ Import-LocalSettings
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 . "$PSScriptRoot\database.ps1"
 $mysqlBin = Get-KusakariEcMySqlBin -Portable:($env:KUSAKARI_EC_DATABASE_MODE -eq 'managed')
+if ($env:KUSAKARI_EC_DATABASE_MODE -eq 'existing' -and -not (Test-LocalPort ([int]$env:KUSAKARI_EC_DB_PORT))) {
+    Start-ExistingMySqlService -Port ([int]$env:KUSAKARI_EC_DB_PORT)
+}
 if ($env:KUSAKARI_EC_DATABASE_MODE -eq 'managed') {
     $stateRoot = if ($env:KUSAKARI_EC_MYSQL_HOME) { $env:KUSAKARI_EC_MYSQL_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\mysql' }
     $stateFile = Join-Path $stateRoot 'instance.json'

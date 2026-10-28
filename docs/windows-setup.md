@@ -7,8 +7,6 @@ DB作成後にアプリユーザーの認証やFlywayを検証せず、別PCで�
 
 ## Decision
 
-別PCのログイン用MySQLだけを準備する場合は、[Codex向けの指示と専用スクリプト](../script/mysql-environment/README.md)を使用してください。DB再設定で既存Cognito設定を保持し、現在のFlyway構成とログイン用APIまで検証します。
-
 Windows 10/11 x64のWindows PowerShell 5.1で `setup.bat` → `start.bat` を入口にします。
 初回の端末入力で接続設定を決め、現在のWindowsユーザーだけが読める `.env` に保存します。
 管理者パスワードを画面やコマンド引数に表示しません。既存MySQLの管理者パスワードは保存しません。
@@ -29,7 +27,7 @@ DB名は `kusakari` / `kusakari_e2e` に固定し、接続先は `127.0.0.1` に
 アプリでrootアカウントを使用しません。アプリユーザーにはこの2つのDBだけに権限を付与します。
 接続・Flyway・カタログを検証できなければセットアップ成功と表示しません。
 
-MySQL Serverを事前にインストール済みのPCでは、`script-for-mysql\setup.bat`を実行してから`script-for-mysql\start.bat`を実行します。この経路はTCP 3306の既存MySQLを使用し、rootパスワード`password`を先に試します。認証されない場合は、rootパスワードを非表示で入力します。rootパスワードは保存しません。`.env`が既存MySQL設定になっている場合は、通常の`start.bat`もこの経路へ自動的に切り替わります。
+MySQL Serverを事前にインストール済みのPCも同じ入口です。`setup.bat`は3306で応答するMySQLを選び、rootパスワード`password`を先に試します。認証されない場合だけrootパスワードを非表示で入力します。rootパスワードは保存しません。既存MySQLを選んだ`.env`で`start.bat`を実行したときにMySQLサービスが停止していれば、サービスを起動してからAPIとWebを起動します。
 
 ### 再実行・設定変更
 
@@ -51,12 +49,6 @@ Mavenはリポジトリ内のWrapperを使います。システムPATHの変更�
 専用サーバーはローカルだけで待ち受け、PC再起動後も `start.bat` が同じデータで復帰します。
 専用MySQL自身が専用データディレクトリでポートを占有していれば停止・復旧します。別サーバーは停止しません。
 停止スクリプトはWeb/APIを停止し、専用MySQLは継続稼働します。
-
-### 強制復旧
-
-`1009修正スクリプト.bat`は、カレントディレクトリではなくスクリプトの配置からプロジェクトを特定します。`/dry-run`で対象PIDと削除対象の生成物を確認できます。通常実行では、このプロジェクト所有と判定できたWeb/API/Overlayだけを強制終了し、固定ポートを別プロセスが使用中なら停止して終了します。
-
-再構築の対象は`node_modules`、`frontend/node_modules`、`backend/target`、`frontend/dist`、`sysover-ray2/app`です。`.env`の値、MySQLのスキーマ・データとサービス、Dockerボリューム、`.runtime`の設定・バックアップは削除しません。`.env`に旧`KUSAKARI_*`名があれば、現在のユーザーだけが読めるバックアップを`.runtime`へ作成してから`KUSAKARI_EC_*`へ変更し、値を保持します。既存MySQLのrootパスワードは`password`を先に試し、拒否された場合は非表示入力を求めます。未認識のDBスキーマでは変更前に停止します。
 
 ## Alternatives
 

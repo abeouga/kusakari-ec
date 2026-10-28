@@ -85,11 +85,7 @@ Windows 10/11 x64のWindows PowerShell 5.1で `setup.bat` を実行します。`
 
 ### 既存MySQLを使う別PC向け
 
-MySQL ServerをそのPCへインストール済みで、rootパスワードを `password` に設定している場合は、`script-for-mysql\setup.bat` を実行します。MySQLサービスが停止していれば自動起動し、TCP 3306の `kusakari` / `kusakari_e2e` DB、アプリユーザー、Flywayスキーマを準備します。rootパスワードは保存しません。
-
-セットアップ後の起動は `script-for-mysql\start.bat` を実行します。この起動スクリプトは設定とMySQLの稼働を確認し、必要な場合だけ既存MySQL向けセットアップを再実行してからAPIとWebを起動します。ブラウザーとSysOverRayを開かない場合は `script-for-mysql\start.bat -NoBrowser -NoOverlay` を使います。
-
-通常の`setup.bat` / `start.bat`と混同しないようにまとめて実行する場合は、`script-for-mysql\setup.bat`、続いて`script-for-mysql\start.bat`を使用します。このフォルダーはプロジェクト内であれば移動できます。
+MySQL Serverをインストール済みのPCでも、通常の `setup.bat` → `start.bat` を使います。3306で応答するMySQLを自動で選び、rootパスワードが `password` と異なる場合だけ非表示入力します。MySQLサービスが停止していれば、`start.bat` がサービスを起動してからAPIとWebを起動します。既存サーバーを明示する場合は `setup.bat -Reconfigure -DatabaseMode existing` を実行します。
 
 ## Dockerで起動する場合
 
@@ -159,6 +155,3 @@ API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` �
 
 出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証は実Cognito、会員・店舗・審査・注文・通知は実API/MySQLです。実決済・配送・精算は対象外です。[構成・移行・検証手順](docs/business-backend.md)を参照してください。
 
-## 別PCでMySQLを準備する場合
-
-`script/mysql-environment/setup-mysql.bat` でログインに必要なDB・権限・最新テーブルを準備し、Cognito設定を保持して実APIまで検証します。別のCodexへの指示と操作手順は [MySQL環境の準備](script/mysql-environment/README.md) を参照してください。

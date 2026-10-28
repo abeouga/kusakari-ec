@@ -20,6 +20,8 @@
 
 ## 2026-10-09: Kusakari EC識別子移行・移設検証
 
+> 2026-10-28: `1009修正スクリプト.bat`、`script-for-mysql`、`script/mysql-environment`は撤去しました。現在の入口は`setup.bat`・`start.bat`・`stop.bat`です。以下は当時の記録です。
+
 実行先: `C:\Users\t_abe\Desktop\kusakari-ec`。移設試験は、空白と日本語を含む一時フォルダーへ独立コピーして行いました。
 
 ### 識別子と配置

@@ -2,7 +2,7 @@
     $result = (Invoke-MySql $user $password $port "SELECT VERSION(); SHOW COLLATION LIKE 'utf8mb4_0900_ai_ci'; SET time_zone='+00:00';").Output
     $version = ($result -split "`r?`n")[0]
     if ($version -notmatch '^8\.' -or $version -match '(?i)mariadb' -or $result -notmatch 'utf8mb4_0900_ai_ci') {
-        throw 'MySQL 8.0/8.4とutf8mb4_0900_ai_ciが必要です。script\mysql-environment\setup-mysql.bat -DatabaseMode managedで専用DBを準備できます。'
+        throw 'MySQL 8.0/8.4とutf8mb4_0900_ai_ciが必要です。setup.bat -Reconfigure -DatabaseMode managedで専用DBを準備できます。'
     }
     Write-Host "MySQL $version : 照合順序・UTCセッションを確認しました。"
 }

@@ -3,7 +3,6 @@
 function Get-KusakariEcMySqlBin {
   param([switch]$Portable)
   $candidates = @()
-  if ($env:KUSAKARI_EC_EXISTING_MYSQL_BIN) { $candidates += $env:KUSAKARI_EC_EXISTING_MYSQL_BIN }
   $stateRoot = if ($env:KUSAKARI_EC_MYSQL_HOME) { $env:KUSAKARI_EC_MYSQL_HOME } else { Join-Path $env:LOCALAPPDATA 'Kusakari\mysql' }
   $stateFile = Join-Path $stateRoot 'instance.json'
   if (Test-Path -LiteralPath $stateFile) {
@@ -73,10 +72,6 @@ function Get-KusakariEcMySqlBin {
       Write-Host "既存のMySQL実行ファイルを再利用します: $resolvedCandidate"
       return $resolvedCandidate
     }
-  }
-
-  if ($env:KUSAKARI_EC_EXISTING_MYSQL_ONLY -eq '1') {
-    throw '既存MySQLの実行ファイルを特定できません。MySQL Serverのインストール先とサービス設定を確認してください。'
   }
 
   $architecture = $env:PROCESSOR_ARCHITEW6432
@@ -156,4 +151,24 @@ function Initialize-KusakariEcMySqlRuntime {
   }
   & (Join-Path $Bin 'mysqld.exe') --no-defaults --version
   if ($LASTEXITCODE -ne 0) { throw 'MySQL実行ファイルを起動できません。Visual C++ランタイムとWindows x64環境を確認してください。' }
+}
+
+# An existing MySQL installed as a Windows service may be stopped after a reboot.
+function Start-ExistingMySqlService {
+  param([int]$Port)
+  $services = @(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {
+    $_.State -ne 'Running' -and ($_.Name -match '(?i)mysql' -or [string]$_.PathName -match '(?i)mysqld')
+  })
+  if (-not $services.Count) { throw "既存MySQL (TCP $Port) が応答しません。MySQLサービスを起動してから再実行してください。" }
+  foreach ($service in $services) {
+    Write-Host "MySQLサービスを起動します: $($service.Name)"
+    try { Start-Service -Name $service.Name -ErrorAction Stop }
+    catch { throw "MySQLサービス $($service.Name) を起動できません。管理者権限でサービスを起動してください。" }
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $deadline) {
+      if (Test-LocalPort $Port) { return }
+      Start-Sleep -Milliseconds 500
+    }
+  }
+  throw "MySQLサービスは起動しましたが、TCP $Port で接続できません。MySQLのエラーログを確認してください。"
 }
