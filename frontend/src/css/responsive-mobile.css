@@ -244,7 +244,8 @@
   .footer-links {
     gap: 17px;
   }
-  .footer-links button {
+  .footer-links button,
+  .footer-links a {
     font-size: 10px;
   }
   .footer-bottom {

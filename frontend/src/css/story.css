@@ -86,8 +86,12 @@
 .footer-brand {
   font-size: 32px;
 }
-.footer-brand svg {
-  color: #b9cbb0;
+.footer-brand .brand-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  object-fit: contain;
 }
 .site-footer p {
   font-size: 10px;
@@ -99,12 +103,14 @@
   display: flex;
   gap: 32px;
 }
-.footer-links button {
+.footer-links button,
+.footer-links a {
   background: none;
   border: 0;
   color: #e6eddf;
   font-size: 11px;
   padding: 10px 0;
+  text-decoration: none;
 }
 .footer-bottom {
   width: 100%;
