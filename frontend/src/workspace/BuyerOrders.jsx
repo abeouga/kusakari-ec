@@ -17,7 +17,7 @@ const filters = [
 const maxThumbnails = 4;
 
 /** @param {{line:import('../types').OrderLine,size?:'small'|'large'}} props */
-function Thumbnail({ line, size = 'small' }) {
+export function Thumbnail({ line, size = 'small' }) {
   const className = `order-thumb order-thumb-${size}`;
   if (!line.imageUrl)
     return (
