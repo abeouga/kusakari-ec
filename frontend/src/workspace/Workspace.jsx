@@ -17,9 +17,9 @@ import { useAuth } from '../useAuth';
 import { AuthPanel } from '../components/AuthPanel';
 const sellerMenu = [
   ['/seller', 'ダッシュボード'],
-  ['/seller/products', '商品一覧・登録'],
-  ['/seller/inventory', '在庫・販売状態'],
-  ['/seller/orders', '受注・店舗受け取り'],
+  ['/seller/products', '商品管理'],
+  ['/seller/inventory', '在庫'],
+  ['/seller/orders', '店舗受け取り'],
   ['/seller/sales', '注文実績'],
   ['/seller/profile', '店舗プロフィール'],
   ['/seller/notifications', '出店者通知'],

@@ -13,7 +13,7 @@ test('buyer sidebar has one back button and preserves the originating page', asy
   await page.reload();
   await page.getByRole('button', { name: '戻る', exact: true }).click();
   await expect(page).toHaveURL(/\/seller\/orders$/);
-  await expect(page.locator('.workspace-main h1')).toHaveText('受注・店舗受け取り');
+  await expect(page.locator('.workspace-main h1')).toHaveText('店舗受け取り');
   await page.getByRole('button', { name: '戻る', exact: true }).click();
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
   await page.getByRole('button', { name: '戻る', exact: true }).click();
@@ -60,7 +60,7 @@ test('direct account entry falls back to the shop and sidebars have icons on des
         await expect(menu.nth(1)).toHaveText('出店申請');
         await expect(sidebar.getByRole('link', { name: 'お問い合わせ', exact: true })).toHaveCount(0);
         await expect(sidebar.getByRole('link', { name: '購入者サイトへ戻る', exact: true })).toHaveCount(0);
-        await sidebar.getByRole('link', { name: '商品一覧・登録', exact: true }).click();
+        await sidebar.getByRole('link', { name: '商品管理', exact: true }).click();
         await sidebar.getByRole('button', { name: '戻る', exact: true }).click();
         await expect(page).toHaveURL(/\/$/);
         await expect(page.locator('.hero')).toBeVisible();

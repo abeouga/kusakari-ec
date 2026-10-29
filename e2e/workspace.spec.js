@@ -38,7 +38,7 @@ test('seller application, review, store pickup and buyer notifications share moc
     .click();
   await page.getByRole('link', { name: '出店者通知', exact: true }).click();
   await expect(page.locator('.workspace-main')).toContainText('出店審査：承認済み');
-  await page.getByRole('link', { name: '受注・店舗受け取り', exact: true }).click();
+  await page.getByRole('link', { name: '店舗受け取り', exact: true }).click();
   await expect(page.getByText('受取店舗：湘南オリーブ園', { exact: true })).toBeVisible();
   await expect(page.getByText(/配送先|発送日|配送会社|追跡番号/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
@@ -60,7 +60,7 @@ test('seller application, review, store pickup and buyer notifications share moc
     .getByRole('navigation', { name: 'メインナビゲーション' })
     .getByRole('link', { name: '出店者', exact: true })
     .click();
-  await page.getByRole('link', { name: '受注・店舗受け取り', exact: true }).click();
+  await page.getByRole('link', { name: '店舗受け取り', exact: true }).click();
   await page.getByRole('button', { name: '引き渡し完了にする', exact: true }).click();
   await page.getByRole('button', { name: '引き渡し完了を確定', exact: true }).click();
   await expect(page.getByRole('button', { name: '引き渡し完了にする', exact: true })).toBeDisabled();
