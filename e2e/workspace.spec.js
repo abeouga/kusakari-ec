@@ -147,7 +147,6 @@ test('buyer, seller and operator routes render without script errors', async ({ 
     '/store/1',
     '/seller',
     '/seller/products',
-    '/seller/inventory',
     '/seller/orders',
     '/seller/sales',
     '/seller/profile',

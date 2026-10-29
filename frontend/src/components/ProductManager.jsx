@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
 import { SellerProductList } from './SellerProductList';
+import { StockEditor } from './StockEditor';
 import { useSellerCatalog } from './useSellerCatalog';
 import { SellerStoreSelect } from './SellerStoreSelect';
 import { navigate } from '../workspace/navigation';
@@ -12,12 +13,15 @@ export function ProductManager({ shop, onClose, embedded = false }) {
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
   // Stock shown when the form opened; refreshed after a conflict so the seller can re-check it (EC-S05 5b).
   const [expectedStock, setExpectedStock] = useState(0);
+  const [stocking, setStocking] = useState(/** @type {import('../types').Product|null} */ (null));
   const storeName = shop.sellerStores.find((s) => s.id === catalog.storeId)?.name ?? '';
   function resetEditor() {
     setEditing(null);
+    setStocking(null);
   }
   /** @param {import('../types').Product} product */
   function edit(product) {
+    setStocking(null);
     setExpectedStock(product.stock);
     setEditing(product);
   }
@@ -57,6 +61,15 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           新しい商品
         </button>
       </div>
+      {stocking && !editing && (
+        <StockEditor
+          key={`${stocking.id}-${catalog.storeId}`}
+          product={stocking}
+          busy={catalog.busy}
+          onSave={catalog.saveStock}
+          onDone={() => setStocking(null)}
+        />
+      )}
       <div hidden={!!editing}>
         <SellerProductList
           key={catalog.storeId}
@@ -64,6 +77,7 @@ export function ProductManager({ shop, onClose, embedded = false }) {
           storeName={storeName}
           busy={catalog.busy}
           onEdit={edit}
+          onStock={setStocking}
           onStatus={catalog.changeStatus}
         />
       </div>

@@ -273,29 +273,37 @@ test('checkout and visibility changes serialize on store inventory', async ({ pl
   }
 });
 
-test('inventory screen shares store visibility and keeps quantities isolated', async ({ page }) => {
+test('product management edits store stock and visibility without touching other stores', async ({ page }) => {
   test.setTimeout(90000);
   const { ids } = fixtures(1);
   try {
-    await page.goto('/seller/inventory');
+    await page.goto('/seller/products');
+    await expect(page.getByRole('link', { name: '在庫', exact: true })).toHaveCount(0);
     await page.getByRole('combobox', { name: '管理する店舗', exact: true }).selectOption('2');
-    const row = page.getByRole('row').filter({ hasText: ids[0] });
-    await row.getByRole('button', { name: '非表示', exact: true }).click();
-    await page.getByRole('button', { name: '変更を確定', exact: true }).click();
-    await expect(page.getByRole('alertdialog')).toHaveCount(0);
-    await expect(row.getByRole('button', { name: '再公開', exact: true })).toBeVisible();
+    await page.getByLabel('商品検索').fill(ids[0]);
+    const row = page.getByTestId(`manage-${ids[0]}`);
+    await row.getByRole('button', { name: '公開中：非表示にする', exact: true }).click();
+    await expect(row.getByRole('button', { name: '非表示：再公開する', exact: true })).toBeEnabled();
     expect((await catalog(page.request, 1)).some((p) => p.id === ids[0])).toBe(true);
     expect((await catalog(page.request, 2)).some((p) => p.id === ids[0])).toBe(false);
+    await row.getByRole('button', { name: '在庫を編集', exact: true }).click();
+    await expect(page.getByRole('group', { name: '在庫数の変更' })).toContainText('変更前の在庫数 30');
+    await page.getByRole('spinbutton', { name: '在庫数', exact: true }).fill('0');
+    await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
+    await expect(page.getByRole('spinbutton', { name: '在庫数', exact: true })).toHaveCount(0);
+    await expect(row.locator('td[data-label="在庫"]')).toContainText('在庫切れ');
     await row.getByRole('button', { name: '在庫を編集', exact: true }).click();
     await page.getByRole('spinbutton', { name: '在庫数', exact: true }).fill('31');
     await page.getByRole('button', { name: '在庫を保存', exact: true }).click();
     await expect(page.getByRole('spinbutton', { name: '在庫数', exact: true })).toHaveCount(0);
-    await row.getByRole('button', { name: '再公開', exact: true }).click();
-    await page.getByRole('button', { name: '変更を確定', exact: true }).click();
-    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await row.getByRole('button', { name: '非表示：再公開する', exact: true }).click();
+    await expect(row.getByRole('button', { name: '公開中：非表示にする', exact: true })).toBeEnabled();
     await page.reload();
     await page.getByRole('combobox', { name: '管理する店舗', exact: true }).selectOption('2');
-    await expect(row).toContainText('31');
+    await page.getByLabel('商品検索').fill(ids[0]);
+    await expect(row.locator('td[data-label="在庫"] .seller-stock > span')).toHaveText('31');
+    await mkdir('artifacts/business', { recursive: true });
+    await page.screenshot({ path: 'artifacts/business/seller-products-stock-reloaded.png', fullPage: true });
     expect((await catalog(page.request, 1)).find((p) => p.id === ids[0]).stock).toBe(20);
     expect((await catalog(page.request, 2)).find((p) => p.id === ids[0]).stock).toBe(31);
   } finally {

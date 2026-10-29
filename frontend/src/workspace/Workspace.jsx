@@ -8,7 +8,6 @@ import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { Notices } from './Notices';
-import { ProductInventory } from './ProductInventory';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
 import { Materials } from '../components/Materials';
@@ -19,7 +18,6 @@ import { AuthPanel } from '../components/AuthPanel';
 const sellerMenu = [
   ['/seller', 'ダッシュボード'],
   ['/seller/products', '商品管理'],
-  ['/seller/inventory', '在庫'],
   ['/seller/orders', '店舗受け取り'],
   ['/seller/sales', '注文実績'],
   ['/seller/profile', '店舗プロフィール'],
@@ -120,7 +118,6 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
-  else if (path === '/seller/inventory') content = <ProductInventory shop={shop} />;
   else if (path === '/seller/profile') content = <ProfilePage storeId={storeId} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage role={session.role} />;
   else if (application) content = <ApplicationPage role={session.role} />;

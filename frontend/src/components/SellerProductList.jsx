@@ -9,9 +9,10 @@ const statusLabels = { PUBLISHED: '公開中', HIDDEN: '非表示', DELETED: '�
 /**
  * @param {{products:import('../types').Product[],storeName:string,busy:boolean,
  * onEdit:(product:import('../types').Product)=>void,
+ * onStock:(product:import('../types').Product)=>void,
  * onStatus:(ids:string[],status:string)=>Promise<boolean>}} props
  */
-export function SellerProductList({ products, storeName, busy, onEdit, onStatus }) {
+export function SellerProductList({ products, storeName, busy, onEdit, onStock, onStatus }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
@@ -197,7 +198,21 @@ export function SellerProductList({ products, storeName, busy, onEdit, onStatus 
               </td>
               <td data-label="カテゴリ">{p.category}</td>
               <td data-label="税込価格">{yen(p.priceYen)}</td>
-              <td data-label="在庫">{p.stock}</td>
+              <td data-label="在庫">
+                <div className="seller-stock">
+                  <span>{p.stock}</span>
+                  {p.stock === 0 && <small className="seller-stock-out">在庫切れ</small>}
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      setSelected([]);
+                      onStock(p);
+                    }}
+                  >
+                    在庫を編集
+                  </button>
+                </div>
+              </td>
               <td data-label="公開状態">
                 <button
                   className={`seller-status ${p.publicationStatus === 'HIDDEN' ? 'is-hidden' : ''}`}

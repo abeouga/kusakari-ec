@@ -176,3 +176,13 @@
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
+.seller-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.seller-stock-out {
+  color: #a33a2b;
+  font-weight: 600;
+}

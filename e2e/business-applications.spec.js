@@ -145,16 +145,14 @@ test('approved applicant manages only the new store; stale stock, confirmations 
       );
 
     // The store selector starts at, and only offers, the seller's own store.
-    for (const path of ['/seller/products', '/seller/inventory']) {
-      await user.goto(`${ec}${path}`);
-      const select = user.getByRole('combobox', { name: '管理する店舗', exact: true });
-      await expect(select).toHaveValue(String(storeId));
-      await expect(select.locator('option')).toHaveText([company]);
-    }
+    await user.goto(`${ec}/seller/products`);
+    const select = user.getByRole('combobox', { name: '管理する店舗', exact: true });
+    await expect(select).toHaveValue(String(storeId));
+    await expect(select.locator('option')).toHaveText([company]);
 
     // EC-S05 5b: stock changed after it was shown is not overwritten; the latest stock is shown for re-confirmation.
-    const stockRow = user.getByRole('row').filter({ hasText: input.name });
-    const stockCell = stockRow.getByRole('cell').nth(2);
+    const stockRow = user.getByTestId(`manage-${product.id}`);
+    const stockCell = stockRow.locator('td[data-label="在庫"] .seller-stock > span');
     await expect(stockCell).toHaveText('5');
     await stockRow.getByRole('button', { name: '在庫を編集', exact: true }).click();
     await user.getByRole('spinbutton', { name: '在庫数', exact: true }).fill('7');
