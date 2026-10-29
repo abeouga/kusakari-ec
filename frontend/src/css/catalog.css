@@ -10,16 +10,6 @@
   padding-bottom: 50px;
   scroll-margin-top: 20px;
 }
-.section-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 30px;
-}
-.section-heading .eyebrow {
-  margin-bottom: 14px;
-}
-.section-heading h2,
 .editorial h2,
 .material-banner h2 {
   font-family: var(--serif);
@@ -27,12 +17,6 @@
   font-size: 27px;
   letter-spacing: 2px;
   margin-bottom: 0;
-}
-.section-heading > p {
-  font-size: 11px;
-  line-height: 2;
-  color: var(--muted);
-  margin-bottom: 2px;
 }
 .catalog-controls {
   display: flex;

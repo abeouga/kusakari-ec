@@ -122,16 +122,6 @@
     padding-top: 40px;
     padding-inline: 4%;
   }
-  .section-heading h2 {
-    font-size: 22px;
-    letter-spacing: 1px;
-  }
-  .section-heading > p {
-    display: none;
-  }
-  .section-heading .eyebrow {
-    font-size: 9px;
-  }
   .catalog-controls {
     align-items: stretch;
     flex-direction: column;

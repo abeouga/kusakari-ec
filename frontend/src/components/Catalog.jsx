@@ -71,17 +71,6 @@ export function Catalog({ shop, onDetail }) {
   }
   return (
     <section className="catalog section-container" id="plants">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">FIND YOUR GREEN</p>
-          <h2>庭と部屋を彩る、植物のカタログ。</h2>
-        </div>
-        <p>
-          庭にも、ベランダにも、お部屋にも。
-          <br />
-          植物との暮らしを、ここから。
-        </p>
-      </div>
       <div className="catalog-controls">
         <div className="categories" aria-label="商品カテゴリー">
           {categories.map((item) => (

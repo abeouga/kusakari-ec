@@ -476,9 +476,6 @@
   .catalog-results .product-grid {
     gap: 28px 16px;
   }
-  .section-heading h2 {
-    font-size: 23px;
-  }
   .manager-toolbar {
     flex-wrap: wrap;
     gap: 15px;
