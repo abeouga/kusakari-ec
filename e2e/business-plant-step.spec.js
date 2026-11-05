@@ -7,12 +7,22 @@ test.use({ trace: 'off' });
 
 const dir = 'artifacts/business/plant-step';
 const preview = (page) => page.frameLocator('iframe[title="植物の3Dプレビュー"]').getByTestId('preview-loaded');
+/**
+ * The seller looks at the preview, then it has drawn the model. Below 700px the preview is not sticky, and Chromium
+ * does not draw a cross-origin frame that is scrolled out of view, so the preview is brought into view first.
+ */
+async function expectPreviewDrawn(page) {
+  await page.locator('.plant-preview-surface').scrollIntoViewIfNeeded();
+  await expect(preview(page)).toHaveText('loaded', { timeout: 30000 });
+}
 /** URL-encoded `"key":value` inside the Canvas preview URL. */
 const param = (key, value) => new RegExp(encodeURIComponent(`"${key}":${JSON.stringify(value)}`));
 
 /** Full-length capture with the viewport stretched to the document (the footer is sticky). */
 async function snap(page, path) {
   const { width, height } = page.viewportSize();
+  // The pointer left on the last clicked button would capture its hover colour instead of the resting screen.
+  await page.mouse.move(0, 0);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.setViewportSize({ width, height: await page.evaluate(() => document.documentElement.scrollHeight) });
   await page.screenshot({ path });
@@ -69,7 +79,7 @@ test('garden step previews automatically, guides required input and saves groupe
     // #51: the preview follows the height without a button.
     const before = loads.length;
     await garden.getByLabel('植物の高さ', { exact: true }).fill('180');
-    await expect(preview(page)).toHaveText('loaded', { timeout: 30000 });
+    await expectPreviewDrawn(page);
     expect(loads.length).toBe(before + 1);
 
     // Moving a slider step by step reloads the preview once, after the input settles.
@@ -146,7 +156,7 @@ test('garden step previews automatically, guides required input and saves groupe
     await flower.getByRole('radio', { name: '紫', exact: true }).check();
     await expect(flower.getByRole('group', { name: /花の色/ })).toContainText('紫');
     await expect(frame).toHaveAttribute('src', param('flowerColor', '#8e6fc1'));
-    await expect(preview(page)).toHaveText('loaded', { timeout: 30000 });
+    await expectPreviewDrawn(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/garden-${width}.png`);
 
@@ -180,7 +190,7 @@ test('garden step previews automatically, guides required input and saves groupe
     await expect(editStem.locator('summary')).toContainText('手動 1項目');
     await editStem.locator('summary').click();
     await expect(editStem.getByLabel('幹・茎の曲がり', { exact: true })).toHaveValue('45');
-    await expect(preview(page)).toHaveText('loaded', { timeout: 30000 });
+    await expectPreviewDrawn(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/edit-after-reload-${width}.png`);
   }
@@ -254,7 +264,7 @@ test('editing keeps every saved plant value and products without a garden object
     const leaf = form.getByRole('group', { name: '葉', exact: true });
     await leaf.locator('summary').click();
     await expect(leaf.locator('select[name="modelLeafArrangement"]')).toHaveValue('opposite');
-    await expect(preview(page)).toHaveText('loaded', { timeout: 30000 });
+    await expectPreviewDrawn(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/edit-existing-${width}.png`);
     const updated = page.waitForResponse((r) => r.url().includes(`/api/products/${product.id}`));
