@@ -64,9 +64,10 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       return false;
     }
     if (scope === 0 || scope === null) {
-      for (const name of ['name', 'sku', 'description']) {
+      // A new product may leave the number blank; the server assigns one (issue #25).
+      for (const name of product ? ['name', 'sku', 'description'] : ['name', 'description']) {
         if (!String(draft[name]).trim()) {
-          setError('商品名・商品番号・説明を入力してください。');
+          setError(product ? '商品名・商品番号・説明を入力してください。' : '商品名・説明を入力してください。');
           const field = formRef.current?.querySelector(`[name="${name}"]`);
           if (field instanceof HTMLElement) reveal(field);
           return false;

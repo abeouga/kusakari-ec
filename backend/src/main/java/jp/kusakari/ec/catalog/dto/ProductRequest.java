@@ -16,7 +16,7 @@ public class ProductRequest {
   @Positive
   private Long storeId;
 
-  @NotBlank
+  /** Blank on create: the server assigns one (issue #25). Blank on update keeps the current number. */
   @Size(max = 50)
   private String sku;
 

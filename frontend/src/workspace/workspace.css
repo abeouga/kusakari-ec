@@ -156,21 +156,12 @@
   background: #244c3c;
   color: white;
 }
+/* Text fields read left to right (issue #23); checkboxes and radios keep their own size. */
+.workspace-shell input:not([type='checkbox']):not([type='radio']),
 .workspace-shell select,
 .workspace-shell textarea {
   display: block;
   width: 100%;
-  font: inherit;
-  padding: 10px 12px;
-  border: 1px solid #cdd8cb;
-  border-radius: 6px;
-  background: #fff;
-  margin-top: 6px;
-  color: #263d32;
-}
-.workspace-shell input:not([type='checkbox']):not([type='radio']) {
-  display: block;
-  text-align: center;
   font: inherit;
   padding: 10px 12px;
   border: 1px solid #cdd8cb;

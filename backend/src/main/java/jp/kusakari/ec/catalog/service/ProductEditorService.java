@@ -32,6 +32,7 @@ public class ProductEditorService {
   private final CanvasModelClient models;
   private final MaterialProductRepository materials;
   private final jp.kusakari.ec.auth.AuthService auth;
+  private final ProductSkuGenerator skus;
 
   public ProductView create(ProductRequest input) {
     auth.requireSeller(input.getStoreId());
@@ -40,7 +41,8 @@ public class ProductEditorService {
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
     if (auth.enabled()) product.setOwnerMemberId(auth.current().getId());
-    if (products.existsBySku(product.getSku())) throw duplicateSku();
+    if (product.getSku() == null || product.getSku().isBlank()) product.setSku(skus.next());
+    else if (products.existsBySku(product.getSku())) throw duplicateSku();
     resolveModel(product, input, null, true);
     saveProduct(product, true);
     java.util.List.of(input.getStoreId())
@@ -66,6 +68,7 @@ public class ProductEditorService {
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
     auth.requireProductOwner(product.getOwnerMemberId());
     if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
+    if (input.getSku() == null || input.getSku().isBlank()) input.setSku(product.getSku());
     if (products.existsBySkuAndIdNot(input.getSku(), id)) throw duplicateSku();
     // Check the store stock before changing anything: a form opened before an order or a cancellation
     // restock must not overwrite the current quantity (EC-S05 5b).

@@ -298,22 +298,69 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await expect(user).toHaveURL(`${ec}/seller/application`);
     await expect(user.locator('.workspace-main h1')).toHaveText('出店申請');
     await expect(sidebar.getByRole('link', { name: '出店申請', exact: true })).toBeVisible();
-    for (const [name, label] of Object.entries(labels)) await user.getByLabel(label, { exact: true }).fill(input[name]);
+    // Issue #20: one step at a time; each step checks only its own fields before moving on.
+    const steps = user.getByRole('list', { name: '出店申請の手順' });
+    const next = user.getByRole('button', { name: '次へ', exact: true });
+    const alert = user.locator('.workspace-main p.error[role="alert"]');
+    await expect(steps.getByRole('listitem')).toHaveText([
+      '1事業者情報',
+      '2担当者・連絡先',
+      '3出店プラン',
+      '4事業確認書類',
+      '5入力内容の確認',
+    ]);
+    await expect(steps.locator('[aria-current="step"]')).toHaveText('1事業者情報');
+    await expect(user.getByLabel('担当者名', { exact: true })).toBeHidden();
+    await user.getByLabel('会社・事業者名', { exact: true }).fill(input.company);
+    await next.click();
+    await expect(alert).toHaveText('未入力の項目があります：所在地');
+    await user.getByLabel('所在地', { exact: true }).fill(input.address);
+    await next.click();
+    await expect(steps.locator('[aria-current="step"]')).toHaveText('2担当者・連絡先');
+    await user.getByLabel('担当者名', { exact: true }).fill(input.contact);
+    await user.getByLabel('連絡先メール', { exact: true }).fill('not-an-email');
+    await user.getByLabel('電話番号', { exact: true }).fill(input.phone);
+    await next.click();
+    await expect(alert).toHaveText('連絡先メールの形式が正しくありません。');
+    await user.getByLabel('連絡先メール', { exact: true }).fill(input.email);
+    // 戻る keeps what was entered.
+    await user.getByRole('button', { name: '戻る', exact: true }).click();
+    await expect(user.getByLabel('会社・事業者名', { exact: true })).toHaveValue(input.company);
+    await next.click();
+    await expect(user.getByLabel('連絡先メール', { exact: true })).toHaveValue(input.email);
+    await next.click();
     await user.getByLabel('希望出店プラン').selectOption('PRODUCER');
+    await next.click();
+    await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
+    await expect(alert).toHaveText('未入力の項目があります：事業確認書類');
     await user
       .locator('input[type=file]')
       .setInputFiles({ name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
+    const posts = [];
+    user.on('request', (r) => {
+      if (r.url().endsWith('/api/account/store-applications') && r.method() === 'POST') posts.push(r.url());
+    });
     await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     const review = user.getByRole('region', { name: '入力内容の確認' });
     await expect(review).toContainText(input.company);
     await expect(review).toContainText('生産者直販');
     await expect(review).toContainText('application.pdf');
-    // 6a: 修正する returns to the form with the input kept.
-    await review.getByRole('button', { name: '修正する', exact: true }).click();
-    await expect(user.getByLabel('会社・事業者名', { exact: true })).toHaveValue(input.company);
+    await expect(next).toBeHidden();
+    await expect(user.getByRole('button', { name: '戻る', exact: true })).toBeHidden();
+    await mkdir('artifacts/business', { recursive: true });
+    await user.screenshot({ path: 'artifacts/business/application-wizard-review.png', fullPage: true });
+    // 10a: editing one step from the review keeps every other value, including the selected file.
+    await review.getByRole('button', { name: '担当者・連絡先を修正', exact: true }).click();
+    await expect(steps.locator('[aria-current="step"]')).toHaveText('2担当者・連絡先');
     await user.getByLabel('担当者名', { exact: true }).fill('確認担当 修正');
+    await next.click();
+    await expect(user.getByLabel('希望出店プラン')).toHaveValue('PRODUCER');
+    await next.click();
     await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     await expect(review).toContainText('確認担当 修正');
+    await expect(review).toContainText(input.company);
+    await expect(review).toContainText('application.pdf');
+    expect(posts).toEqual([]);
     const submission = user.waitForResponse(
       (r) => r.url().endsWith('/api/account/store-applications') && r.request().method() === 'POST',
     );
@@ -355,9 +402,37 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await main.getByRole('button', { name: '再申請する', exact: true }).click();
     await expect(user).toHaveURL(`${ec}/seller/application`);
     const previous = { ...input, contact: '確認担当 修正' };
-    for (const [name, label] of Object.entries(labels))
-      await expect(user.getByLabel(label, { exact: true })).toHaveValue(previous[name]);
+    await expect(
+      user.getByText('前回の申請内容を入力しています。事業確認書類はもう一度選択してください。'),
+    ).toBeVisible();
+    await expect(user.getByLabel('会社・事業者名', { exact: true })).toHaveValue(previous.company);
+    await expect(user.getByLabel('所在地', { exact: true })).toHaveValue(previous.address);
+    await next.click();
+    for (const name of ['contact', 'email', 'phone'])
+      await expect(user.getByLabel(labels[name], { exact: true })).toHaveValue(previous[name]);
+    await next.click();
     await expect(user.getByLabel('希望出店プラン')).toHaveValue('PRODUCER');
+    await next.click();
+    // The same wizard re-submits after a rejection.
+    await user
+      .locator('input[type=file]')
+      .setInputFiles({ name: 'resubmit.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
+    await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
+    await expect(review).toContainText('resubmit.pdf');
+    await review.getByRole('button', { name: '申請する', exact: true }).click();
+    await expect(user.getByRole('status')).toContainText('出店申請を受け付けました');
+    await sidebar.getByRole('link', { name: '出店申請状況', exact: true }).click();
+    await user.reload();
+    await expect(main).toContainText('審査状況：審査中');
+    await user.screenshot({ path: 'artifacts/business/application-resubmitted-reloaded.png', fullPage: true });
+    const [again] = await call(user.request, '/account/store-applications').then((r) => r.json());
+    expect(again).toMatchObject({
+      status: 'PENDING',
+      company: previous.company,
+      contact: previous.contact,
+      plan: 'PRODUCER',
+    });
+    expect(again.documentName).toBe('resubmit.pdf');
     await writeFile(
       'artifacts/business/application-status.json',
       JSON.stringify(await call(user.request, '/account/store-applications').then((r) => r.json()), null, 2),

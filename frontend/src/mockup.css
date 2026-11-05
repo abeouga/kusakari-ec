@@ -92,7 +92,7 @@
   align-self: start;
   border-radius: 6px;
   position: sticky;
-  top : 10px;
+  top: calc(var(--ec-header-offset, 0px) + 10px);
 }
 .catalog-sidebar h3 {
   font-size: 15px;
@@ -268,7 +268,7 @@
   padding: 25px;
   border-radius: 6px;
   position: sticky;
-  top: 0;
+  top: var(--ec-header-offset, 0px);
 }
 .checkout-summary .primary-button {
   width: 100%;
@@ -458,6 +458,11 @@
   .checkout-layout,
   .mockup-detail {
     grid-template-columns: 1fr;
+  }
+  /* One column: a sticky panel would cover the content that follows it under the sticky header. */
+  .catalog-sidebar,
+  .checkout-summary {
+    position: static;
   }
   .catalog-sidebar {
     display: grid;
