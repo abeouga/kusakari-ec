@@ -129,7 +129,6 @@
 .workspace-shell textarea {
   display: block;
   width: 100%;
-  text-align: right;
   font: inherit;
   padding: 10px 12px;
   border: 1px solid #cdd8cb;
