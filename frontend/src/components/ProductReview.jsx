@@ -38,7 +38,13 @@ export function ProductReview({ draft: p, plant, storeName, onEdit }) {
           <dt>植物の高さ</dt>
           <dd>{plant.height ? `${plant.height} cm` : '未設定'}</dd>
           <dt>庭オブジェクト</dt>
-          <dd>{plant.enabled ? `設定あり（幅 ${plant.profile.widthCm} cm）` : '設定なし'}</dd>
+          <dd>
+            {plant.configured
+              ? `設定あり（幅 ${plant.profile.widthCm} cm）`
+              : plant.plant
+                ? '未設定'
+                : 'なし（植物以外のカテゴリー）'}
+          </dd>
         </dl>
         {plant.estimated && <p className="ai-estimate">高さはAI推定・実寸未確認です。</p>}
         <button type="button" className="text-button" onClick={() => onEdit(2)}>

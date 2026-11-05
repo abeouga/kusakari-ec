@@ -16,7 +16,7 @@ const REVIEW = 3;
 /** @param {{product:import('../types').Product|null,storeId:number,storeName?:string,storeSelector?:import('react').ReactNode,busy:boolean,onSave:(id:string,input:import('../types').ProductInput)=>Promise<boolean|undefined>,onDone:()=>void}} props */
 export function ProductForm({ product, storeId, storeName, storeSelector, busy, onSave, onDone }) {
   const [draft, setDraft] = useState(() => createDraft(product ?? emptyProduct));
-  const plant = usePlantSuggestion(product ?? emptyProduct, !!product);
+  const plant = usePlantSuggestion(product ?? emptyProduct, !!product, String(draft.category));
   const [step, setStep] = useState(INFO);
   const [error, setError] = useState('');
   const formRef = useRef(/** @type {HTMLFormElement|null} */ (null));
@@ -71,10 +71,12 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
     const form = formRef.current;
     const root = scope === null ? form : form?.querySelector(`[data-step="${scope}"]`);
     const invalid = root?.querySelector('input:invalid,select:invalid,textarea:invalid');
-    if (invalid instanceof HTMLInputElement && invalid.name === 'modelHeight') {
-      const { rangeUnderflow, rangeOverflow, stepMismatch } = invalid.validity;
-      if (rangeUnderflow || rangeOverflow || stepMismatch)
-        return fail('植物の高さは10〜1500cmの整数にしてください。', invalid);
+    if (invalid instanceof HTMLInputElement && invalid.name.startsWith('model')) {
+      const label = invalid.labels?.[0]?.textContent ?? '庭オブジェクトの値';
+      // Issue #49: the garden object is required for plants, so an empty height leads to the field.
+      if (invalid.validity.valueMissing) return fail(`${label}を入力してください。`, invalid);
+      if (invalid.name === 'modelHeight') return fail(`${label}は10〜1500cmの整数にしてください。`, invalid);
+      return fail(`${label}を確認してください。`, invalid);
     }
     if (invalid) return fail('入力内容を確認してください。', invalid);
     if (scope === INFO || scope === null) {
@@ -143,7 +145,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
           />
         </section>
         <section data-step={GARDEN} hidden={step !== GARDEN} aria-label="庭オブジェクト">
-          <ProductGardenStep plant={plant} draft={values} editing={!!product} />
+          <ProductGardenStep plant={plant} draft={values} active={step === GARDEN} />
         </section>
         {step === REVIEW && (
           <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} onEdit={move} />
@@ -161,19 +163,6 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
             <button type="button" className="secondary-button" disabled={locked} onClick={() => move(step - 1)}>
               <ArrowLeft className="seller-ui-icon" size={16} aria-hidden="true" />
               戻る
-            </button>
-          )}
-          {!product && step === GARDEN && (
-            <button
-              type="button"
-              className="text-button"
-              disabled={locked}
-              onClick={() => {
-                plant.setEnabled(false);
-                move(REVIEW);
-              }}
-            >
-              設定せず次へ
             </button>
           )}
           {product || step === REVIEW ? (

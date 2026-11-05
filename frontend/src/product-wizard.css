@@ -1,6 +1,7 @@
 @import './css/product-wizard-steps.css';
 @import './css/product-images.css';
 @import './css/product-pickers.css';
+@import './css/plant-step.css';
 
 .product-wizard {
   position: relative;
@@ -41,48 +42,6 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   gap: 20px;
   align-items: start;
-}
-.model-preview-pane {
-  position: sticky;
-  top: calc(var(--ec-header-offset, 0px) + 20px);
-}
-.model-preview-pane .plant-model-preview {
-  height: 380px;
-  margin: 0;
-}
-.preview-placeholder {
-  min-height: 300px;
-  display: grid;
-  place-content: center;
-  padding: 24px;
-  background: #eef1e7;
-  border-radius: 8px;
-  color: #526348;
-}
-.product-wizard .plant-ai-controls {
-  margin: 0 0 12px;
-  padding: 12px;
-}
-.product-wizard .plant-ai-controls p {
-  margin: 6px 0;
-}
-.product-wizard .plant-model-fields {
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-.product-wizard .plant-model-fields > legend {
-  display: none;
-}
-.product-wizard .plant-model-group {
-  margin: 12px 0;
-  padding-top: 8px;
-}
-.product-wizard .range-field {
-  gap: 4px;
-}
-.product-wizard .plant-model-fields > .range-field {
-  margin-top: 12px;
 }
 .wizard-footer {
   position: sticky;
@@ -135,15 +94,6 @@
   .product-review {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
-  }
-  .model-preview-pane {
-    position: static;
-  }
-  .model-preview-pane .plant-model-preview {
-    height: 230px;
-  }
-  .preview-placeholder {
-    min-height: 120px;
   }
   .wizard-actions {
     gap: 6px;
@@ -235,27 +185,6 @@
   .product-wizard select,
   .product-wizard summary {
     scroll-margin-bottom: 140px;
-  }
-}
-
-.product-wizard .model-size-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0;
-}
-.product-wizard .model-size-grid .ai-estimate {
-  grid-column: 1/-1;
-  margin: 0;
-  order: 1;
-}
-.product-wizard .model-size-grid .range-field-controls {
-  grid-template-columns: minmax(0, 1fr) 64px;
-  gap: 6px;
-}
-@media (max-width: 700px) {
-  .product-wizard .model-size-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
