@@ -107,7 +107,12 @@ test('product images persist after editing and removed guidance is unavailable',
   await detail.getByRole('button', { name: '商品画像2', exact: true }).click();
   await expect(detail.locator('.detail-main-image')).toHaveAttribute('src', finalImages[1]);
   await expect(detail.getByRole('region', { name: '出品者Tips' })).toHaveCount(0);
-  await page.screenshot({ path: `${dir}/product-images-public.png`, fullPage: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(detail.locator('.detail-main-image')).toHaveAttribute('src', finalImages[1]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${dir}/product-images-public-${width}.png` });
+  }
   await writeFile(
     `${dir}/product-media-after-reload.json`,
     JSON.stringify(

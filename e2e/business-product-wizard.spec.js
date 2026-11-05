@@ -5,6 +5,19 @@ import { addImages } from './product-images.js';
 
 test.use({ trace: 'off' });
 
+/**
+ * Full-length capture. At phone width the sticky header and step footer are stitched badly by fullPage, so the
+ * viewport is stretched to the document height for the capture instead.
+ */
+async function snap(page, path) {
+  const { width, height } = page.viewportSize();
+  if (width >= 768) return page.screenshot({ path, fullPage: true });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.setViewportSize({ width, height: await page.evaluate(() => document.documentElement.scrollHeight) });
+  await page.screenshot({ path });
+  await page.setViewportSize({ width, height });
+}
+
 const assigned = /^KS-\d{8}-[2-9A-HJ-NP-Z]{6}$/;
 const external = (url) => {
   const { hostname } = new URL(url);
@@ -47,6 +60,10 @@ test('product wizard registers through the progress bar, dialogs and image step 
       await expect(bar.getByRole('listitem').nth(index)).toContainText(label);
     await expect(bar.locator('[aria-current="step"]')).toHaveCount(1);
     await expect(bar.locator('[aria-current="step"]')).toContainText('商品情報');
+    // Each step label stays on one line (「庭オブジェクト」 wrapped at 390px before).
+    expect(
+      await bar.locator('.wizard-step-label').evaluateAll((els) => els.map((el) => el.getClientRects().length)),
+    ).toEqual([1, 1, 1, 1]);
 
     // #46: no product-number input; #50: no height input on the first step.
     const info = form.getByRole('region', { name: '商品情報', exact: true });
@@ -85,7 +102,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await page.keyboard.press('Enter');
     await expect(categoryDialog).toHaveCount(0);
     await expect(categoryButton).toBeFocused();
-    await expect(info.locator('.picker-field').filter({ has: categoryButton })).toContainText(category);
+    await expect(categoryButton).toHaveAccessibleDescription(category);
 
     // Store dialog: the in-page map mock loads nothing from outside, and pins and the list both choose.
     const outside = [];
@@ -94,7 +111,13 @@ test('product wizard registers through the progress bar, dialogs and image step 
     const storeButton = info.getByRole('button', { name: '在庫を登録する店舗を選ぶ', exact: true });
     await storeButton.click();
     const storeDialog = page.getByRole('dialog', { name: '在庫を登録する店舗を選ぶ', exact: true });
-    await expect(storeDialog.getByRole('button', { name: /^地図のピン：/ })).toHaveCount(stores.length);
+    // Stores approved from a store application are saved at (0, 0) without a position; they stay in the list only.
+    const located = stores.filter((store) => store.latitude !== 0 || store.longitude !== 0);
+    await expect(storeDialog.getByRole('button', { name: /^地図のピン：/ })).toHaveCount(located.length);
+    await expect(storeDialog.getByRole('list', { name: '店舗一覧' }).getByRole('listitem')).toHaveCount(stores.length);
+    await expect(
+      storeDialog.getByText('位置情報のない店舗は地図に表示されません。一覧から選んでください。'),
+    ).toHaveCount(located.length < stores.length ? 1 : 0);
     await expect(storeDialog.locator('iframe, img')).toHaveCount(0);
     const box = await storeDialog.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
@@ -104,7 +127,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await storeDialog.getByRole('button', { name: `地図のピン：${pinned.name}`, exact: true }).click();
     await expect(storeDialog).toHaveCount(0);
     await expect(storeButton).toBeFocused();
-    await expect(info.locator('.picker-field').filter({ has: storeButton })).toContainText(pinned.name);
+    await expect(storeButton).toHaveAccessibleDescription(new RegExp(`^${pinned.name}`));
     await page.keyboard.press('Enter');
     await expect(storeDialog.getByRole('button', { name: `地図のピン：${pinned.name}`, exact: true })).toHaveAttribute(
       'aria-pressed',
@@ -121,11 +144,11 @@ test('product wizard registers through the progress bar, dialogs and image step 
       .getByRole('button')
       .click();
     await expect(storeDialog).toHaveCount(0);
-    await expect(info.locator('.picker-field').filter({ has: storeButton })).toContainText(home.name);
+    await expect(storeButton).toHaveAccessibleDescription(new RegExp(`^${home.name}`));
     page.off('request', watch);
     expect(outside).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `${dir}/info-${width}.png`, fullPage: true });
+    await snap(page, `${dir}/info-${width}.png`);
 
     // #46: images are their own step; the bar follows 「次へ」.
     await form.getByRole('button', { name: '次へ', exact: true }).click();
@@ -140,7 +163,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     expect(main.height).toBeGreaterThan(second.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({ path: `${dir}/images-${width}.png`, fullPage: true });
+    await snap(page, `${dir}/images-${width}.png`);
 
     // #50: the only height field is on the garden-object step and its range error appears once.
     await form.getByRole('button', { name: '次へ', exact: true }).click();
@@ -152,11 +175,13 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await expect(garden.getByRole('button', { name: '手動で設定', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({ path: `${dir}/garden-${width}.png`, fullPage: true });
+    await snap(page, `${dir}/garden-${width}.png`);
     await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('5');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(form.getByRole('alert')).toHaveCount(1);
     await expect(form.getByRole('alert')).toHaveText('植物の高さは10〜1500cmの整数にしてください。');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await snap(page, `${dir}/garden-error-${width}.png`);
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
     await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('180');
     await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
@@ -168,7 +193,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await expect(review).toContainText(category);
     await expect(review).toContainText(home.name);
     await expect(review).toContainText('画像：2枚');
-    await page.screenshot({ path: `${dir}/review-${width}.png`, fullPage: true });
+    await snap(page, `${dir}/review-${width}.png`);
 
     const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
     await form.getByRole('button', { name: '出品する', exact: true }).click();
@@ -198,7 +223,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await tabs.getByRole('button', { name: /庭オブジェクト/ }).click();
     await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveValue('180');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `${dir}/edit-after-reload-${width}.png`, fullPage: true });
+    await snap(page, `${dir}/edit-after-reload-${width}.png`);
   }
 
   // #50: the product page shows the height entered on the garden-object step.
@@ -260,16 +285,20 @@ test('Esc in the category dialog keeps the product manager dialog open while edi
   await form.getByLabel('商品名', { exact: true }).fill(`${input.name} 編集中`);
 
   const categoryButton = form.getByRole('button', { name: 'カテゴリーを選ぶ', exact: true });
-  await categoryButton.focus();
-  await page.keyboard.press('Enter');
   const categoryDialog = page.getByRole('dialog', { name: 'カテゴリーを選ぶ', exact: true });
-  await expect(categoryDialog.getByLabel('カテゴリー名で絞り込み')).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(categoryDialog).toHaveCount(0);
-  await expect(manager).toBeVisible();
-  await expect(categoryButton).toBeFocused();
-  await expect(form.getByLabel('商品名', { exact: true })).toHaveValue(`${input.name} 編集中`);
-  await page.screenshot({ path: `${dir}/manager-after-esc.png` });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await categoryButton.focus();
+    await page.keyboard.press('Enter');
+    await expect(categoryDialog.getByLabel('カテゴリー名で絞り込み')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(categoryDialog).toHaveCount(0);
+    await expect(manager).toBeVisible();
+    await expect(categoryButton).toBeFocused();
+    await expect(form.getByLabel('商品名', { exact: true })).toHaveValue(`${input.name} 編集中`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${dir}/manager-after-esc-${width}.png` });
+  }
 
   // A second Esc closes the manager itself, and nothing was saved by the first one.
   await page.keyboard.press('Escape');

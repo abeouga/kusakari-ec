@@ -90,7 +90,14 @@ test('plant AI validates input and preserves form on missing credentials or disc
   await expect(form.locator('[name="modelHeight"]')).toHaveValue('75');
   await expect(form.getByLabel('この植物を庭に配置できるようにする', { exact: true })).toBeChecked();
   await expect(form.getByRole('button', { name: '次へ', exact: true })).toBeEnabled();
-  await page.screenshot({ path: `${dir}/plant-ai-failure-preserved.png`, fullPage: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(form.locator('[name="modelHeight"]')).toHaveValue('75');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // The sticky step footer covers part of a full-page capture, so the alert is centred in the viewport.
+    await form.getByRole('alert').evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await page.screenshot({ path: `${dir}/plant-ai-failure-preserved-${width}.png` });
+  }
   await page.unroute(`**${endpoint}`);
 });
 

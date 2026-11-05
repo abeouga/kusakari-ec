@@ -7,12 +7,22 @@ const HEIGHT = 3;
 const MARGIN = 0.14;
 
 /**
+ * Stores approved from a store application are saved with latitude 0 and longitude 0 because no position is
+ * entered (StoreApplicationService); that point is treated as "no position" so the map keeps real stores apart.
+ * @param {MapStore} store
+ */
+export function hasLocation(store) {
+  const { latitude, longitude } = store;
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && !(latitude === 0 && longitude === 0);
+}
+
+/**
  * Places stores by latitude and longitude on an even scale (east-west shortened by cos(latitude)).
  * @param {MapStore[]} stores
  * @returns {Map<number,{x:number,y:number}>} positions in percent of the map box
  */
 export function storePositions(stores) {
-  const located = stores.filter((s) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude));
+  const located = stores.filter(hasLocation);
   const positions = new Map();
   if (!located.length) return positions;
   const lats = located.map((s) => Number(s.latitude));

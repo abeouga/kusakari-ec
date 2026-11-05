@@ -7,6 +7,16 @@ import { ec, call, login, prepareMember } from './business-helpers.js';
 
 test.use({ trace: 'off' });
 
+/** Saves the current screen at 1440px and 390px, then returns to the configured desktop size. */
+async function shoot(page, path) {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${path}-${width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+}
+
 // Moved from crud.spec.js (product part only): since Cognito became mandatory the seller signs in first, and the
 // wizard has no product-number input (issue #46). A duplicate number is therefore checked through the real API.
 test('product CRUD, plant filters, gallery and archived cart through real MySQL', async ({ browser }) => {
@@ -95,7 +105,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await expect(detail).toContainText('高さ 約275cm');
     await detail.getByRole('button', { name: '商品画像2', exact: true }).click();
     await expect(buyer.locator('.detail-main-image')).toHaveAttribute('src', product.images[0]);
-    await buyer.screenshot({ path: `${dir}/detail-after-reload.png`, fullPage: true });
+    await shoot(buyer, `${dir}/detail-after-reload`);
     const savedProduct = (await (await call(buyer.request, '/products?storeId=1')).json()).find(
       (item) => item.id === product.id,
     );
@@ -133,7 +143,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await dialog.getByPlaceholder('商品名・商品番号').fill(product.sku);
     await dialog.getByTestId(`manage-${product.id}`).getByRole('button', { name: '編集', exact: true }).click();
     await expect(dialog.getByLabel('商品番号', { exact: true })).toHaveText(product.sku);
-    await page.screenshot({ path: `${dir}/product-manager.png`, fullPage: true });
+    await shoot(page, `${dir}/product-manager`);
     await dialog.getByLabel('税込価格（円）').fill('3500');
     await dialog.getByLabel('選択店舗の在庫').fill('2');
     await dialog.getByRole('button', { name: '変更を保存', exact: true }).click();
@@ -145,7 +155,12 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       .click();
     await expect(buyer.locator('.grand-total')).toContainText('7,000');
     const otherStock = await (await call(page.request, '/products?storeId=2')).json();
-    expect(otherStock.find((item) => item.id === product.id).stock).toBe(0);
+    // Stock was registered only at store 1. The public list omits a product with no inventory row at the store
+    // being viewed (CatalogService/ProductMapper on main), so check both the list and the inventory table.
+    expect(otherStock.find((item) => item.id === product.id)).toBeUndefined();
+    expect(
+      sql(`SELECT COALESCE(SUM(quantity),0) FROM inventory WHERE product_id='${product.id}' AND store_id=2;`),
+    ).toBe('0');
 
     await dialog.getByTestId(`manage-${product.id}`).getByRole('button', { name: '削除', exact: true }).click();
     await page.getByRole('button', { name: '削除を確定', exact: true }).click();
@@ -158,9 +173,9 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       .getByRole('link', { name: /^カートを開く/ })
       .click();
     await expect(buyer.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
-    await buyer.screenshot({ path: `${dir}/archived-cart-after-reload.png`, fullPage: true });
+    await shoot(buyer, `${dir}/archived-cart-after-reload`);
     await buyer.getByRole('button', { name: `${name}を削除`, exact: true }).click();
-    await expect(buyer.getByRole('heading', { name: 'まだ植物が入っていません。' })).toBeVisible();
+    await expect(buyer.getByRole('heading', { name: 'まだ商品が入っていません。' })).toBeVisible();
     expect(sql(`SELECT active FROM products WHERE id='${product.id}';`)).toBe('1');
     expect(sql(`SELECT publication_status FROM inventory WHERE product_id='${product.id}' AND store_id=1;`)).toBe(
       'DELETED',

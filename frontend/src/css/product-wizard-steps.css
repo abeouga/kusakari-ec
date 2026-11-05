@@ -80,8 +80,13 @@
   .wizard-steps ol {
     gap: 4px;
   }
+  /* Each step is at least as wide as its label so 「庭オブジェクト」 stays on one line at 320-390px. */
   .wizard-steps li {
+    flex: 1 1 auto;
     font-size: 11px;
+  }
+  .wizard-step-label {
+    white-space: nowrap;
   }
   .wizard-steps ol[data-mode='progress'] > li,
   .wizard-steps button {

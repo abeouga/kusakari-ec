@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { useId, useState } from 'react';
 import { PickerDialog } from './PickerDialog';
-import { StoreMap } from './StoreMap';
+import { StoreMap, hasLocation } from './StoreMap';
 
 /**
  * Chooses the store whose stock the new product registers, from map pins or the store list (issue #46).
@@ -12,7 +12,7 @@ export function StorePicker({ stores, value, disabled, onChange }) {
   const nameId = useId();
   const addressId = useId();
   const current = stores.find((store) => store.id === value);
-  const unlocated = stores.filter((s) => !Number.isFinite(s.latitude) || !Number.isFinite(s.longitude));
+  const unlocated = stores.filter((store) => !hasLocation(store));
   /** @param {number} id */
   function choose(id) {
     if (id !== value) onChange(id);
