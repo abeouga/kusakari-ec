@@ -108,6 +108,12 @@ test('review step shows the product like its card with the 3D preview at 1440px 
     await form.getByRole('button', { name: '戻る', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
     await expect(form.getByLabel('植物の高さ', { exact: true })).toHaveValue('150');
+    // The garden step draws the kept plant again.
+    await expect(page.frameLocator('iframe[title="植物の3Dプレビュー"]').getByTestId('preview-loaded')).toHaveText(
+      'loaded',
+      { timeout: 30000 },
+    );
+    await snap(page, `${dir}/back-to-garden-${width}.png`);
     await form.getByRole('button', { name: '戻る', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('画像');
     await form.getByRole('button', { name: '戻る', exact: true }).click();
@@ -133,6 +139,20 @@ test('review step shows the product like its card with the 3D preview at 1440px 
     await expect(card).toContainText(name);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/listed-after-reload-${width}.png`);
+
+    // The listed product opens in the shop with the reviewed name, price and grower.
+    await page.goto(`${ec}/`);
+    await page.getByLabel('植物を検索', { exact: true }).fill(product.sku);
+    await page
+      .getByTestId(`product-${product.id}`)
+      .getByRole('button', { name: `${name}の詳細`, exact: true })
+      .click();
+    const detail = page.getByRole('dialog');
+    await expect(detail).toContainText(name);
+    await expect(detail).toContainText('4,800');
+    await expect(detail).toContainText('確認画面テスト農園');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${dir}/detail-after-reload-${width}.png` });
   }
 
   const products = await (await call(page.request, '/products?storeId=1')).json();
