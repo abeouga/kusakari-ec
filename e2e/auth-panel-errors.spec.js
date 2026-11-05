@@ -9,7 +9,10 @@ const dir = 'artifacts/auth-panel-errors';
 function password() {
   if (process.env.KUSAKARI_TEST_PASSWORD) return process.env.KUSAKARI_TEST_PASSWORD;
   const accounts = readFileSync(new URL('../../kusakari-terraform/.env.test-accounts', import.meta.url), 'utf8');
-  const value = accounts.match(/^KUSAKARI_TEST_PASSWORD=(.+)$/m)?.[1].trim().replace(/^["']|["']$/g, '');
+  const value = accounts
+    .match(/^KUSAKARI_TEST_PASSWORD=(.+)$/m)?.[1]
+    .trim()
+    .replace(/^["']|["']$/g, '');
   if (!value) throw new Error('The ignored test-account password file is required.');
   return value;
 }
@@ -48,7 +51,10 @@ test('login form shows the Cognito error above the form after reload', async ({ 
   const layout = await expectErrorAtTop(page, 'form');
   expect(layout.next).toBe('form.auth-form');
   expect(layout.text).toBe('メールアドレスまたはパスワードが正しくありません。');
-  await writeFile(`${dir}/form.json`, JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2));
+  await writeFile(
+    `${dir}/form.json`,
+    JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2),
+  );
 });
 
 test('signed-in panel shows a logout failure above the account details', async ({ page }) => {
@@ -57,11 +63,26 @@ test('signed-in panel shows a logout failure above the account details', async (
   await expect(page).toHaveURL(/127\.0\.0\.1:15286\/$/);
   await page.goto('/account');
   await page.reload();
+  const message = '通信できないためログアウトできませんでした。接続を確認してもう一度お試しください。';
+  // Issue #8: a dropped connection must show a Japanese message, not the browser's "Failed to fetch".
+  // Offline fails the CSRF read that comes first; a blocked logout request fails the second request.
+  for (const blocked of ['**/api/auth/csrf', '**/api/auth/logout']) {
+    await page.route(blocked, (route) => route.abort());
+    await page.getByRole('button', { name: 'ログアウト', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'ログアウト', exact: true })).toBeEnabled();
+    await expect(page.locator('p.auth-error[role="alert"]')).toHaveText(message);
+    await page.unroute(blocked);
+  }
   await page.route('**/api/auth/logout', (route) => route.abort());
+  await page.reload();
   await page.getByRole('button', { name: 'ログアウト', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'ログアウト', exact: true })).toBeEnabled();
   const layout = await expectErrorAtTop(page, 'signed-in');
-  await writeFile(`${dir}/signed-in.json`, JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2));
+  expect(layout.text).toBe(message);
+  expect((await (await page.request.get('/api/auth/me')).json()).authenticated).toBe(true);
+  await writeFile(
+    `${dir}/signed-in.json`,
+    JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2),
+  );
 });
 
 test('cart handoff panel shows the handoff failure above the retry message', async ({ page }) => {
@@ -75,5 +96,8 @@ test('cart handoff panel shows the handoff failure above the retry message', asy
   await submitLogin(page, password());
   await expect(page.getByRole('button', { name: 'カートを引き継いで続ける', exact: true })).toBeEnabled();
   const layout = await expectErrorAtTop(page, 'cart-handoff');
-  await writeFile(`${dir}/cart-handoff.json`, JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2));
+  await writeFile(
+    `${dir}/cart-handoff.json`,
+    JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2),
+  );
 });
