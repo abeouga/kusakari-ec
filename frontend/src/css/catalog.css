@@ -5,11 +5,11 @@
 }
 .catalog {
   max-width: 1500px;
-  padding-inline: 0;
+  padding-inline: clamp(24px, 3.5vw, 56px);
   padding-top: 65px;
   padding-bottom: 50px;
   scroll-margin-top: 20px;
-  margin: 0 20px;
+  margin: 0 auto;
 }
 .editorial h2,
 .material-banner h2 {
