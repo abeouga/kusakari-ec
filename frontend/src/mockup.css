@@ -84,12 +84,15 @@
   display: grid;
   grid-template-columns: 215px minmax(0, 1fr);
   gap: 32px;
+  position: relative;
 }
 .catalog-sidebar {
   background: #f3f2ec;
   padding: 22px;
   align-self: start;
   border-radius: 6px;
+  position: sticky;
+  top : 10px;
 }
 .catalog-sidebar h3 {
   font-size: 15px;
