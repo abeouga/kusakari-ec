@@ -42,7 +42,8 @@ public class CatalogService {
   private final jp.kusakari.ec.auth.AuthMemberRepository members;
 
   public List<ProductView> products(long storeId) {
-    return allProducts(storeId).stream().filter(ProductView::active).toList();
+    requireStore(storeId);
+    return views(products.findByActiveTrue(), storeId).stream().filter(ProductView::active).toList();
   }
 
   public List<ProductImageReference> imageReferences(List<String> ids) {

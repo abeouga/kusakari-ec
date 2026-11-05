@@ -41,6 +41,10 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
   @EntityGraph(attributePaths = "images")
   List<ProductEntity> findByIdIn(Collection<String> ids);
 
+  // The public catalog never shows archived products, so their large 3D manifests are not loaded.
+  @EntityGraph(attributePaths = "images")
+  List<ProductEntity> findByActiveTrue();
+
   // Avoid loading multi-megabyte manifests just to retrieve image metadata.
   @Query(
     "select new jp.kusakari.ec.catalog.dto.ProductImageReference(p.id, p.name, p.imageUrl, p.active, " +
