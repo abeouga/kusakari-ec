@@ -55,14 +55,19 @@ test('plant AI validates input and preserves form on missing credentials or disc
   const main = await form.getByRole('img', { name: '商品画像1', exact: true }).getAttribute('src');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
-  await form.getByRole('button', { name: '手動で設定', exact: true }).click();
+  // Issue #48: no AI panel above the inputs; the AI button sits on the preview and always sends the main image.
   await form.locator('[name="modelHeight"]').fill('75');
-  await expect(form.getByLabel('商品写真をAIに送る', { exact: true })).toBeChecked();
-  await expect(form.getByText('送信する写真：商品のメイン画像')).toBeVisible();
+  await expect(form.getByText('商品写真をAIに送る')).toHaveCount(0);
+  await expect(form.getByText(/送信する写真/)).toHaveCount(0);
+  await expect(form.getByText(/商品名・説明・写真から/)).toHaveCount(0);
+  const surface = form.locator('.plant-preview-surface');
+  const ai = surface.getByRole('button', { name: 'AIで生成', exact: true });
+  await expect(ai).toBeVisible();
+  await expect(ai).toContainText('AIで生成');
   if (!live) {
     // The main image registered on the 画像 step is read back from the real image API and sent as data.
     const withPhoto = page.waitForResponse((r) => r.url().endsWith(endpoint));
-    await form.getByRole('button', { name: 'AIで特徴を設定', exact: true }).click();
+    await ai.click();
     const photo = await withPhoto;
     expect(photo.status()).toBe(503);
     const sent = photo.request().postDataJSON();
@@ -72,28 +77,40 @@ test('plant AI validates input and preserves form on missing credentials or disc
     expect(Buffer.from(sent.imageDataUrl.split(',')[1], 'base64').equals(original)).toBe(true);
     expect(sent.heightCm).toBe(75);
     await expect(form.getByRole('alert')).toContainText('APIキーが未設定');
-
-    await form.getByLabel('商品写真をAIに送る', { exact: true }).uncheck();
-    const pending = page.waitForResponse((r) => r.url().endsWith(endpoint));
-    await form.getByRole('button', { name: 'AIで特徴を設定', exact: true }).click();
-    const result = await pending;
-    expect(result.status()).toBe(503);
-    expect(result.request().postDataJSON().imageDataUrl).toBeNull();
-    expect(result.request().postDataJSON().imageUrl).toBeNull();
-    await expect(form.getByRole('alert')).toContainText('APIキーが未設定');
-  } else await form.getByLabel('商品写真をAIに送る', { exact: true }).uncheck();
-  // Explicit failure injection only; no successful API response is mocked.
-  await page.route(`**${endpoint}`, (route) => route.abort('failed'));
-  await form.getByRole('button', { name: 'AIで特徴を設定', exact: true }).click();
+  }
+  // Explicit failure injection only; no successful API response is mocked. The request is held for a moment
+  // before the connection is cut, so the in-progress state of the preview can be checked.
+  let release = () => {};
+  const held = new Promise((resolve) => (release = resolve));
+  await page.route(`**${endpoint}`, async (route) => {
+    await held;
+    await route.abort('failed');
+  });
+  await ai.click();
+  await expect(surface.getByRole('status')).toContainText('AIが特徴を推定しています');
+  await expect(ai).toBeDisabled();
+  await expect(ai).toContainText('推定中');
+  await page.screenshot({ path: `${dir}/plant-ai-busy-1440.png` });
+  release();
   await expect(form.getByRole('alert')).toContainText('接続');
+  await expect(ai).toBeEnabled();
   await expect(form.getByLabel('商品名', { exact: true })).toHaveValue(input.name);
   await expect(form.locator('[name="modelHeight"]')).toHaveValue('75');
-  await expect(form.getByLabel('この植物を庭に配置できるようにする', { exact: true })).toBeChecked();
+  await expect(form.getByRole('group', { name: 'サイズ', exact: true })).toBeVisible();
   await expect(form.getByRole('button', { name: '次へ', exact: true })).toBeEnabled();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(form.locator('[name="modelHeight"]')).toHaveValue('75');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // The button stays inside the lower right corner of the preview at every width.
+    const area = await surface.boundingBox();
+    const button = await ai.boundingBox();
+    expect(button.x).toBeGreaterThanOrEqual(area.x);
+    expect(button.y).toBeGreaterThanOrEqual(area.y);
+    expect(button.x + button.width).toBeLessThanOrEqual(area.x + area.width);
+    expect(button.y + button.height).toBeLessThanOrEqual(area.y + area.height);
+    expect(button.x + button.width / 2).toBeGreaterThan(area.x + area.width / 2);
+    expect(button.y + button.height / 2).toBeGreaterThan(area.y + area.height / 2);
     // The sticky step footer covers part of a full-page capture, so the alert is centred in the viewport.
     await form.getByRole('alert').evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.screenshot({ path: `${dir}/plant-ai-failure-preserved-${width}.png` });
@@ -120,7 +137,7 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
   const run = async () => {
     const pending = page.waitForResponse((r) => r.url().endsWith(endpoint), { timeout: 120000 });
-    await form.getByRole('button', { name: 'AIで特徴を設定', exact: true }).click();
+    await form.getByRole('button', { name: 'AIで生成', exact: true }).click();
     const response = await pending;
     const body = await response.json();
     expect(response.status(), JSON.stringify(body)).toBe(200);
@@ -129,7 +146,6 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   const { body: first, sent } = await run();
   expect(sent.imageDataUrl).toMatch(/^data:image\/png;base64,/);
   await expect(form.locator('.ai-estimate:visible')).toContainText('AI推定・実寸未確認');
-  await expect(form.getByLabel('この植物を庭に配置できるようにする', { exact: true })).toBeChecked();
   await expect(form.getByTitle('植物の3Dプレビュー')).toBeVisible();
   await expect(page.frameLocator('iframe[title="植物の3Dプレビュー"]').getByTestId('preview-loaded')).toHaveText(
     'loaded',
@@ -139,17 +155,16 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${dir}/wizard-ai-preview.png` });
   await form.getByRole('button', { name: 'AI設定を元に戻す', exact: true }).click();
-  await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveValue('');
-  await expect(form.getByLabel('この植物を庭に配置できるようにする', { exact: true })).not.toBeChecked();
+  await expect(form.getByLabel('植物の高さ', { exact: true })).toHaveValue('');
   // #50: the measured height is entered on the same step.
-  await form.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('75');
-  await form.getByLabel('商品写真をAIに送る', { exact: true }).uncheck();
-  const { body: second } = await run();
+  await form.getByLabel('植物の高さ', { exact: true }).fill('75');
+  const { body: second, sent: secondSent } = await run();
+  expect(secondSent.imageDataUrl).toMatch(/^data:image\/png;base64,/);
   expect(second.profile.heightCm).toBe(75);
   expect(second.profile.seed).toBe(12345);
   await expect(form.locator('.ai-estimate:visible')).toHaveCount(0);
   const editedWidth = Math.min(1000, second.profile.widthCm + 10);
-  await form.getByLabel('植物の幅（cm）', { exact: true }).fill(String(editedWidth));
+  await form.getByLabel('植物の幅', { exact: true }).fill(String(editedWidth));
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
   await form.getByRole('button', { name: '出品する', exact: true }).click();
@@ -165,7 +180,7 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
     .getByRole('navigation', { name: '商品編集のタブ', exact: true })
     .getByRole('button', { name: /庭オブジェクト/ })
     .click();
-  await expect(form.getByLabel('植物の幅（cm）', { exact: true })).toHaveValue(String(editedWidth));
+  await expect(form.getByLabel('植物の幅', { exact: true })).toHaveValue(String(editedWidth));
   const products = await (await call(page.request, '/products?storeId=1')).json();
   const stored = products.find((item) => item.id === product.id);
   expect(stored.plantModelProfile).toMatchObject({ ...second.profile, widthCm: editedWidth });

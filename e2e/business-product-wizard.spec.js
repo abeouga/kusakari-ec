@@ -40,7 +40,8 @@ test('product wizard registers through the progress bar, dialogs and image step 
     expect(Number.isFinite(store.longitude), store.name).toBe(true);
   }
   const categories = await (await call(page.request, '/categories')).json();
-  const category = categories.find((name) => name !== '庭木');
+  // A plant category other than the default; 鉢・庭材 products have no plant model (issue #49).
+  const category = categories.find((name) => !['庭木', '鉢・庭材'].includes(name));
   const home = stores.find((store) => store.id === 1);
   // Seed stores 2 and 3 have their own coordinates, so their pins are not covered by other pins.
   const pinned = stores.find((store) => store.id === 3) ?? stores.find((store) => store.id === 2);
@@ -68,7 +69,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     const info = form.getByRole('region', { name: '商品情報', exact: true });
     await expect(form.locator('input[name="sku"]')).toHaveCount(0);
     await expect(info.getByText('商品番号', { exact: true })).toHaveCount(0);
-    await expect(info.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveCount(0);
+    await expect(info.getByLabel('植物の高さ', { exact: true })).toHaveCount(0);
     await expect(info.locator('input[type="file"]')).toHaveCount(0);
     const name = `ウィザード確認 ${width}px ${Date.now()}`;
     await info.getByLabel('商品名', { exact: true }).fill(name);
@@ -168,22 +169,32 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
     await expect(bar.locator('li[data-state="done"]')).toHaveCount(2);
-    await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveCount(1);
+    await expect(form.getByLabel('植物の高さ', { exact: true })).toHaveCount(1);
     const garden = form.getByRole('region', { name: '庭オブジェクト', exact: true });
-    // Not configured yet: only the height and the AI / manual choices are shown.
-    await expect(garden.getByRole('button', { name: '手動で設定', exact: true })).toBeVisible();
+    // #49: the grouped inputs are shown at once; no opt-in checkbox, manual button or skip button.
+    for (const name of ['サイズ', '形', '枝・茎', '葉', '花'])
+      await expect(garden.getByRole('group', { name, exact: true })).toBeVisible();
+    await expect(garden.getByText('この植物を庭に配置できるようにする')).toHaveCount(0);
+    await expect(form.getByRole('button', { name: '手動で設定', exact: true })).toHaveCount(0);
+    await expect(form.locator('.wizard-actions button')).toHaveText(['戻る', '次へ']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
     await snap(page, `${dir}/garden-${width}.png`);
-    await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('5');
+    // #49: the required height leads to its input.
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.getByRole('alert')).toHaveText('植物の高さを入力してください。');
+    await expect(garden.getByLabel('植物の高さ', { exact: true })).toBeFocused();
+    await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
+    await snap(page, `${dir}/garden-required-${width}.png`);
+    await garden.getByLabel('植物の高さ', { exact: true }).fill('5');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(form.getByRole('alert')).toHaveCount(1);
     await expect(form.getByRole('alert')).toHaveText('植物の高さは10〜1500cmの整数にしてください。');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/garden-error-${width}.png`);
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
-    await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('180');
-    await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+    await garden.getByLabel('植物の高さ', { exact: true }).fill('180');
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
 
     const review = form.getByRole('region', { name: '出品内容の確認' });
     await expect(bar.locator('[aria-current="step"]')).toContainText('確認');
@@ -192,6 +203,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await expect(review).toContainText(category);
     await expect(review).toContainText(home.name);
     await expect(review).toContainText('画像：2枚');
+    await expect(review).toContainText('設定あり（幅 140 cm）');
     await snap(page, `${dir}/review-${width}.png`);
 
     const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
@@ -220,7 +232,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await expect(tabs.getByRole('button', { name: /画像/ })).toHaveAttribute('aria-current', 'step');
     await expect(form.locator('.product-image-tile')).toHaveCount(2);
     await tabs.getByRole('button', { name: /庭オブジェクト/ }).click();
-    await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveValue('180');
+    await expect(form.getByLabel('植物の高さ', { exact: true })).toHaveValue('180');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/edit-after-reload-${width}.png`);
   }
@@ -238,6 +250,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
     expect(item.sku).toMatch(assigned);
     expect(item.heightCm).toBe(180);
     expect(item.images).toHaveLength(1);
+    expect(item.plantModelProfile).toMatchObject({ heightCm: 180, widthCm: 140 });
   }
   await writeFile(
     `${dir}/products.json`,

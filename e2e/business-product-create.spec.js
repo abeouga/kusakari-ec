@@ -53,22 +53,23 @@ test('product wizard navigation, validation, responsive screenshots and edit tab
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
-    await form.getByRole('button', { name: '手動で設定', exact: true }).click();
+    // Issues #49 and #51: the inputs are shown at once and the preview follows the height without a button.
     await form.locator('[name="modelHeight"]').fill('275');
-    await form.getByRole('button', { name: '植物のプレビューを確認', exact: true }).click();
-    await expect(form.getByTitle('植物の3Dプレビュー')).toBeVisible();
-    await page.waitForTimeout(1800);
+    await expect(page.frameLocator('iframe[title="植物の3Dプレビュー"]').getByTestId('preview-loaded')).toHaveText(
+      'loaded',
+      { timeout: 30000 },
+    );
     await page.screenshot({ path: `${dir}/wizard-model-${width}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
-    await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('設定なし');
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('設定あり（幅 140 cm）');
     await form.getByRole('button', { name: '商品情報を修正', exact: true }).click();
     await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('24');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     // Issue #50: the height entered on the garden-object step is the only height input.
     await expect(form.locator('[name="modelHeight"]')).toHaveValue('275');
-    await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
     await page.screenshot({ path: `${dir}/wizard-review-${width}.png` });
     expect(writes).toBe(beforeWrites);
     const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
@@ -76,7 +77,8 @@ test('product wizard navigation, validation, responsive screenshots and edit tab
     const response = await saved;
     expect(response.status()).toBe(200);
     const product = await response.json();
-    expect(product.plantModelProfile).toBeNull();
+    // Issue #49: a listed plant is saved as a product that can be placed in the garden.
+    expect(product.plantModelProfile).toMatchObject({ heightCm: 275, widthCm: 140 });
     await expect(page).toHaveURL(/\/seller\/products$/);
     await page.reload();
     await page.getByPlaceholder('商品名・商品番号').fill(product.sku);
