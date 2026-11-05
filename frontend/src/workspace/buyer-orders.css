@@ -26,8 +26,8 @@
   border-radius: 12px;
 }
 .order-card {
-  background: #fff;
-  border: 1px solid #dce2d8;
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
   overflow: hidden;
   transition: box-shadow 0.15s;

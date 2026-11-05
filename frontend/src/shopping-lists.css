@@ -55,7 +55,7 @@
 .garden-shopping-line > img { width: 94px; height: 115px; object-fit: cover; border-radius: 8px; }
 .garden-shopping-line h3 { margin: 0; }
 .garden-shopping-line > div { min-width: 0; flex: 1; }
-.garden-shopping-line select { max-width: 100%; }
+.garden-shopping-line select { max-width: 100%; border-color: var(--field-border); background: var(--surface-field); color: var(--field-text); }
 .garden-shopping-line > input, .garden-shopping-line > img { flex-shrink: 0; }
 .garden-shopping-line p { margin: 8px 0; }
 .garden-shopping-line label { display: grid; gap: 8px; }
