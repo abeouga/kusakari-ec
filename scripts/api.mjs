@@ -29,7 +29,8 @@ if (build) {
   command = './mvnw';
   args = ['-B', '-ntp', 'package', '-DskipTests'];
   if (windowsBuild) {
-    command = 'mvnw.cmd -B -ntp package -DskipTests';
+    // Explicit path: cmd skips the current directory when NoDefaultCurrentDirectoryInExePath is set.
+    command = '.\\mvnw.cmd -B -ntp package -DskipTests';
     args = [];
   }
 }

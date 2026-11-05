@@ -36,6 +36,17 @@ if (-not (Test-Path -LiteralPath $jar) -or -not (Test-Path -LiteralPath $vite)) 
 
 # Replace this checkout's old services on the same two ports. Ignore stale PID records.
 Stop-OwnedServices
+# Windows locks a running JAR, so rebuild only after this checkout's API has stopped.
+$jarTime = (Get-Item -LiteralPath $jar).LastWriteTimeUtc
+$backendDir = Join-Path $projectRoot 'backend'
+$staleSource = @(Get-ChildItem -LiteralPath (Join-Path $backendDir 'src') -Recurse -File) + @(Get-Item -LiteralPath (Join-Path $backendDir 'pom.xml')) |
+    Where-Object LastWriteTimeUtc -gt $jarTime | Select-Object -First 1
+if ($staleSource) {
+    Write-Host "APIのソースがJARより新しいため再ビルドします: $($staleSource.FullName.Substring($projectRoot.Length + 1))"
+    Push-Location $projectRoot
+    try { & node (Join-Path $projectRoot 'scripts\api.mjs') build } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw 'APIの再ビルドに失敗しました。上のMavenの出力を確認してください。' }
+}
 Assert-PortsAvailable
 $stateFile = Join-Path $runtimeDir 'processes.json'
 $apiRecord = $null

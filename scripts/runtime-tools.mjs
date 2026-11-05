@@ -8,7 +8,8 @@ export function importRuntimeTools(root) {
   const tools = JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
   const directories = [tools.Node, tools.Java, tools.Dotnet, tools.MySql].filter(Boolean);
   process.env.PATH = [...directories, process.env.PATH].join(';');
-  if (tools.Java) process.env.JAVA_HOME = resolve(tools.Java, '..');
+  // A recorded JDK may have been removed; keep the system JAVA_HOME then, like Import-Toolchain.
+  if (tools.Java && existsSync(resolve(tools.Java, 'javac.exe'))) process.env.JAVA_HOME = resolve(tools.Java, '..');
   return tools;
 }
 
