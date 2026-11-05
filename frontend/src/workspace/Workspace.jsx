@@ -2,7 +2,8 @@ import { AccountPage, accountActions } from './AccountPage';
 import { ProfilePage } from './PartnerForms';
 import { ApplicationPage, ApplicationStatusPage, applicationPaths, applicationsChanged } from './StoreApplication';
 import { useResource } from './useResource';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -48,6 +49,7 @@ const pageTitles = {
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
   const { session, error } = useAuth();
+  const [sidebarClosed, setSidebarClosed] = useState(false);
   // EC-B18: buyers see "出店申請" until they apply, then "出店申請状況" (also after a rejection).
   const applications = useResource(
     session?.authenticated && session.role === 'USER' ? '/account/store-applications' : null,
@@ -110,6 +112,9 @@ export function Workspace({ shop, path, header }) {
           ...(session.role === 'USER' ? [{ label: '出店をご検討の方', items: [applicationLink] }] : []),
         ];
   const menu = groups.flatMap((group) => group.items);
+  // Issue #27: seller and operator pages hold wide tables, so their sidebar can be folded away.
+  const collapsible = seller || operator;
+  const collapsed = collapsible && sidebarClosed;
   let content;
   const action = accountActions.find((a) => a[0] === path);
   if (path === '/account' || action) content = <AccountPage key={path} tab={action?.[1] || 'アカウント情報'} />;
@@ -136,19 +141,34 @@ export function Workspace({ shop, path, header }) {
     <>
       {header}
       <div className="workspace-shell">
-        <div className="workspace-layout">
+        <div className={`workspace-layout${collapsed ? ' is-sidebar-closed' : ''}`}>
           <aside className="workspace-sidebar">
-            <PageLink href="/">商品一覧へ戻る</PageLink>
-            {groups.map((group) => (
-              <nav key={group.label} aria-label={group.label}>
-                {!seller && !operator && <p>{group.label}</p>}
-                {group.items.map(([url, label]) => (
-                  <PageLink key={url} href={url} className={path === url ? 'is-active' : ''}>
-                    {label}
-                  </PageLink>
-                ))}
-              </nav>
-            ))}
+            {collapsible && (
+              <button
+                type="button"
+                className="workspace-sidebar-toggle"
+                aria-controls="workspace-sidebar-menu"
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? 'メニューを開く' : 'メニューを閉じる'}
+                title={collapsed ? 'メニューを開く' : 'メニューを閉じる'}
+                onClick={() => setSidebarClosed(!collapsed)}
+              >
+                {collapsed ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+              </button>
+            )}
+            <div id="workspace-sidebar-menu" className="workspace-sidebar-menu" hidden={collapsed}>
+              <PageLink href="/">商品一覧へ戻る</PageLink>
+              {groups.map((group) => (
+                <nav key={group.label} aria-label={group.label}>
+                  {!seller && !operator && <p>{group.label}</p>}
+                  {group.items.map(([url, label]) => (
+                    <PageLink key={url} href={url} className={path === url ? 'is-active' : ''}>
+                      {label}
+                    </PageLink>
+                  ))}
+                </nav>
+              ))}
+            </div>
           </aside>
           <main className="workspace-main">
             <h1>{action?.[1] || menu.find(([url]) => url === path)?.[1] || pageTitles[path] || 'Kusakari'}</h1>
