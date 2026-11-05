@@ -167,3 +167,27 @@ export function deletePasswordTestAccount(email) {
   // Retain dedicated-DB records for audit; never delete carts or orders here.
   sql(`UPDATE auth_members SET enabled=FALSE WHERE email='${email}'`);
 }
+
+const applicationPdf = { name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
+
+/**
+ * Walks the EC-B17 application wizard (issue #20) to its confirmation step.
+ * @param {import('@playwright/test').Page} page
+ * @param {{company:string,contact:string,email:string,address:string,phone:string}} input
+ * @param {{plan?:string,file?:any}} [options]
+ */
+export async function fillApplication(page, input, { plan, file = applicationPdf } = {}) {
+  const next = () => page.getByRole('button', { name: '次へ', exact: true }).click();
+  await page.getByLabel('会社・事業者名', { exact: true }).fill(input.company);
+  await page.getByLabel('所在地', { exact: true }).fill(input.address);
+  await next();
+  await page.getByLabel('担当者名', { exact: true }).fill(input.contact);
+  await page.getByLabel('連絡先メール', { exact: true }).fill(input.email);
+  await page.getByLabel('電話番号', { exact: true }).fill(input.phone);
+  await next();
+  if (plan) await page.getByLabel('希望出店プラン').selectOption(plan);
+  await next();
+  await page.locator('input[type=file]').setInputFiles(file);
+  await page.getByRole('button', { name: '確認画面へ', exact: true }).click();
+  return page.getByRole('region', { name: '入力内容の確認' });
+}
