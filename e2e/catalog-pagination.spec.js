@@ -22,7 +22,7 @@ function fixtures() {
 }
 
 for (const width of [1440, 390, 320]) {
-  test(`catalog pagination keeps scroll position and filtering works at ${width}px`, async ({ page }) => {
+  test(`catalog pagination moves to the list top and filtering works at ${width}px`, async ({ page }) => {
     const { prefix, ids } = fixtures();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -33,7 +33,8 @@ for (const width of [1440, 390, 320]) {
     const previous = pagination.getByRole('button', { name: '前のページ', exact: true });
     const current = pagination.locator('[aria-current="page"]');
 
-    // Use a real pointer/keyboard action and compare coordinates after browser layout settles.
+    // Switching pages from the bottom pager must bring the list top (summary row) to the viewport top,
+    // or to the page end when the document is too short to scroll that far.
     async function switchPage(button, pageNumber, keyboard = false) {
       await pagination.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
       const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
@@ -45,9 +46,17 @@ for (const width of [1440, 390, 320]) {
         await button.click();
       }
       await expect(current).toHaveText(String(pageNumber));
-      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const top = document.querySelector('.catalog-page-summary')?.getBoundingClientRect().top ?? NaN;
+            const atEnd = Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight;
+            return Math.abs(top) <= 1 || (top > 0 && atEnd);
+          }),
+        )
+        .toBe(true);
       const after = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
-      expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+      expect(after.y).toBeLessThan(before.y);
       expect(after.x).toBe(before.x);
       await expect(page).toHaveURL('http://127.0.0.1:15186/');
     }
