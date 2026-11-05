@@ -35,7 +35,7 @@ export function ProductReview({ draft: p, plant, storeName, onEdit }) {
         </button>
         {/* Issue #50: the height comes only from the garden-object step. */}
         <dl>
-          <dt>植物の高さ</dt>
+          <dt>{plant.plant ? '植物の高さ' : '商品の高さ'}</dt>
           <dd>{plant.height ? `${plant.height} cm` : '未設定'}</dd>
           <dt>庭オブジェクト</dt>
           <dd>

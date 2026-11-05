@@ -16,8 +16,11 @@ const FLOWER_SHAPES = [
 
 /**
  * Named swatches for the flower colour (issue #52). They include the species presets, so a preset shows its name;
- * any other saved colour (e.g. from the AI) stays as it is and is shown as 「その他」.
+ * any other saved colour (e.g. from the AI) stays as it is and is shown as 「その他」. The name is written under each
+ * swatch, so it can be read before choosing on a touch screen.
  */
+/** Swatches light enough to need a dark check mark. */
+const LIGHT_COLORS = new Set(['#f2c94c', '#f4f1f6']);
 const FLOWER_COLORS = [
   ['#df7799', 'ピンク'],
   ['#d23a5b', '赤'],
@@ -78,6 +81,7 @@ export function PlantFlowerFields({ profile: p, onChange }) {
           unit="cm"
           value={p.flowerSizeCm}
           onChange={(value) => onChange({ ...p, flowerSizeCm: Number(value) })}
+          validOnly
           required
         />
         <fieldset className="flower-colors">
@@ -86,7 +90,7 @@ export function PlantFlowerFields({ profile: p, onChange }) {
           </legend>
           <div className="flower-swatches">
             {FLOWER_COLORS.map(([hex, name]) => (
-              <label key={hex} className="flower-swatch" title={name} style={{ background: hex }}>
+              <label key={hex} className="flower-swatch" data-light={LIGHT_COLORS.has(hex) ? 'true' : undefined}>
                 <input
                   type="radio"
                   name={group}
@@ -94,18 +98,25 @@ export function PlantFlowerFields({ profile: p, onChange }) {
                   checked={hex === color}
                   onChange={() => onChange({ ...p, flowerColor: hex })}
                 />
-                <span className="visually-hidden">{name}</span>
-                {hex === color && <Check size={14} strokeWidth={3} aria-hidden="true" />}
+                <span className="flower-swatch-dot" style={{ background: hex }} aria-hidden="true">
+                  {hex === color && <Check size={14} strokeWidth={3} />}
+                </span>
+                <span className="flower-swatch-name">{name}</span>
               </label>
             ))}
-            <label className="flower-swatch flower-swatch-custom" data-checked={!named} title="その他の色">
-              <input
-                name="modelFlowerColor"
-                type="color"
-                aria-label="その他の色"
-                value={color}
-                onChange={(event) => onChange({ ...p, flowerColor: event.target.value })}
-              />
+            <label className="flower-swatch flower-swatch-custom" data-checked={!named}>
+              <span className="flower-swatch-dot">
+                <input
+                  name="modelFlowerColor"
+                  type="color"
+                  aria-label="その他の色"
+                  value={color}
+                  onChange={(event) => onChange({ ...p, flowerColor: event.target.value })}
+                />
+              </span>
+              <span className="flower-swatch-name" aria-hidden="true">
+                その他
+              </span>
             </label>
           </div>
         </fieldset>

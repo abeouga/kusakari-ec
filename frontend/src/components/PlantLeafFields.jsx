@@ -67,6 +67,7 @@ export function PlantLeafFields({ profile: p, onChange }) {
           unit="cm"
           value={p.leafSizeCm}
           onChange={(value) => onChange({ ...p, leafSizeCm: Number(value) })}
+          validOnly
           required
         />
         <ChoiceRange

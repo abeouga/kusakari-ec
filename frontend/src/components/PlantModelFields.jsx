@@ -67,6 +67,7 @@ export function PlantModelFields({ plant }) {
             unit="cm"
             value={p.widthCm}
             onChange={(value) => onChange({ ...p, widthCm: Number(value) })}
+            validOnly
             required
           />
           {plant.estimated && <p className="ai-estimate">AI推定・実寸未確認。高さを確認してください。</p>}
@@ -136,6 +137,7 @@ export function PlantModelFields({ plant }) {
             unit="本"
             value={p.branchCount}
             onChange={(value) => onChange({ ...p, branchCount: Number(value) })}
+            validOnly
             required
           />
           <div hidden={!branchEditable}>
@@ -147,6 +149,7 @@ export function PlantModelFields({ plant }) {
               unit="度"
               value={p.branchAngle}
               onChange={(value) => onChange({ ...p, branchAngle: Number(value) })}
+              validOnly
               required
             />
           </div>
@@ -160,6 +163,7 @@ export function PlantModelFields({ plant }) {
               unit="cm"
               value={p.trunkThicknessCm}
               onChange={(value) => onChange({ ...p, trunkThicknessCm: Number(value) })}
+              validOnly
               required
             />
           </div>

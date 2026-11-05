@@ -6,6 +6,7 @@ import { ProductImages } from './ProductImages';
 import { ProductInfoFields } from './ProductInfoFields';
 import { ProductReview } from './ProductReview';
 import { WizardSteps } from './WizardSteps';
+import { firstInvalid } from '../formValidity';
 import { emptyProduct, createDraft, productInput } from '../productDraft';
 
 const INFO = 0;
@@ -70,7 +71,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   function validate(scope) {
     const form = formRef.current;
     const root = scope === null ? form : form?.querySelector(`[data-step="${scope}"]`);
-    const invalid = root?.querySelector('input:invalid,select:invalid,textarea:invalid');
+    const invalid = firstInvalid(root);
     if (invalid instanceof HTMLInputElement && invalid.name.startsWith('model')) {
       const label = invalid.labels?.[0]?.textContent ?? '庭オブジェクトの値';
       // Issue #49: the garden object is required for plants, so an empty height leads to the field.

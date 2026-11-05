@@ -7,42 +7,67 @@ export function OptionalRangeField({ defaultValue, ...props }) {
 }
 
 /**
- * Message shown under the field while the typed value cannot be used. The value is still passed to onChange, so
- * the form-level check and the preview (issue #51) see the same state as the input.
- * @param {string} draft @param {{min:number,max:number,step:number,required:boolean,touched:boolean,unit?:string}} rule
+ * Why the typed text cannot be used, or '' when it can. The step check follows the browser's stepMismatch (step base
+ * = min), so the message matches the :invalid state that holds the preview (issue #51).
+ * @param {string} draft @param {{min:number,max:number,step:number,unit?:string}} rule
  */
-function fieldError(draft, { min, max, step, required, touched, unit = '' }) {
-  if (draft === '') return required && touched ? '入力してください。' : '';
+function problem(draft, { min, max, step, unit = '' }) {
+  if (draft === '') return '入力してください。';
   const value = Number(draft);
   if (!Number.isFinite(value) || value < min || value > max) return `${min}〜${max}${unit}の範囲で入力してください。`;
-  if (step === 1 && !Number.isInteger(value)) return '整数で入力してください。';
+  const steps = (value - min) / step;
+  if (Math.abs(steps - Math.round(steps)) > 1e-6)
+    return step === 1 ? '整数で入力してください。' : `${step}${unit}単位で入力してください。`;
   return '';
+}
+
+/** @param {string} draft @param {string|number} value the input already shows this value */
+function shows(draft, value) {
+  return typeof value === 'number' ? draft !== '' && Number(draft) === value : draft === String(value);
 }
 
 /**
  * Slider + number + unit in the same columns for every field (issue #52). `aside` sits at the right of the label
  * row (the automatic / manual switch of the shape fields).
- * @param {{label:string,name:string,min:number,max:number,step?:number,value:string|number,onChange:(value:string)=>void,required?:boolean,hint?:string,unit?:string,aside?:import('react').ReactNode}} props
+ * With `validOnly`, onChange receives only usable values: the typed text that is empty, out of range or off the step
+ * stays in the input with its message, and the owner keeps the last usable value. The plant model fields use it so
+ * that a hidden group (flowers off) never carries an unusable value into the preview or the saved profile.
+ * @param {{label:string,name:string,min:number,max:number,step?:number,value:string|number,onChange:(value:string)=>void,required?:boolean,validOnly?:boolean,hint?:string,unit?:string,aside?:import('react').ReactNode}} props
  */
-export function RangeField({ label, name, min, max, step = 1, value, onChange, required = false, hint, unit, aside }) {
+export function RangeField({
+  label,
+  name,
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  required = false,
+  validOnly = false,
+  hint,
+  unit,
+  aside,
+}) {
   const id = useId();
   const [draft, setDraft] = useState(String(value));
   const [previous, setPrevious] = useState(value);
   const [touched, setTouched] = useState(false);
+  // A new value from outside (AI, undo, species preset) replaces the text; the value that follows typing does not.
   if (!Object.is(value, previous)) {
     setPrevious(value);
-    setDraft(String(value));
+    if (!shows(draft, value)) setDraft(String(value));
   }
   const empty = draft === '';
   const slider = empty ? min : Math.max(min, Math.min(max, Number(draft)));
-  const error = fieldError(draft, { min, max, step, required, touched, unit });
+  const reason = problem(draft, { min, max, step, unit });
+  const error = empty && !(required && touched) ? '' : reason;
   /** @param {string} next */
   function change(next) {
     setDraft(next);
     setTouched(true);
-    setPrevious(typeof value === 'number' ? Number(next) : next);
-    onChange(next);
+    if (!validOnly || !problem(next, { min, max, step, unit })) onChange(next);
   }
+  const described = [unit && `${id}-unit`, error ? `${id}-error` : `${id}-note`].filter(Boolean).join(' ');
   return (
     <div className="range-field" data-invalid={error ? 'true' : undefined}>
       <div className="range-field-head">
@@ -78,10 +103,14 @@ export function RangeField({ label, name, min, max, step = 1, value, onChange, r
             value={draft}
             required={required}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${id}-error` : undefined}
+            aria-describedby={described}
             onChange={(e) => change(e.target.value)}
           />
-          {unit && <span className="range-field-unit">{unit}</span>}
+          {unit && (
+            <span id={`${id}-unit`} className="range-field-unit">
+              {unit}
+            </span>
+          )}
         </span>
       </div>
       {error ? (
@@ -89,7 +118,7 @@ export function RangeField({ label, name, min, max, step = 1, value, onChange, r
           {error}
         </small>
       ) : (
-        <small className="muted range-field-note">
+        <small id={`${id}-note`} className="muted range-field-note">
           {empty ? '未設定 · ' : ''}
           {hint ? `${min}〜${max}${unit ?? ''} · ${hint}` : `${min}〜${max}${unit ?? ''}`}
         </small>

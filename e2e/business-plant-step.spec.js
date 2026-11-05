@@ -97,6 +97,12 @@ test('garden step previews automatically, guides required input and saves groupe
     await snap(page, `${dir}/garden-invalid-${width}.png`);
     await garden.getByLabel('植物の幅', { exact: true }).fill('160');
     await expect(frame).toHaveAttribute('src', param('widthCm', 160));
+    // A value off the 0.1 cm step also names its field.
+    await garden.getByLabel('幹の太さ', { exact: true }).fill('8.25');
+    await expect(garden.getByText('0.1cm単位で入力してください。', { exact: true })).toBeVisible();
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toBeVisible();
+    await garden.getByLabel('幹の太さ', { exact: true }).fill('8');
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toHaveCount(0);
 
     // #52: automatic / manual switch, and named flower swatches.
     const stem = garden.getByRole('group', { name: '枝・茎', exact: true });
@@ -106,8 +112,37 @@ test('garden step previews automatically, guides required input and saves groupe
     await curve.getByRole('radio', { name: '手動', exact: true }).check();
     await expect(stem.getByLabel('幹・茎の曲がり', { exact: true })).toHaveValue('30');
     await stem.getByLabel('幹・茎の曲がり', { exact: true }).fill('45');
+    // A percent with decimals stays as typed with its message instead of being rounded behind the seller's back.
+    await stem.getByLabel('幹・茎の曲がり', { exact: true }).fill('45.5');
+    await expect(stem.getByText('整数で入力してください。', { exact: true })).toBeVisible();
+    await expect(stem.getByLabel('幹・茎の曲がり', { exact: true })).toHaveValue('45.5');
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toBeVisible();
+    await stem.getByLabel('幹・茎の曲がり', { exact: true }).fill('45');
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toHaveCount(0);
     const flower = garden.getByRole('group', { name: '花', exact: true });
-    await flower.getByRole('switch', { name: '花を付ける' }).check();
+    const flowerSwitch = flower.getByRole('switch', { name: '花を付ける' });
+    await flowerSwitch.check();
+    // An empty required input in a group that is then hidden no longer holds the preview.
+    await flower.getByLabel('花の大きさ', { exact: true }).fill('');
+    await expect(flower.getByText('入力してください。', { exact: true })).toBeVisible();
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toBeVisible();
+    await flowerSwitch.uncheck();
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toHaveCount(0);
+    await flowerSwitch.check();
+    await expect(garden.getByText('入力を直すと更新します', { exact: true })).toBeVisible();
+    await flower.getByLabel('花の大きさ', { exact: true }).fill('12');
+    // Every swatch shows its colour name (390px touch screens cannot hover).
+    await expect(flower.locator('.flower-swatch-name')).toHaveText([
+      'ピンク',
+      '赤',
+      'オレンジ',
+      '黄',
+      '白',
+      '薄紫',
+      '紫',
+      '青紫',
+      'その他',
+    ]);
     await flower.getByRole('radio', { name: '紫', exact: true }).check();
     await expect(flower.getByRole('group', { name: /花の色/ })).toContainText('紫');
     await expect(frame).toHaveAttribute('src', param('flowerColor', '#8e6fc1'));
@@ -127,7 +162,9 @@ test('garden step previews automatically, guides required input and saves groupe
       widthCm: 160,
       branchCount: 20,
       stemCurve: 0.45,
+      trunkThicknessCm: 8,
       flowerEnabled: true,
+      flowerSizeCm: 12,
       flowerColor: '#8e6fc1',
     };
     expect(product.plantModelProfile).toMatchObject(expected);
@@ -245,6 +282,95 @@ test('editing keeps every saved plant value and products without a garden object
     `${dir}/edit-existing.json`,
     JSON.stringify(
       { edited: { id: product.id, plantModelProfile: original }, legacy: { id: kept.id, plantModelProfile: null } },
+      null,
+      2,
+    ),
+  );
+  expect(errors).toEqual([]);
+});
+
+// #49: a product in a non-plant category (鉢・庭材) has only its height, no plant model, AI or preview.
+test('non-plant category keeps only the product height and saves no plant model', async ({ page }) => {
+  test.setTimeout(300000);
+  await mkdir(dir, { recursive: true });
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  const category = '鉢・庭材';
+  expect(await (await call(page.request, '/categories')).json()).toContain(category);
+  const read = async (id) => (await (await call(page.request, '/products?storeId=1')).json()).find((p) => p.id === id);
+  const saved = [];
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${ec}/seller/products/new`);
+    const form = page.locator('.product-form');
+    await form.getByLabel('商品名', { exact: true }).fill(`庭材の確認 ${width}px ${Date.now()}`);
+    await form.getByLabel('商品説明', { exact: true }).fill('植物以外のカテゴリーの出品を確認します。');
+    await form.getByRole('button', { name: 'カテゴリーを選ぶ', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'カテゴリーを選ぶ', exact: true });
+    await dialog.getByLabel('カテゴリー名で絞り込み').fill(category);
+    await dialog
+      .getByRole('list', { name: 'カテゴリー一覧' })
+      .getByRole('button', { name: category, exact: true })
+      .click();
+    await expect(dialog).toHaveCount(0);
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await addImages(form);
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+
+    const garden = form.getByRole('region', { name: '庭オブジェクト', exact: true });
+    await expect(garden.getByLabel('商品の高さ', { exact: true })).toBeVisible();
+    await expect(garden.getByLabel('商品の高さ', { exact: true })).toHaveValue('');
+    await expect(garden.getByRole('group', { name: 'サイズ', exact: true })).toHaveCount(0);
+    await expect(garden.getByLabel('植物の高さ', { exact: true })).toHaveCount(0);
+    await expect(form.getByRole('button', { name: 'AIで生成' })).toHaveCount(0);
+    await expect(form.locator('iframe.plant-model-preview')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await snap(page, `${dir}/garden-non-plant-${width}.png`);
+
+    // The height is optional here: 「次へ」 goes to the review with it empty.
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.getByRole('alert')).toHaveCount(0);
+    const review = form.getByRole('region', { name: '出品内容の確認' });
+    await expect(review).toContainText('なし（植物以外のカテゴリー）');
+    await expect(review.getByText('商品の高さ', { exact: true })).toBeVisible();
+    await expect(review.getByText('植物の高さ', { exact: true })).toHaveCount(0);
+    const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
+    await form.getByRole('button', { name: '出品する', exact: true }).click();
+    const response = await posted;
+    expect(response.status(), await response.text()).toBe(200);
+    const product = await response.json();
+    expect(product.category).toBe(category);
+    expect(product.plantModelProfile).toBeNull();
+    expect((await read(product.id)).plantModelProfile).toBeNull();
+
+    // Editing the saved product, including its height, keeps it without a plant model.
+    const edit = await openGardenTab(page, product.sku);
+    await expect(edit.getByRole('group', { name: 'サイズ', exact: true })).toHaveCount(0);
+    await edit.getByLabel('商品の高さ', { exact: true }).fill('30');
+    const updated = page.waitForResponse((r) => r.url().includes(`/api/products/${product.id}`));
+    await edit.getByRole('button', { name: '変更を保存', exact: true }).click();
+    expect((await updated).status()).toBe(200);
+    const stored = await read(product.id);
+    expect(stored.heightCm).toBe(30);
+    expect(stored.plantModelProfile).toBeNull();
+    saved.push(stored);
+
+    const reopened = await openGardenTab(page, product.sku);
+    await expect(reopened.getByLabel('商品の高さ', { exact: true })).toHaveValue('30');
+    await expect(reopened.locator('iframe.plant-model-preview')).toHaveCount(0);
+    await snap(page, `${dir}/garden-non-plant-after-reload-${width}.png`);
+  }
+  await writeFile(
+    `${dir}/non-plant.json`,
+    JSON.stringify(
+      saved.map(({ id, sku, category: c, heightCm, plantModelProfile }) => ({
+        id,
+        sku,
+        category: c,
+        heightCm,
+        plantModelProfile,
+      })),
       null,
       2,
     ),

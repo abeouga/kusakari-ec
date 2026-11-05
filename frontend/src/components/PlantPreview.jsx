@@ -1,4 +1,5 @@
 import { Sparkles, Undo2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 /**
  * 3D preview of the garden object with the AI button laid over its lower right corner, like Canvas's
@@ -7,20 +8,34 @@ import { Sparkles, Undo2 } from 'lucide-react';
  */
 export function PlantPreview({ plant, preview, draft }) {
   const { shown, pending, stale } = preview;
+  const button = useRef(/** @type {HTMLButtonElement|null} */ (null));
+  // The form is disabled while the AI works, which drops the focus; give it back to the button afterwards.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (plant.busy || !refocus.current) return;
+    refocus.current = false;
+    button.current?.focus();
+  }, [plant.busy]);
   return (
     <div className="model-preview-pane">
       <div className="plant-preview-surface" aria-busy={plant.busy}>
         {/* One keyed list, so the frame that finished loading is never moved (moving an iframe reloads it). */}
-        {[shown, pending].filter(Boolean).map((url) => (
-          <iframe
-            key={url}
-            className="plant-model-preview"
-            data-loading={url !== shown && shown ? 'true' : undefined}
-            title={url !== shown && shown ? '植物の3Dプレビュー（更新中）' : '植物の3Dプレビュー'}
-            src={url}
-            onLoad={url === shown ? undefined : () => preview.loaded(url)}
-          />
-        ))}
+        {[shown, pending].filter(Boolean).map((url) => {
+          // The frame loading behind the shown one is out of the Tab order and the accessibility tree until swapped.
+          const behind = url !== shown && !!shown;
+          return (
+            <iframe
+              key={url}
+              className="plant-model-preview"
+              data-loading={behind ? 'true' : undefined}
+              title={behind ? '植物の3Dプレビュー（更新中）' : '植物の3Dプレビュー'}
+              tabIndex={behind ? -1 : undefined}
+              aria-hidden={behind ? true : undefined}
+              src={url}
+              onLoad={url === shown ? undefined : () => preview.loaded(url)}
+            />
+          );
+        })}
         {!shown && !pending && (
           <p className="preview-placeholder">
             {plant.configured
@@ -40,10 +55,14 @@ export function PlantPreview({ plant, preview, draft }) {
           </div>
         )}
         <button
+          ref={button}
           type="button"
           className="plant-ai-button"
           aria-label="AIで生成"
-          onClick={() => void plant.suggest(draft)}
+          onClick={() => {
+            refocus.current = document.activeElement === button.current;
+            void plant.suggest(draft);
+          }}
         >
           <Sparkles size={16} aria-hidden="true" />
           {plant.busy ? '推定中…' : 'AIで生成'}

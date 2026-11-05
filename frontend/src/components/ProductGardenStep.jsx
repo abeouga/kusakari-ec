@@ -33,7 +33,7 @@ export function ProductGardenStep({ plant, draft, active }) {
   return (
     <div className="model-layout">
       <PlantPreview plant={plant} preview={preview} draft={draft} />
-      <div ref={fields}>
+      <div ref={fields} onInput={preview.edited}>
         {!plant.configured && (
           <p className="fine-print garden-unset">
             この商品は庭オブジェクトが未設定です。特徴を変更すると、保存時に設定されます。

@@ -156,10 +156,10 @@ function AutoField({ field, profile, onChange }) {
       max={spec.max}
       step={1}
       unit={spec.unit}
+      // Saved ratios may have more digits (AI, older data); they are shown rounded and kept until the seller types.
       value={spec.percent ? Math.round(value * 100) : value}
-      onChange={(text) => {
-        if (text !== '') set(spec.percent ? Number(text) / 100 : Number(text));
-      }}
+      onChange={(text) => set(spec.percent ? Number(text) / 100 : Number(text))}
+      validOnly
       hint={spec.hint}
       aside={toggle}
       required
