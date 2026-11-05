@@ -10,6 +10,7 @@ import { PageLink } from './Common';
  */
 export function WorkspaceSidebar({ path, groups, collapsible, collapsed, onToggle }) {
   const toggleLabel = collapsed ? 'メニューを開く' : 'メニューを閉じる';
+  const parent = collapsible ? parentItem(groups, path) : undefined;
   return (
     <aside className="workspace-sidebar">
       {collapsible && (
@@ -34,7 +35,14 @@ export function WorkspaceSidebar({ path, groups, collapsible, collapsed, onToggl
           <nav key={group.label} aria-label={group.label}>
             {!collapsible && <p>{group.label}</p>}
             {group.items.map(([url, label, icon]) => (
-              <MenuLink key={url} href={url} label={label} icon={icon} collapsed={collapsed} active={path === url} />
+              <MenuLink
+                key={url}
+                href={url}
+                label={label}
+                icon={icon}
+                collapsed={collapsed}
+                current={path === url ? 'page' : url === parent ? 'true' : undefined}
+              />
             ))}
           </nav>
         ))}
@@ -43,14 +51,25 @@ export function WorkspaceSidebar({ path, groups, collapsible, collapsed, onToggl
   );
 }
 
-/** @param {{href:string,label:string,icon?:import('lucide-react').LucideIcon,collapsed:boolean,active?:boolean}} props */
-function MenuLink({ href, label, icon: Icon, collapsed, active = false }) {
+/**
+ * A page below a menu item (for example /seller/products/new under /seller/products) marks that item,
+ * so the folded sidebar still shows where the seller is. A section root such as /seller is never a parent.
+ * @param {{items:MenuItem[]}[]} groups @param {string} path
+ */
+function parentItem(groups, path) {
+  const urls = groups.flatMap((group) => group.items.map(([url]) => url));
+  if (urls.includes(path)) return undefined;
+  return urls.find((url) => path.startsWith(`${url}/`) && !urls.some((other) => other.startsWith(`${url}/`)));
+}
+
+/** @param {{href:string,label:string,icon?:import('lucide-react').LucideIcon,collapsed:boolean,current?:'page'|'true'}} props */
+function MenuLink({ href, label, icon: Icon, collapsed, current }) {
   // The text is hidden while folded, so the icon-only link is named by aria-label and shown by title.
   return (
     <PageLink
       href={href}
-      className={active ? 'is-active' : ''}
-      current={active}
+      className={current ? 'is-active' : ''}
+      current={current}
       label={collapsed ? label : undefined}
       title={collapsed ? label : undefined}
     >

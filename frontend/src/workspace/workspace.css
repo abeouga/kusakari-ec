@@ -134,6 +134,27 @@
 .is-sidebar-closed .workspace-sidebar-label {
   display: none;
 }
+/* A keyboard user cannot hover for the title, so the focused icon shows its name beside the folded column. */
+@media (min-width: 601px) {
+  .is-sidebar-closed .workspace-sidebar a {
+    position: relative;
+  }
+  .is-sidebar-closed .workspace-sidebar a:focus-visible .workspace-sidebar-label {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 10px);
+    z-index: 2;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: #244c3c;
+    color: white;
+    font-size: 12px;
+    white-space: nowrap;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+}
 .workspace-main {
   padding: 34px 4%;
   min-width: 0;

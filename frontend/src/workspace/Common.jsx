@@ -1,7 +1,7 @@
 import { navigate } from './navigation';
 
-/** @param {{href:string,children:import('react').ReactNode,className?:string,label?:string,title?:string,current?:boolean}} props */
-export function PageLink({ href, children, className = '', label, title, current = false }) {
+/** @param {{href:string,children:import('react').ReactNode,className?:string,label?:string,title?:string,current?:'page'|'true'}} props */
+export function PageLink({ href, children, className = '', label, title, current }) {
   /** @param {import('react').MouseEvent<HTMLAnchorElement>} event */
   function follow(event) {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -9,14 +9,7 @@ export function PageLink({ href, children, className = '', label, title, current
     navigate(href);
   }
   return (
-    <a
-      className={className}
-      href={href}
-      onClick={follow}
-      aria-label={label}
-      title={title}
-      aria-current={current ? 'page' : undefined}
-    >
+    <a className={className} href={href} onClick={follow} aria-label={label} title={title} aria-current={current}>
       {children}
     </a>
   );

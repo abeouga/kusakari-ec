@@ -71,10 +71,13 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       await page.screenshot({ path: `${dir}/${role}-open-${width}.png`, fullPage: true });
       const openWidth = (await main.boundingBox())?.width ?? 0;
 
-      // Closed: text hidden, icons stay, each named by aria-label and title; the current page stays marked.
-      await close.click();
+      // Closed from the keyboard: Enter folds the menu and the focus stays on the same button.
+      // Text hidden, icons stay, each named by aria-label and title; the current page stays marked.
+      await close.focus();
+      await page.keyboard.press('Enter');
       const reopen = sidebar.getByRole('button', { name: 'メニューを開く', exact: true });
       await expect(reopen).toHaveAttribute('aria-expanded', 'false');
+      await expect(reopen).toBeFocused();
       await expect(head).not.toContainText(group);
       await expect(links).toHaveCount(labels.length);
       for (const [index, label] of labels.entries()) {
@@ -92,6 +95,17 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       if (width === 1440) expect((await main.boundingBox())?.width ?? 0).toBeGreaterThan(openWidth + 100);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
+      // Tab walks from the fold button through the back link and every icon in menu order. On a wide screen the
+      // focused icon shows its name beside the column; on a phone the name stays in aria-label and title.
+      for (const link of [back, ...(await links.all())]) {
+        await page.keyboard.press('Tab');
+        await expect(link).toBeFocused();
+        const name = link.locator('.workspace-sidebar-label');
+        if (width === 1440) await expect(name).toBeVisible();
+        else await expect(name).toBeHidden();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      }
+
       // Pressing an icon moves to that page; the sidebar stays closed and marks the new page.
       await nav.getByRole('link', { name: title, exact: true }).click();
       await expect(page).toHaveURL(`${ec}${next}`);
@@ -104,14 +118,22 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: `${dir}/${role}-closed-${width}.png`, fullPage: true });
 
+      // Enter on a focused icon moves as well.
+      await current.focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(`${ec}${start}`);
+      await expect(main.locator('h1')).toHaveText(startTitle);
+      await expect(current).toHaveAttribute('aria-current', 'page');
+      await expect(reopen).toBeVisible();
+
       await reopen.click();
       await expect(close).toBeVisible();
-      await expect(nav.getByText(title, { exact: true })).toBeVisible();
-      await expect(nav.getByRole('link', { name: title, exact: true })).not.toHaveAttribute('title');
+      await expect(nav.getByText(startTitle, { exact: true })).toBeVisible();
+      await expect(current).not.toHaveAttribute('title');
 
       await page.reload();
-      await expect(main.locator('h1')).toHaveText(title);
-      await expect(nav.getByRole('link', { name: title, exact: true })).toHaveAttribute('aria-current', 'page');
+      await expect(main.locator('h1')).toHaveText(startTitle);
+      await expect(current).toHaveAttribute('aria-current', 'page');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await page.screenshot({ path: `${dir}/${role}-reloaded-${width}.png`, fullPage: true });
     }
