@@ -1,4 +1,5 @@
 import { formText } from './forms';
+import { shapeFields } from './plantSpecies';
 
 /** @type {import('./types').PlantModelProfile} */
 export const plantDefaults = {
@@ -19,6 +20,7 @@ export const plantDefaults = {
   flowerSizeCm: 10,
   flowerColor: '#df7799',
   seed: 12345,
+  ...Object.fromEntries(shapeFields.map((field) => [field, null])),
 };
 
 /** @param {FormData} form @returns {import('./types').PlantModelProfile|null} */

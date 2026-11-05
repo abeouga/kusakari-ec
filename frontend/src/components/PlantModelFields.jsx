@@ -1,3 +1,5 @@
+import { applySpecies, plantSpecies } from '../plantSpecies';
+import { PlantShapeFields } from './PlantShapeFields';
 import { ChoiceRange, RangeField } from './RangeField';
 export { readPlantProfile } from '../plantModel';
 
@@ -17,7 +19,9 @@ export function PlantModelFields({
     ['tree', 'shrub', 'multistem', 'spreading', 'flower'].includes(plantType) &&
     !['monstera', 'iberis'].includes(botanicalForm);
   const thicknessEditable = !['grass', 'rosette'].includes(plantType);
-  const branchEditable = ['tree', 'conifer', 'multistem'].includes(plantType);
+  const branchEditable = !['grass', 'rosette', 'palm'].includes(plantType) && botanicalForm !== 'monstera';
+  const species = botanicalForm ? plantSpecies[botanicalForm] : null;
+  const speciesFlowers = species ? species.flowerShapes : null;
   /** @param {string} type */
   function changePlantType(type) {
     /** @type {Record<string,string>} */
@@ -35,7 +39,7 @@ export function PlantModelFields({
     if (plantType === 'conifer') return ['needle', 'scale'].includes(shape);
     if (plantType === 'grass') return shape === 'grass';
     if (plantType === 'palm') return shape === 'frond';
-    if (plantType === 'rosette') return ['succulent', 'narrow', 'oval'].includes(shape);
+    if (plantType === 'rosette') return ['succulent', 'narrow', 'oval', 'heart', 'round'].includes(shape);
     if (plantType === 'vine') return ['oval', 'round', 'heart', 'palmate', 'split', 'compound'].includes(shape);
     return true;
   }
@@ -73,22 +77,24 @@ export function PlantModelFields({
       <fieldset disabled={!enabled} hidden={!enabled} className="plant-model-inputs">
         <details className="model-details">
           <summary>詳細を調整</summary>
-          <input type="hidden" name="modelBotanicalForm" value={botanicalForm} />
-          {botanicalForm && (
-            <p className="fine-print">
-              植物別の組立規則：
-              {
-                {
-                  maple: 'イロハモミジ',
-                  monstera: 'モンステラ',
-                  iberis: 'イベリス',
-                  hakone: 'フウチソウ',
-                  goldcrest: 'ゴールドクレスト',
-                }[botanicalForm]
-              }
-              。植物タイプ・葉の形を変更すると汎用の組み立てに戻ります。
-            </p>
-          )}
+          <label className="plant-species-select">
+            植物の種類
+            <select
+              name="modelBotanicalForm"
+              value={botanicalForm}
+              onChange={(event) => onChange(applySpecies(p, event.target.value))}
+            >
+              <option value="">指定しない（植物タイプから組み立てる）</option>
+              {Object.entries(plantSpecies).map(([id, item]) => (
+                <option key={id} value={id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="fine-print">
+            種類を選ぶと、その植物の育ち方で組み立てます。植物タイプ・葉の形を変えると「指定しない」に戻ります。
+          </p>
           <fieldset className="plant-model-group">
             <legend>全体の形・大きさ</legend>
             <div className="form-grid">
@@ -170,6 +176,7 @@ export function PlantModelFields({
                   required
                 />
               </div>
+              <PlantShapeFields profile={p} group="stem" onChange={onChange} />
             </div>
           </fieldset>
           <fieldset className="plant-model-group">
@@ -209,8 +216,8 @@ export function PlantModelFields({
               <RangeField
                 label={leafShape === 'scale' ? '葉付き小枝の長さ（cm）' : '葉の大きさ（cm）'}
                 name="modelLeafSizeCm"
-                min={2}
-                max={80}
+                min={0.5}
+                max={200}
                 step={0.1}
                 value={p.leafSizeCm}
                 onChange={(value) => onChange({ ...p, leafSizeCm: Number(value) })}
@@ -220,9 +227,11 @@ export function PlantModelFields({
                 label="葉の密度"
                 name="modelLeafDensity"
                 options={[
+                  ['sparse', 'とても少ない'],
                   ['low', '少ない'],
                   ['medium', '普通'],
                   ['high', '多い'],
+                  ['dense', 'とても多い'],
                 ]}
                 value={p.leafDensity}
                 onChange={(value) => onChange({ ...p, leafDensity: value })}
@@ -236,6 +245,7 @@ export function PlantModelFields({
                   onChange={(event) => onChange({ ...p, leafColor: event.target.value })}
                 />
               </label>
+              <PlantShapeFields profile={p} group="leaf" onChange={onChange} />
             </div>
           </fieldset>
           <fieldset className="plant-model-group">
@@ -246,9 +256,7 @@ export function PlantModelFields({
                   name="modelFlowerEnabled"
                   type="checkbox"
                   checked={flowers}
-                  disabled={
-                    plantType === 'conifer' || plantType === 'palm' || ['maple', 'monstera'].includes(botanicalForm)
-                  }
+                  disabled={plantType === 'conifer' || plantType === 'palm' || speciesFlowers?.length === 0}
                   onChange={(event) => onChange({ ...p, flowerEnabled: event.target.checked })}
                 />
                 花がある
@@ -258,22 +266,24 @@ export function PlantModelFields({
                 <select
                   name="modelFlowerShape"
                   value={p.flowerShape}
-                  onChange={(event) =>
-                    onChange({
-                      ...p,
-                      flowerShape: event.target.value,
-                      botanicalForm: botanicalForm === 'iberis' ? null : p.botanicalForm,
-                    })
-                  }
+                  onChange={(event) => onChange({ ...p, flowerShape: event.target.value })}
                 >
-                  <option value="four">4枚の花弁</option>
-                  <option value="five">5枚の花弁</option>
-                  <option value="eight">8枚の花弁</option>
-                  <option value="spike">穂状</option>
-                  <option value="cluster">房状</option>
-                  <option value="daisy">キク状</option>
-                  <option value="bell">ベル状</option>
-                  <option value="plume">羽毛状</option>
+                  {[
+                    ['four', '4枚の花弁'],
+                    ['five', '5枚の花弁'],
+                    ['eight', '8枚の花弁'],
+                    ['spike', '穂状'],
+                    ['cluster', '房状'],
+                    ['daisy', 'キク状'],
+                    ['bell', 'ベル状'],
+                    ['plume', '羽毛状'],
+                  ]
+                    .filter(([value]) => !speciesFlowers || speciesFlowers.includes(value))
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
                 </select>
               </label>
               <div hidden={!flowers}>

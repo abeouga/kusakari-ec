@@ -40,7 +40,8 @@ test('product sliders preserve optional values, keyboard precision and persisted
   await form.getByLabel('幹の太さ（cm）', { exact: true }).fill('');
   await expect(form.getByLabel('幹の太さ（cm）', { exact: true })).toHaveValue('');
   await form.getByLabel('幹の太さ（cm）', { exact: true }).fill('8.3');
-  await form.getByRole('slider', { name: '葉の密度', exact: true }).fill('2');
+  // Five density steps since plant assembly v5: index 3 is 'high'.
+  await form.getByRole('slider', { name: '葉の密度', exact: true }).fill('3');
   await form.locator('[name="modelHeight"]').fill('2000');
   await form.getByRole('button', { name: '植物のプレビューを確認', exact: true }).click();
   await expect(form.getByRole('alert')).toContainText('10〜1500');
@@ -62,7 +63,7 @@ test('product sliders preserve optional values, keyboard precision and persisted
     .click();
   await form.locator('summary').getByText('詳細を調整', { exact: true }).click();
   await expect(form.getByLabel('幹の太さ（cm）', { exact: true })).toHaveValue('8.3');
-  await expect(form.getByRole('slider', { name: '葉の密度', exact: true })).toHaveValue('2');
+  await expect(form.getByRole('slider', { name: '葉の密度', exact: true })).toHaveValue('3');
   await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('');
   const products = await page.request.get('/api/products?storeId=1').then((r) => r.json());
   const stored = products.find((item) => item.id === product.id);

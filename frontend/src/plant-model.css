@@ -138,3 +138,26 @@
     font-size: 16px;
   }
 }
+.plant-species-select {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+  margin: 12px 0 4px;
+}
+.auto-field {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+}
+.auto-field-value {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+.auto-field-value .muted {
+  font-weight: 400;
+  font-size: 13px;
+}
