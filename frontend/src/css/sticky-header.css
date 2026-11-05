@@ -1,0 +1,10 @@
+/* Issue #31: the header follows the page; dialogs (z-index 99+) still cover it. */
+.ec-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #fcfbf7;
+}
+html {
+  scroll-padding-top: var(--ec-header-offset, 0px);
+}
