@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, login, prepareMember } from './business-helpers.js';
+import { ec, capture, login, prepareMember } from './business-helpers.js';
 
 test.use({ trace: 'off' });
 
@@ -68,7 +68,7 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       expect(Math.abs(closeBox.x + closeBox.width - (navBox.x + navBox.width))).toBeLessThanOrEqual(1);
       expect(Math.abs(closeBox.y + closeBox.height / 2 - (headBox.y + headBox.height / 2))).toBeLessThanOrEqual(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: `${dir}/${role}-open-${width}.png`, fullPage: true });
+      await capture(page, `${dir}/${role}-open-${width}.png`);
       const openWidth = (await main.boundingBox())?.width ?? 0;
 
       // Closed from the keyboard: Enter folds the menu and the focus stays on the same button.
@@ -105,6 +105,7 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
         else await expect(name).toBeHidden();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       }
+      await capture(page, `${dir}/${role}-focus-${width}.png`);
 
       // Pressing an icon moves to that page; the sidebar stays closed and marks the new page.
       await nav.getByRole('link', { name: title, exact: true }).click();
@@ -116,7 +117,7 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       await expect(current).not.toHaveAttribute('aria-current', 'page');
       await expect(nav.getByText(title, { exact: true })).toBeHidden();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: `${dir}/${role}-closed-${width}.png`, fullPage: true });
+      await capture(page, `${dir}/${role}-closed-${width}.png`);
 
       // Enter on a focused icon moves as well.
       await current.focus();
@@ -135,7 +136,7 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
       await expect(main.locator('h1')).toHaveText(startTitle);
       await expect(current).toHaveAttribute('aria-current', 'page');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: `${dir}/${role}-reloaded-${width}.png`, fullPage: true });
+      await capture(page, `${dir}/${role}-reloaded-${width}.png`);
     }
     const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
     expect(me.role).toBe(role);

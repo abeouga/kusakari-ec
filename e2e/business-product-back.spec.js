@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
+import { ec, call, capture, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
 
 test.use({ trace: 'off' });
@@ -44,27 +44,25 @@ test('seller returns from product registration and product editing with the back
     await expect(productsLink).toHaveAttribute('aria-current', 'true');
     expect(await page.evaluate(noSideScroll)).toBe(true);
     await page.reload();
-    await expect(back).toBeVisible();
-    await page.screenshot({ path: `${dir}/create-${width}.png`, fullPage: true });
+    await expect(back).toBeEnabled();
+    await capture(page, `${dir}/create-${width}.png`);
 
-    if (width === 1440) {
-      // On step 2 the page-level back button and the wizard's step-back button are told apart.
-      await form.getByLabel('商品名', { exact: true }).fill('戻るボタン確認用の商品');
-      await form.getByLabel('商品説明', { exact: true }).fill('戻るボタンの区別を確認します。');
-      await addImages(form);
-      await form.getByLabel('税込価格（円）', { exact: true }).fill('1500');
-      await form.getByLabel('選択店舗の在庫', { exact: true }).fill('2');
-      await form.getByRole('button', { name: '次へ', exact: true }).click();
-      await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
-      await expect(back).toHaveText('戻る');
-      await expect(stepBack).toBeVisible();
-      await expect(form.getByRole('button', { name: '戻る', exact: true })).toHaveCount(0);
-      await page.screenshot({ path: `${dir}/create-step2-${width}.png`, fullPage: true });
-      await stepBack.click();
-      await expect(form.locator('.wizard-heading')).toHaveText('商品情報');
-      await expect(form.getByLabel('商品名', { exact: true })).toHaveValue('戻るボタン確認用の商品');
-      await expect(page).toHaveURL(`${ec}/seller/products/new`);
-    }
+    // On step 2 the page-level back button and the wizard's step-back button are told apart.
+    await form.getByLabel('商品名', { exact: true }).fill('戻るボタン確認用の商品');
+    await form.getByLabel('商品説明', { exact: true }).fill('戻るボタンの区別を確認します。');
+    await addImages(form);
+    await form.getByLabel('税込価格（円）', { exact: true }).fill('1500');
+    await form.getByLabel('選択店舗の在庫', { exact: true }).fill('2');
+    await form.getByRole('button', { name: '次へ', exact: true }).click();
+    await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
+    await expect(back).toHaveText('戻る');
+    await expect(stepBack).toBeVisible();
+    await expect(form.getByRole('button', { name: '戻る', exact: true })).toHaveCount(0);
+    await capture(page, `${dir}/create-step2-${width}.png`);
+    await stepBack.click();
+    await expect(form.locator('.wizard-heading')).toHaveText('商品情報');
+    await expect(form.getByLabel('商品名', { exact: true })).toHaveValue('戻るボタン確認用の商品');
+    await expect(page).toHaveURL(`${ec}/seller/products/new`);
 
     await back.click();
     await expect(page).toHaveURL(`${ec}/seller/products`);
@@ -77,8 +75,9 @@ test('seller returns from product registration and product editing with the back
     await expect(form).toBeVisible();
     await expect(back).toHaveText('戻る');
     await expect(back.locator('svg.lucide-arrow-left')).toBeVisible();
+    await expect(back).toBeEnabled();
     expect(await page.evaluate(noSideScroll)).toBe(true);
-    await page.screenshot({ path: `${dir}/edit-${width}.png`, fullPage: true });
+    await capture(page, `${dir}/edit-${width}.png`, back);
 
     // The second edit tab offers "前の手順へ", which stays in the form, next to the page-level "戻る".
     await form
@@ -97,7 +96,8 @@ test('seller returns from product registration and product editing with the back
     await expect(row).toBeVisible();
     await page.reload();
     await expect(heading).toHaveText('商品管理');
-    await page.screenshot({ path: `${dir}/list-after-reload-${width}.png`, fullPage: true });
+    await expect(row).toBeVisible();
+    await capture(page, `${dir}/list-after-reload-${width}.png`);
   }
   const listed = await (await call(page.request, '/seller/products?storeId=1')).json();
   const saved = listed.find((item) => item.id === product.id);
