@@ -3,13 +3,8 @@ import base from './playwright.shopping-regression.config.js';
 
 export default defineConfig({
   ...base,
-  testMatch: [
-    'product-create.spec.js',
-    'product-input.spec.js',
-    'plant-ai.spec.js',
-    'crud.spec.js',
-    'product-media.spec.js',
-  ],
+  // product-create / product-input moved to business-product-*.spec.js (signed-in seller, issue #46).
+  testMatch: ['plant-ai.spec.js', 'crud.spec.js', 'product-media.spec.js'],
   grep: /product|plant/,
   reporter: [
     ['list'],
