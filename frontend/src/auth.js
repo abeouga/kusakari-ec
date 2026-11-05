@@ -53,7 +53,18 @@ export async function passwordLogin(email, password, returnTo) {
 }
 
 export async function logout() {
-  const response = await authFetch('/api/auth/logout', { method: 'POST' });
+  /** @type {Response} */
+  let response;
+  try {
+    response = await authFetch('/api/auth/logout', { method: 'POST' });
+  } catch (reason) {
+    // fetch rejects with a browser-language TypeError when the request never reaches the server.
+    if (reason instanceof TypeError)
+      throw new Error('通信できないためログアウトできませんでした。接続を確認してもう一度お試しください。', {
+        cause: reason,
+      });
+    throw reason;
+  }
   if (!response.ok) throw new Error('ログアウトできませんでした。');
   const result = await response.json();
   window.location.assign(result.logoutUrl);
