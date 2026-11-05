@@ -1,11 +1,16 @@
 import { ProductForm } from '../components/ProductForm';
-import { SellerStoreSelect } from '../components/SellerStoreSelect';
+import { StorePicker } from '../components/StorePicker';
 import { navigate } from './navigation';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>}} props */
 export function ProductCreatePage({ shop }) {
   const storeId = shop.sellerStoreId;
   const disabled = shop.busy;
+  let storeSelector = (
+    <StorePicker stores={shop.sellerStores} value={storeId} disabled={disabled} onChange={shop.setSellerStoreId} />
+  );
+  if (shop.sellerStoresLoading) storeSelector = <p className="muted">管理する店舗を確認しています。</p>;
+  else if (!storeId) storeSelector = <p role="alert">管理できる店舗がありません。</p>;
   return (
     <section className="workspace-card">
       <button className="text-button" onClick={() => navigate('/seller/products')} disabled={shop.busy}>
@@ -18,11 +23,7 @@ export function ProductCreatePage({ shop }) {
         </p>
       )}
       <ProductForm
-        storeSelector={
-          <div className="manager-toolbar">
-            <SellerStoreSelect shop={shop} disabled={disabled} label="在庫を登録する店舗" />
-          </div>
-        }
+        storeSelector={storeSelector}
         storeName={shop.sellerStores.find((store) => store.id === storeId)?.name}
         product={null}
         storeId={storeId}

@@ -1,18 +1,23 @@
-import { ArrowLeft, ArrowRight, Check, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { PlantModelFields } from './PlantModelFields';
-import { RangeField } from './RangeField';
 import { usePlantSuggestion } from './usePlantSuggestion';
-import { PlantSuggestionControls } from './PlantSuggestionControls';
+import { ProductGardenStep } from './ProductGardenStep';
+import { ProductImages } from './ProductImages';
 import { ProductInfoFields } from './ProductInfoFields';
 import { ProductReview } from './ProductReview';
+import { WizardSteps } from './WizardSteps';
 import { emptyProduct, createDraft, productInput } from '../productDraft';
+
+const INFO = 0;
+const IMAGES = 1;
+const GARDEN = 2;
+const REVIEW = 3;
 
 /** @param {{product:import('../types').Product|null,storeId:number,storeName?:string,storeSelector?:import('react').ReactNode,busy:boolean,onSave:(id:string,input:import('../types').ProductInput)=>Promise<boolean|undefined>,onDone:()=>void}} props */
 export function ProductForm({ product, storeId, storeName, storeSelector, busy, onSave, onDone }) {
   const [draft, setDraft] = useState(() => createDraft(product ?? emptyProduct));
   const plant = usePlantSuggestion(product ?? emptyProduct, !!product);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(INFO);
   const [error, setError] = useState('');
   const formRef = useRef(/** @type {HTMLFormElement|null} */ (null));
   const heading = useRef(/** @type {HTMLHeadingElement|null} */ (null));
@@ -27,7 +32,8 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
 
   const [imageBusy, setImageBusy] = useState(false);
   const locked = busy || plant.busy || imageBusy;
-  const labels = product ? ['商品情報', '庭オブジェクト'] : ['商品情報', '庭オブジェクト', '確認'];
+  // Issue #46: images have their own step before the garden object, whose AI estimate uses the main image.
+  const labels = product ? ['商品情報', '画像', '庭オブジェクト'] : ['商品情報', '画像', '庭オブジェクト', '確認'];
   const values = { ...draft, heightCm: plant.height };
   /** @param {string} name @param {any} value */
   function set(name, value) {
@@ -45,7 +51,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   /** @param {HTMLElement} element */
   function reveal(element) {
     const panel = element.closest('[data-step]');
-    setStep(Number(panel?.getAttribute('data-step') ?? 0));
+    setStep(Number(panel?.getAttribute('data-step') ?? INFO));
     for (let parent = element.parentElement; parent; parent = parent.parentElement)
       if (parent instanceof HTMLDetailsElement) parent.open = true;
     requestAnimationFrame(() => {
@@ -54,40 +60,32 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) element.reportValidity();
     });
   }
+  /** @param {string} message @param {Element|null|undefined} field */
+  function fail(message, field) {
+    setError(message);
+    if (field instanceof HTMLElement) reveal(field);
+    return false;
+  }
   /** @param {number|null} scope */
   function validate(scope) {
-    const root = scope === null ? formRef.current : formRef.current?.querySelector(`[data-step="${scope}"]`);
+    const form = formRef.current;
+    const root = scope === null ? form : form?.querySelector(`[data-step="${scope}"]`);
     const invalid = root?.querySelector('input:invalid,select:invalid,textarea:invalid');
-    if (invalid instanceof HTMLElement) {
-      setError('入力内容を確認してください。');
-      reveal(invalid);
-      return false;
+    if (invalid) return fail('入力内容を確認してください。', invalid);
+    if (scope === INFO || scope === null) {
+      // The product number is never typed: the server assigns it on registration (issue #46).
+      for (const name of ['name', 'description'])
+        if (!String(draft[name]).trim())
+          return fail('商品名・説明を入力してください。', form?.querySelector(`[name="${name}"]`));
     }
-    if (scope === 0 || scope === null) {
-      // A new product may leave the number blank; the server assigns one (issue #25).
-      for (const name of product ? ['name', 'sku', 'description'] : ['name', 'description']) {
-        if (!String(draft[name]).trim()) {
-          setError(product ? '商品名・商品番号・説明を入力してください。' : '商品名・説明を入力してください。');
-          const field = formRef.current?.querySelector(`[name="${name}"]`);
-          if (field instanceof HTMLElement) reveal(field);
-          return false;
-        }
-      }
-      if (!draft.imageUrl) {
-        setError('商品画像を1枚以上追加してください。');
-        const field = formRef.current?.querySelector('input[type="file"]');
-        if (field instanceof HTMLElement) reveal(field);
-        return false;
-      }
-    }
-    if (scope === 1 || scope === null) {
+    if ((scope === IMAGES || scope === null) && !draft.imageUrl)
+      return fail('商品画像を1枚以上追加してください。', form?.querySelector('input[type="file"]'));
+    if (scope === GARDEN || scope === null) {
       try {
         plant.currentProfile();
       } catch (reason) {
-        setError(reason instanceof Error ? reason.message : '植物情報を確認してください。');
-        const field = formRef.current?.querySelector('[name="modelHeight"]');
-        if (field instanceof HTMLElement) reveal(field);
-        return false;
+        const message = reason instanceof Error ? reason.message : '植物情報を確認してください。';
+        return fail(message, form?.querySelector('[name="modelHeight"]'));
       }
     }
     return true;
@@ -99,7 +97,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   async function save(event) {
     event.preventDefault();
     if (locked || saving.current) return;
-    if (!product && step !== 2) {
+    if (!product && step !== REVIEW) {
       next();
       return;
     }
@@ -120,83 +118,29 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       onChange={() => setError('')}
       noValidate
     >
-      <nav className="wizard-steps" aria-label={product ? '商品編集のタブ' : '出品の手順'}>
-        {labels.map((label, index) => (
-          <button
-            type="button"
-            key={label}
-            aria-current={step === index ? 'step' : undefined}
-            disabled={locked || (!product && index > step)}
-            onClick={() => move(index)}
-          >
-            <span>{index + 1}</span>
-            {label}
-          </button>
-        ))}
-      </nav>
+      <WizardSteps labels={labels} step={step} editing={!!product} disabled={locked} onSelect={move} />
       <h3 ref={heading} tabIndex={-1} className="wizard-heading">
         {labels[step]}
       </h3>
       <fieldset disabled={locked} className="product-form-content">
-        <section data-step="0" hidden={step !== 0} aria-label="商品情報">
-          <ProductInfoFields
-            p={values}
-            set={set}
-            plant={plant}
-            storeSelector={storeSelector}
-            onImageBusy={setImageBusy}
+        <section data-step={INFO} hidden={step !== INFO} aria-label="商品情報">
+          <ProductInfoFields p={values} set={set} storeSelector={storeSelector} />
+        </section>
+        <section data-step={IMAGES} hidden={step !== IMAGES} aria-label="画像">
+          <ProductImages
+            main={draft.imageUrl}
+            extra={draft.images}
+            onBusy={setImageBusy}
+            onChange={(main, extra) => {
+              set('imageUrl', main);
+              set('images', extra);
+            }}
           />
         </section>
-        <section data-step="1" hidden={step !== 1} aria-label="庭オブジェクト">
-          <div className="model-layout">
-            <div className="model-preview-pane">
-              {plant.previewUrl ? (
-                <iframe className="plant-model-preview" title="植物の3Dプレビュー" src={plant.previewUrl} />
-              ) : (
-                <div className="preview-placeholder">
-                  {plant.enabled
-                    ? '設定後に「植物のプレビューを確認」を押してください。'
-                    : 'AIまたは手動で設定すると、ここで形を確認できます。'}
-                </div>
-              )}
-            </div>
-            <div>
-              <PlantSuggestionControls plant={plant} imageUrl={draft.imageUrl} editing={!!product} draft={values} />
-              {!plant.enabled && (
-                <button type="button" className="secondary-button" onClick={() => plant.setEnabled(true)}>
-                  <SlidersHorizontal className="seller-ui-icon" size={16} aria-hidden="true" />
-                  手動で設定
-                </button>
-              )}
-              <PlantModelFields
-                profile={plant.profile}
-                enabled={plant.enabled}
-                onEnabledChange={plant.setEnabled}
-                onChange={plant.changeProfile}
-                onPreview={plant.preview}
-                heightControl={
-                  plant.enabled && (
-                    <>
-                      <RangeField
-                        label="植物の高さ（cm・土際から）"
-                        name="modelHeight"
-                        min={10}
-                        max={1500}
-                        value={plant.height}
-                        onChange={plant.setHeight}
-                        required
-                      />
-                      {plant.estimated && <p className="ai-estimate">AI推定・実寸未確認。高さを確認してください。</p>}
-                    </>
-                  )
-                }
-              >
-                {null}
-              </PlantModelFields>
-            </div>
-          </div>
+        <section data-step={GARDEN} hidden={step !== GARDEN} aria-label="庭オブジェクト">
+          <ProductGardenStep plant={plant} draft={values} editing={!!product} />
         </section>
-        {step === 2 && (
+        {step === REVIEW && (
           <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} onEdit={move} />
         )}
       </fieldset>
@@ -207,27 +151,27 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
           </p>
         )}
         <div className="wizard-actions">
-          <span>{product ? '商品を編集' : `${step + 1} / 3`}</span>
-          {step > 0 && (
+          <span>{product ? '商品を編集' : `${step + 1} / ${labels.length}`}</span>
+          {step > INFO && (
             <button type="button" className="secondary-button" disabled={locked} onClick={() => move(step - 1)}>
               <ArrowLeft className="seller-ui-icon" size={16} aria-hidden="true" />
               戻る
             </button>
           )}
-          {!product && step === 1 && (
+          {!product && step === GARDEN && (
             <button
               type="button"
               className="text-button"
               disabled={locked}
               onClick={() => {
                 plant.setEnabled(false);
-                move(2);
+                move(REVIEW);
               }}
             >
               設定せず次へ
             </button>
           )}
-          {product || step === 2 ? (
+          {product || step === REVIEW ? (
             <button key="save" type="submit" className="primary-button" disabled={locked}>
               <Check className="seller-ui-icon" size={16} aria-hidden="true" />
               {busy ? '保存中…' : product ? '変更を保存' : '出品する'}

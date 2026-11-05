@@ -1,0 +1,123 @@
+/* Image step of the product wizard (issue #46): the main image is large and the others follow in order. */
+.product-image-picker {
+  min-width: 0;
+}
+.product-image-intro {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.product-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.product-image-tile {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+.product-image-tile[data-main] {
+  grid-column: span 2;
+  grid-row: span 2;
+  border-color: #9fb59f;
+}
+.product-image-tile img {
+  width: 100%;
+  height: 100%;
+  min-height: 130px;
+  max-height: 180px;
+  object-fit: contain;
+  background: #f4f6ef;
+  border-radius: 6px;
+}
+.product-image-tile[data-main] img {
+  min-height: 300px;
+  max-height: 420px;
+}
+.product-image-tile figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.product-image-tile button {
+  font-size: 11px;
+  padding: 4px;
+}
+.product-image-tile button[aria-pressed='true'] {
+  color: #fff;
+  background: var(--green);
+  border-radius: 999px;
+  padding: 3px 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.basic-form .image-drop-label {
+  position: relative;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  border: 2px dashed #b6c8b0;
+  border-radius: 8px;
+  background: #f5f8f1;
+  color: var(--green);
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+.basic-form .image-drop-label small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+.product-image-gallery[data-empty] .image-drop-label {
+  grid-column: 1 / -1;
+  min-height: 300px;
+}
+.basic-form .image-drop-label input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.image-drop-label:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .product-image-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .product-image-tile[data-main] {
+    grid-row: auto;
+  }
+  .product-image-tile[data-main] img {
+    min-height: 200px;
+    max-height: 260px;
+  }
+  .product-image-tile img {
+    min-height: 100px;
+    max-height: 130px;
+  }
+  .product-image-gallery[data-empty] .image-drop-label {
+    min-height: 200px;
+  }
+}

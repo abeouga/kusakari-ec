@@ -1,10 +1,15 @@
-import { useResource } from '../workspace/useResource';
 import { Ruler, Leaf } from 'lucide-react';
-import { ProductImages } from './ProductImages';
+import { useId } from 'react';
+import { CategoryPicker } from './CategoryPicker';
 import { RangeField } from './RangeField';
-/** @param {{onImageBusy:(busy:boolean)=>void,storeSelector?:import('react').ReactNode,p:Record<string, any>,set:(name:string,value:any)=>void,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>}} props */
-export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy }) {
-  const categories = useResource('/categories');
+
+/**
+ * Step 1 of the product wizard. The product number is assigned by the server and only shown while editing,
+ * the plant height lives in the garden-object step, and images have their own step (issues #46, #50).
+ * @param {{storeSelector?:import('react').ReactNode,p:Record<string, any>,set:(name:string,value:any)=>void}} props
+ */
+export function ProductInfoFields({ p, set, storeSelector }) {
+  const skuLabel = useId();
   /** @param {import('react').ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>} event */
   function change(event) {
     const el = event.target;
@@ -12,88 +17,53 @@ export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy })
   }
   return (
     <>
-      <div className="product-info-layout">
-        <div className="product-info-main">
-          <div className="form-grid">
-            <label>
-              商品名
-              <input name="name" value={p.name} required maxLength={120} onChange={change} />
-            </label>
-            <label>
-              商品番号
-              <input
-                name="sku"
-                value={p.sku}
-                required={Boolean(p.id)}
-                maxLength={50}
-                placeholder={p.id ? '' : '空欄なら自動で設定'}
-                onChange={change}
-              />
-            </label>
-            <label>
-              カテゴリー
-              <select name="category" disabled={!categories.data} value={p.category} onChange={change}>
-                {
-                  /** @type {string[]} */ (categories.data || [p.category]).map((name) => (
-                    <option key={name}>{name}</option>
-                  ))
-                }
-              </select>
-            </label>
-            <label className="form-full">
-              商品説明
-              <textarea name="description" value={p.description} required rows={2} maxLength={5000} onChange={change} />
-            </label>
-          </div>
-
-          <div className="form-grid">
-            <label>
-              税込価格（円）
-              <input
-                name="priceYen"
-                type="number"
-                min="1"
-                max="100000"
-                step="1"
-                required
-                value={p.priceYen}
-                onChange={change}
-              />
-            </label>
-            <label>
-              選択店舗の在庫
-              <input
-                name="stock"
-                type="number"
-                min="0"
-                max="10000"
-                step="1"
-                required
-                value={p.stock}
-                onChange={change}
-              />
-            </label>
-            {storeSelector}
-          </div>
+      <div className="product-info-main">
+        <div className="form-grid">
+          <label>
+            商品名
+            <input name="name" value={p.name} required maxLength={120} onChange={change} />
+          </label>
+          {p.id && (
+            <div className="readonly-field">
+              <span id={skuLabel}>商品番号</span>
+              <output aria-labelledby={skuLabel}>{p.sku}</output>
+              <small className="muted">商品番号は変更できません。</small>
+            </div>
+          )}
+          <CategoryPicker value={p.category} onChange={(value) => set('category', value)} />
+          <label className="form-full">
+            商品説明
+            <textarea name="description" value={p.description} required rows={2} maxLength={5000} onChange={change} />
+          </label>
         </div>
-        <aside className="wizard-photo">
-          <ProductImages
-            main={p.imageUrl}
-            extra={p.images}
-            onBusy={onImageBusy}
-            onChange={(main, extra) => {
-              set('imageUrl', main);
-              set('images', extra);
-            }}
-          />
-        </aside>
+
+        <div className="form-grid">
+          <label>
+            税込価格（円）
+            <input
+              name="priceYen"
+              type="number"
+              min="1"
+              max="100000"
+              step="1"
+              required
+              value={p.priceYen}
+              onChange={change}
+            />
+          </label>
+          <label>
+            選択店舗の在庫
+            <input name="stock" type="number" min="0" max="10000" step="1" required value={p.stock} onChange={change} />
+          </label>
+          {storeSelector}
+        </div>
       </div>
       <details className="product-options">
         <summary>
           <Ruler className="seller-ui-icon" size={16} aria-hidden="true" />
           サイズ
         </summary>
-
+        <p className="fine-print">植物の高さは「庭オブジェクト」で入力します。</p>
         <div className="form-grid">
           <RangeField
             label="樹齢目安（年）"
@@ -103,24 +73,6 @@ export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy })
             value={p.ageYears}
             onChange={(value) => set('ageYears', value)}
           />
-          <div>
-            <RangeField
-              label="植物の高さ（cm・土際から）"
-              name="heightCm"
-              min={1}
-              max={3000}
-              value={plant.height}
-              onChange={plant.setHeight}
-            />
-            {plant.estimated && (
-              <p className="ai-estimate" role="status">
-                AI推定・実寸未確認。保存前に高さを確認してください。
-              </p>
-            )}
-            {plant.enabled && plant.height !== '' && (Number(plant.height) < 10 || Number(plant.height) > 1500) && (
-              <p className="error">庭オブジェクトの高さは10〜1500cmにしてください。</p>
-            )}
-          </div>
           <RangeField
             label="鉢径（cm）"
             name="potDiameterCm"

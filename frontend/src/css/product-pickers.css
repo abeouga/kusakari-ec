@@ -1,0 +1,220 @@
+/* Category and store choosers of the product wizard (issue #46). */
+.picker-field,
+.readonly-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.picker-field-value,
+.readonly-field output {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid #d9dfd3;
+  border-radius: 4px;
+  background: #fffefa;
+}
+.picker-field-value strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 600;
+}
+.picker-field-value .secondary-button {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid #cbd3c7;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.readonly-field output {
+  padding-right: 10px;
+  background: #f3f5ef;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.picker-dialog .picker-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.picker-dialog .picker-filter input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d9dfd3;
+  border-radius: 4px;
+  background: #fffefa;
+  font-size: 14px;
+}
+.picker-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.picker-options button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  text-align: start;
+}
+.picker-options button:hover {
+  border-color: #9fb59f;
+}
+.picker-options button[aria-pressed='true'] {
+  border-color: var(--green);
+  background: #eef3ec;
+  color: var(--green);
+  font-weight: 600;
+}
+.picker-options button > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.picker-options small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.store-picker-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.store-picker-list h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.store-picker-list .picker-options {
+  grid-template-columns: minmax(0, 1fr);
+}
+.store-map {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  border: 1px solid #d6dccd;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #eef0e6;
+  background-image: linear-gradient(#e2e6d8 1px, transparent 1px), linear-gradient(90deg, #e2e6d8 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.store-map-canvas,
+.store-map-canvas span {
+  position: absolute;
+  pointer-events: none;
+}
+.store-map-canvas {
+  inset: 0;
+}
+.store-map-water {
+  right: -10%;
+  bottom: -18%;
+  width: 46%;
+  height: 46%;
+  border-radius: 50% 0 0 0;
+  background: #cfe0e6;
+}
+.store-map-road {
+  background: #fff;
+  box-shadow: 0 0 0 1px #dadfd2;
+}
+.store-map-road-a {
+  left: -5%;
+  right: -5%;
+  top: 38%;
+  height: 7px;
+  transform: rotate(-8deg);
+}
+.store-map-road-b {
+  top: -5%;
+  bottom: -5%;
+  left: 34%;
+  width: 6px;
+  transform: rotate(12deg);
+}
+.store-map-road-c {
+  left: -5%;
+  right: -5%;
+  top: 72%;
+  height: 4px;
+  transform: rotate(6deg);
+}
+.store-map-pin {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #9a4b3a;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 2px #0003);
+}
+.store-map-pin svg {
+  fill: #fff;
+}
+.store-map-pin[aria-pressed='true'] {
+  z-index: 2;
+  color: var(--green);
+}
+.store-map-pin[aria-pressed='true'] svg {
+  fill: #dbe9dc;
+}
+.store-map-pin:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.store-map-pin-label {
+  position: absolute;
+  top: 100%;
+  max-width: 140px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.store-map-note {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  margin: 0;
+  color: #5f6a5a;
+  font-size: 10px;
+}
+@media (max-width: 700px) {
+  .store-picker-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .picker-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
