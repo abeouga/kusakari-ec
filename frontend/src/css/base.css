@@ -1,7 +1,7 @@
 :root {
   font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
   color: #293a31;
-  background: #fcfbf7;
+  background: var(--surface-page-store);
   font-synthesis: none;
   --green: #294c3e;
   --ink: #293a31;
@@ -11,6 +11,8 @@
   --serif: 'Noto Serif JP', Georgia, serif;
   /* Form colors in three tiers (issue #47): page background, the card that groups a form, and each field. */
   --surface-page: #f1f0e7;
+  /* Storefront pages (cart and checkout included) keep their existing off-white page background. */
+  --surface-page-store: #fcfbf7;
   --surface-card: #ffffff;
   --surface-field: #f8faf5;
   --card-border: #d3d9cb;

@@ -17,7 +17,7 @@
 .payment-options { display: grid; gap: 10px; }
 .payment-options legend { float: left; width: 100%; }
 .payment-option { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--field-border); border-radius: 8px; background: var(--surface-field); cursor: pointer; transition: border-color .15s, background .15s; }
-.payment-option:hover { border-color: #b9c8b0; }
+.payment-option:hover { border-color: var(--field-focus); }
 .payment-option[data-selected='true'] { border-color: var(--green); background: #f1f6ee; box-shadow: inset 0 0 0 1px var(--green); }
 .payment-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--green); }
 .payment-option:has(input:focus-visible) { outline: 3px solid #b98b42; outline-offset: 2px; }
