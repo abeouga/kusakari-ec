@@ -15,66 +15,29 @@ function reviewOrder(a, b) {
   return a.status === 'PENDING' ? time : -time;
 }
 
-/** @param {{products?:boolean}} props */
-export function ReviewPage({ products = false }) {
-  const resource = useResource(products ? '/operator/products' : '/operator/applications');
+/** Product moderation lives in OperatorProducts.jsx (issue #6). */
+export function ReviewPage() {
+  const resource = useResource('/operator/applications');
   const [scope, setScope] = useState('PENDING');
   const rows = /** @type {import('../businessTypes').Review[]} */ (resource.data ?? []);
-  const shown = products ? rows : rows.filter((row) => scope === 'ALL' || row.status === scope).sort(reviewOrder);
+  const shown = rows.filter((row) => scope === 'ALL' || row.status === scope).sort(reviewOrder);
   return (
     <>
       <ResourceStatus resource={resource} />
-      {!products && (
-        <label>
-          表示する申請
-          <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            <option value="PENDING">審査中</option>
-            <option value="ALL">すべて</option>
-          </select>
-        </label>
-      )}
-      {shown.map((row) =>
-        products ? (
-          <ProductModerationRow key={row.id} row={row} resource={resource} />
-        ) : (
-          <ApplicationRow key={row.id} row={row} resource={resource} />
-        ),
-      )}
+      <label>
+        表示する申請
+        <select value={scope} onChange={(e) => setScope(e.target.value)}>
+          <option value="PENDING">審査中</option>
+          <option value="ALL">すべて</option>
+        </select>
+      </label>
+      {shown.map((row) => (
+        <ApplicationRow key={row.id} row={row} resource={resource} />
+      ))}
       {resource.data && shown.length === 0 && (
-        <p>
-          {products
-            ? '対象の商品はありません。'
-            : scope === 'PENDING'
-              ? '審査待ちの出店申請はありません。'
-              : '出店申請はありません。'}
-        </p>
+        <p>{scope === 'PENDING' ? '審査待ちの出店申請はありません。' : '出店申請はありません。'}</p>
       )}
     </>
-  );
-}
-
-/** @param {{row:import('../businessTypes').Review,resource:ReturnType<typeof useResource>}} props */
-function ProductModerationRow({ row, resource }) {
-  const [reason, setReason] = useState('');
-  return (
-    <section className="workspace-card">
-      <h3>{row.name}</h3>
-      <p>{row.suspended ? '公開停止中' : row.active ? '公開可能' : '販売終了'}</p>
-      <label>
-        理由・コメント
-        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
-      </label>
-      <button
-        disabled={resource.busy || !reason.trim()}
-        onClick={() =>
-          void resource.run(() =>
-            write(`/operator/products/${row.id}/moderation`, 'PUT', { suspended: !row.suspended, reason }),
-          )
-        }
-      >
-        {row.suspended ? '公開停止を解除' : '公開を停止'}
-      </button>
-    </section>
   );
 }
 

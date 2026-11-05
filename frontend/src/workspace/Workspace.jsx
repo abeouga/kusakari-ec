@@ -8,6 +8,7 @@ import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
+import { OperatorProductsPage } from './OperatorProducts';
 import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
@@ -130,7 +131,7 @@ export function Workspace({ shop, path, header }) {
     content = <OrderPage storeId={storeId} operator={operator} />;
   else if (path === '/seller/sales' || path === '/seller') content = <SalesPage storeId={storeId} />;
   else if (path === '/operator/applications') content = <ReviewPage />;
-  else if (path === '/operator/products') content = <ReviewPage products />;
+  else if (path === '/operator/products') content = <OperatorProductsPage />;
   else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')
     content = <MembersPage sellers={path.endsWith('/sellers')} />;
   else if (path === '/operator/categories') content = <CategoriesPage />;

@@ -18,7 +18,20 @@ public class ProductModerationService {
   private final ProductRepository products;
   private final NotificationService notices;
 
-  public record Product(String id, String name, String ownerMemberId, boolean active, boolean suspended) {}
+  /** Issue #6: enough of the product for the operator to judge it without opening the seller screen. */
+  public record Product(
+    String id,
+    String name,
+    String sku,
+    String category,
+    String description,
+    String imageUrl,
+    int priceYen,
+    String nurseryName,
+    String ownerMemberId,
+    boolean active,
+    boolean suspended
+  ) {}
 
   @Transactional(readOnly = true)
   public List<Product> list() {
@@ -26,7 +39,21 @@ public class ProductModerationService {
     return products
       .findAll()
       .stream()
-      .map(p -> new Product(p.getId(), p.getName(), p.getOwnerMemberId(), p.isActive(), p.isSuspended()))
+      .map(p ->
+        new Product(
+          p.getId(),
+          p.getName(),
+          p.getSku(),
+          p.getCategory(),
+          p.getDescription(),
+          p.getImageUrl(),
+          p.getPriceYen(),
+          p.getNurseryName(),
+          p.getOwnerMemberId(),
+          p.isActive(),
+          p.isSuspended()
+        )
+      )
       .toList();
   }
 
