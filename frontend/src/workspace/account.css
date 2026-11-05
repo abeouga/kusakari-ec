@@ -50,3 +50,65 @@
   background: #eff3eb;
   font-weight: 600;
 }
+/* Issue #20: application wizard steps */
+.application-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.application-steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f1f4ec;
+  color: #7b8577;
+}
+.application-steps span {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+}
+.application-steps .is-current {
+  background: #244c3c;
+  color: #fff;
+}
+.application-steps .is-current span {
+  color: #244c3c;
+}
+.application-steps .is-done {
+  color: #244c3c;
+}
+.application-step-count {
+  margin: 0 0 12px;
+  color: #647660;
+}
+.application-wizard fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 12px;
+}
+.application-wizard legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .application-steps {
+    grid-template-columns: 1fr;
+  }
+}
+.application-wizard form[hidden],
+.application-wizard fieldset[hidden] {
+  display: none;
+}

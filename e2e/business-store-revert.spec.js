@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { sql } from './database.js';
-import { call, ec, login, prepareMember, productInput } from './business-helpers.js';
+import { call, ec, login, prepareMember, productInput, fillApplication } from './business-helpers.js';
 
 const python =
   process.env.KUSAKARI_CANVAS_PYTHON ||
@@ -51,18 +51,17 @@ test('reverting an approved store application restores the applicant and removes
     const company = `取消検証店舗 ${randomUUID().slice(0, 8)}`;
 
     await user.goto(`${ec}/seller/application`);
-    await user.getByLabel('会社・事業者名').fill(company);
-    await user.getByLabel('担当者名').fill('担当者');
-    await user.getByLabel('連絡先メール').fill(email);
-    await user.getByLabel('所在地').fill('東京都 取消検証用店舗');
-    await user.getByLabel('電話番号').fill('0312345678');
-    await user
-      .locator('input[type=file]')
-      .setInputFiles({ name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\\n%%EOF') });
+    const review = await fillApplication(user, {
+      company,
+      contact: '担当者',
+      email,
+      address: '東京都 取消検証用店舗',
+      phone: '0312345678',
+    });
     const submission = user.waitForResponse(
       (r) => r.url().endsWith('/api/account/store-applications') && r.request().method() === 'POST',
     );
-    await user.getByRole('button', { name: '出店を申請', exact: true }).click();
+    await review.getByRole('button', { name: '申請する', exact: true }).click();
     const application = await (await submission).json();
     await admin.goto(`${ec}/operator/applications`);
     const row = admin.locator('section').filter({ has: admin.getByRole('heading', { name: company, exact: true }) });
