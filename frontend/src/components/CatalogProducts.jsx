@@ -54,7 +54,7 @@ export function CatalogProducts({ products, onDetail, onAdd, onAddToList, disabl
         {products.length ? start + 1 : 0}–{start + visibleProducts.length}件 / 全{products.length}件
         {pageCount > 1 && `（${currentPage} / ${pageCount}ページ）`}
       </p>
-      <div className="product-grid" id="catalog-product-grid" ref={gridRef} style={{ minHeight }}>
+      <div className="product-grid" id="catalog-product-grid" ref={gridRef} style={visibleProducts.length >= PAGE_SIZE ? { minHeight } : undefined}>
         {visibleProducts.map((product) => (
           <ProductCard
             key={product.id}
