@@ -53,7 +53,7 @@ export function KusakariHeader({
           <span>kusakari<span className="brand-dot">.</span></span>
         </a>
         <nav aria-label="メインナビゲーション">
-          <a className={activeSection === 'plants' ? 'active' : ''} href={shopUrl('/#plants')} onClick={follow}>植物を探す</a>
+          <a className={activeSection === 'plants' ? 'active' : ''} href={shopUrl('/#plants')} onClick={follow}>商品を探す</a>
           {panelAction('stores', '店舗を探す')}
           <a className={activeSection === 'canvas' ? 'active' : ''} href={canvasUrl} onClick={follow}>Canvas</a>
           {panelAction('guide', 'Kusakariについて')}

@@ -37,7 +37,7 @@ export function Cart({ shop, onStores }) {
               {shop.error}
             </p>
             <PageLink className="primary-button" href="/#plants">
-              植物を探す
+              商品を探す
             </PageLink>
           </>
         )}
@@ -56,10 +56,10 @@ export function Cart({ shop, onStores }) {
         )}
         <div className="empty">
           <ShoppingCart size={40} />
-          <h3>まだ植物が入っていません。</h3>
+          <h3>まだ商品が入っていません。</h3>
           <p>お気に入りのひと鉢を見つけてください。</p>
           <PageLink className="primary-button" href="/#plants">
-            植物を探す
+            商品を探す
           </PageLink>
         </div>
       </section>
