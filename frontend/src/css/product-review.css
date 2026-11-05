@@ -42,10 +42,6 @@
   border-radius: 6px;
   background: #eee8df;
 }
-.product-review-thumbs li:first-child img {
-  outline: 2px solid var(--green);
-  outline-offset: 1px;
-}
 .product-review-model {
   display: grid;
   gap: 6px;

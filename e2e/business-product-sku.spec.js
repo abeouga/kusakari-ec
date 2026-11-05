@@ -33,7 +33,9 @@ test('product number is assigned on registration and kept on edit', async ({ pag
   const review = form.getByRole('region', { name: '出品内容の確認' });
   // #53: the number is decided on registration, so the review does not mention it.
   await expect(review).toContainText('商品番号自動設定の確認');
-  await expect(review).not.toContainText('商品番号');
+  // The name and the description contain 「商品番号」, so check the field label and the old wording instead.
+  await expect(review.locator('dt').filter({ hasText: '商品番号' })).toHaveCount(0);
+  await expect(review).not.toContainText('保存時に自動で決まります');
 
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
   await form.getByRole('button', { name: '出品する', exact: true }).click();

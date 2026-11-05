@@ -3,7 +3,8 @@ import { modelPreviewUrl } from '../plantModel';
 
 /**
  * Last step of a new product: the product as buyers will see it, close to the catalog card (issue #53).
- * Values decided later (the product number) and sizes are left out; the progress bar and 「戻る」 lead back.
+ * Values decided later (the product number) and sizes are left out. 「戻る」 leads back step by step;
+ * the progress bar only shows the current step (#45).
  * @param {{draft:Record<string,any>,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,storeName:string}} props
  */
 export function ProductReview({ draft: p, plant, storeName }) {
@@ -23,13 +24,14 @@ export function ProductReview({ draft: p, plant, storeName }) {
     <section className="product-review" aria-label="出品内容の確認">
       <div className="product-review-media">
         <div className="product-review-photo">
-          <img src={images[0]} alt="出品する商品画像" />
+          <img src={images[0]} alt={p.name || '出品する商品画像'} />
         </div>
         {images.length > 1 && (
           <ul className="product-review-thumbs" aria-label={`商品画像 ${images.length}枚`}>
             {images.map((url, index) => (
               <li key={url}>
-                <img src={url} alt={`商品画像 ${index + 1}`} />
+                {/* The first image is already shown large above, so its thumbnail is not read twice. */}
+                <img src={url} alt={index === 0 ? '' : `商品画像 ${index + 1}`} />
               </li>
             ))}
           </ul>
