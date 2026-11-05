@@ -75,18 +75,32 @@
   background: #42634f;
   color: white;
 }
+/* Issue #43: the fold button shares a header row with the menu name instead of floating on its own. */
+.workspace-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 6px;
+  padding-left: 13px;
+}
+.workspace-sidebar-head p {
+  margin: 0;
+}
 .workspace-shell .workspace-sidebar-toggle {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  margin: 0 0 12px auto;
+  margin: 0;
   padding: 0;
-  border: 1px solid #668372;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
-  color: #e7eee5;
+  color: #c0d0c3;
   cursor: pointer;
 }
 .workspace-shell .workspace-sidebar-toggle:hover {
@@ -100,11 +114,25 @@
 .workspace-layout.is-sidebar-closed {
   grid-template-columns: 60px minmax(0, 1fr);
 }
+.workspace-sidebar-head + .workspace-sidebar-menu > a + nav {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #668372;
+}
 .is-sidebar-closed .workspace-sidebar {
   padding-inline: 12px;
 }
-.workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
-  margin-inline: auto;
+.is-sidebar-closed .workspace-sidebar-head {
+  justify-content: center;
+  padding-left: 0;
+}
+.is-sidebar-closed .workspace-sidebar a {
+  justify-content: center;
+  gap: 0;
+  padding: 9px;
+}
+.is-sidebar-closed .workspace-sidebar-label {
+  display: none;
 }
 .workspace-main {
   padding: 34px 4%;
@@ -329,9 +357,23 @@
   .workspace-layout {
     display: block;
   }
-  .workspace-shell .workspace-sidebar-toggle,
-  .workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
-    margin: 0 0 8px;
+  .workspace-sidebar-head {
+    margin-bottom: 4px;
+  }
+  .is-sidebar-closed .workspace-sidebar-head {
+    justify-content: flex-start;
+  }
+  .is-sidebar-closed .workspace-sidebar-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .is-sidebar-closed .workspace-sidebar-head + .workspace-sidebar-menu > a + nav {
+    margin: 0;
+    padding: 0 0 0 4px;
+    border-top: 0;
+    border-left: 1px solid #668372;
   }
   .workspace-sidebar {
     padding: 12px;
