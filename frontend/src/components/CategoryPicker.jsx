@@ -1,5 +1,5 @@
 import { Check, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useResource } from '../workspace/useResource';
 import { PickerDialog } from './PickerDialog';
 
@@ -8,6 +8,7 @@ export function CategoryPicker({ value, onChange }) {
   const categories = useResource('/categories');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const currentId = useId();
   /** @type {string[]} */
   const names = categories.data ?? [];
   const needle = query.trim().toLocaleLowerCase('ja-JP');
@@ -22,12 +23,13 @@ export function CategoryPicker({ value, onChange }) {
       <span className="picker-field-label">カテゴリー</span>
       <input type="hidden" name="category" value={value} />
       <div className="picker-field-value">
-        <strong>{value}</strong>
+        <strong id={currentId}>{value}</strong>
         {categories.data ? (
           <button
             type="button"
             className="secondary-button"
             aria-label="カテゴリーを選ぶ"
+            aria-describedby={currentId}
             aria-haspopup="dialog"
             onClick={() => {
               setQuery('');

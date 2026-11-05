@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { PickerDialog } from './PickerDialog';
 import { StoreMap } from './StoreMap';
 
@@ -9,6 +9,8 @@ import { StoreMap } from './StoreMap';
  */
 export function StorePicker({ stores, value, disabled, onChange }) {
   const [open, setOpen] = useState(false);
+  const nameId = useId();
+  const addressId = useId();
   const current = stores.find((store) => store.id === value);
   const unlocated = stores.filter((s) => !Number.isFinite(s.latitude) || !Number.isFinite(s.longitude));
   /** @param {number} id */
@@ -20,11 +22,12 @@ export function StorePicker({ stores, value, disabled, onChange }) {
     <div className="picker-field">
       <span className="picker-field-label">在庫を登録する店舗</span>
       <div className="picker-field-value">
-        <strong>{current?.name ?? '未選択'}</strong>
+        <strong id={nameId}>{current?.name ?? '未選択'}</strong>
         <button
           type="button"
           className="secondary-button"
           aria-label="在庫を登録する店舗を選ぶ"
+          aria-describedby={current?.address ? `${nameId} ${addressId}` : nameId}
           aria-haspopup="dialog"
           disabled={disabled}
           onClick={() => setOpen(true)}
@@ -32,7 +35,11 @@ export function StorePicker({ stores, value, disabled, onChange }) {
           選ぶ
         </button>
       </div>
-      {current?.address && <small className="muted">{current.address}</small>}
+      {current?.address && (
+        <small id={addressId} className="muted">
+          {current.address}
+        </small>
+      )}
       {open && (
         <PickerDialog title="在庫を登録する店舗を選ぶ" wide onClose={() => setOpen(false)}>
           <div className="store-picker-layout">

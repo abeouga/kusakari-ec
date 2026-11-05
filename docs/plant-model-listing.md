@@ -8,7 +8,7 @@
 
 ## Decision
 
-- 出品フォームの「庭オブジェクト」で庭への配置を有効にすると、植物の形態、幅、全体形状、幹・枝、葉、花を入力できる。高さは「植物の特徴」の既存 `heightCm` を共用し、一度だけ入力する。高さの表記は土際から最高点まで（鉢を含まない）に統一する。既存の保存値は変換しない。販売カテゴリーと植物の形態は異なる分類なので別に保持する。
+- 出品フォームの「庭オブジェクト」で庭への配置を有効にすると、植物の形態、幅、全体形状、幹・枝、葉、花を入力できる。高さは商品の `heightCm` を共用し、2026-11-05以降は「庭オブジェクト」ステップだけで一度入力する（10〜1500cm、後述「商品入力ウィザードの4ステップ化」）。高さの表記は土際から最高点まで（鉢を含まない）に統一する。既存の保存値は変換しない。販売カテゴリーと植物の形態は異なる分類なので別に保持する。
 - プレビューはCanvasの `/model-preview` を埋め込む。特徴を変更した後はプレビューボタンで再確認する。
 - 保存リクエストは `plantModelProfile` を送る。ECバックエンドがCanvasの `POST /api/model-assemblies/resolve` を呼び、返された部品構成を `modelComposition` として商品に保存する。クライアントに確定構成を指定させない。
 - 商品APIとカート内の商品は、プロフィール・構成・`canvasMaterialCode` を返す。価格・在庫・カート・注文は引き続きECの正本を使う。
@@ -138,7 +138,7 @@ Javaビルドと、Canvasの `playwright.ai-products.config.ts` による専用M
 
 ### Verification
 
-`npm run test:product-input` は専用MySQLとEC/Canvasの実APIを使用し、
+`npm run test:product-input`（2026-11-05以降は business 設定の `business-product-*` と `business-plant-ai` を実行）は専用MySQLとEC/Canvasの実APIを使用し、
 スライダー同期・空欄・小数・上下限・保存再読込・API入力検証・AI障害時の入力保持を検証する。
 AI正常系は `KUSAKARI_EC_E2E_OPENAI_API_KEY` を明示設定した場合だけ実行（有料呼出し2回）。
 通常のE2Eは開発用キーへフォールバックしない。成功レスポンスをモックしない。
@@ -161,6 +161,8 @@ AI正常系は `KUSAKARI_EC_E2E_OPENAI_API_KEY` を明示設定した場合だ�
 
 
 ## 商品入力ウィザード（2026-10-19）
+
+2026-11-05：3段階の構成と高さ・画像の配置は「商品入力ウィザードの4ステップ化」で置き換えた。以下は当時の記録。
 
 ### Context
 
@@ -203,6 +205,40 @@ CRUD、Luna実APIによる写真推定・取り消し・手動修正の検証も
 - 最終集計は `artifacts/e2e/wizard-verification-summary.json`。モデル画像は
   `wizard-ai-preview.png`（Canvasのpreview-loadedを待って撮影）。
 
+## 商品入力ウィザードの4ステップ化（2026-11-05、issue #45・#46・#50）
+
+### Context
+
+ステップ表記がボタンに見え、商品番号を手入力させ、カテゴリーは長いプルダウン、在庫を登録する店舗は名前だけで選んでいた。
+画像は商品情報と同じ画面にあり、植物の高さは商品情報（1〜3000cm）と庭オブジェクト（10〜1500cm）の2か所で入力でき、範囲エラーとAI推定の注記も2か所に出ていた。
+
+### Decision
+
+- 新規出品は「商品情報 → 画像 → 庭オブジェクト → 確認」の4ステップ。ステップ表記はボタンでないバー（`aria-current="step"`）にする。編集は「商品情報・画像・庭オブジェクト」の3タブで直接切り替える。
+- 商品番号は入力欄を持たず、登録時にサーバーの `ProductSkuGenerator` が自動採番する。編集時は表示のみ。APIでも更新時は空または現在の値だけを受け付け、異なる値は409 `SKU_IMMUTABLE` で拒否する（UIだけの制限にしない）。
+- カテゴリーは絞り込み付きのダイアログ、在庫を登録する店舗は画面内の地図モックと店舗一覧のダイアログで選ぶ。地図モックは店舗の緯度・経度（既存の `stores.latitude/longitude`、NOT NULL）からピンを置き、外部の地図API・タイルを読み込まない。`GET /stores` の応答に緯度・経度を追加した。DB変更はない。
+- ダイアログはTab/Enter/Escで操作でき、閉じると開いたボタンへフォーカスを戻す。Escは最前面のダイアログだけを閉じる（「商品管理」ダイアログ内の編集でも外側を閉じない）。
+- 画像は独立した「画像」ステップで追加・並べ替え・削除する。庭オブジェクトのAI推定はそのメイン画像を使う。
+- 植物の高さは「庭オブジェクト」ステップだけで入力し、範囲は10〜1500cm。商品ページの高さ表示もこの値を使う。範囲外のときはその欄に1件だけ「植物の高さは10〜1500cmの整数にしてください。」を表示する。`ProductRequest.heightCm` も10〜1500（省略可）にそろえた。
+
+### Alternatives
+
+- 商品番号の変更を許して重複だけ検査する案は、#46の「編集時は変更不可」と食い違うため採用しない。
+- 高さのAPI範囲を1〜3000のまま残し、UIだけ10〜1500にする案は、APIで作った範囲外の商品が画面から保存できなくなるため採用しない。
+- 外部の地図タイルを使う案は、外部通信と利用条件が増えるため採用しない。
+
+### Consequences
+
+- 既存データは変更しない。2026-11-05時点で開発DB・E2E DBとも、高さが10〜1500cmの範囲外の商品は0件、商品番号が空の商品は0件であることを確認した。今後APIで範囲外の高さを送ると400になる。
+- 旧クライアントが別の商品番号を送る更新は409になる。空の商品番号は従来どおり現在の値を維持する。
+- 既存の商品入力E2E（product-create / product-input / product-media / plant-ai と crud の商品部分）は、Cognito必須化以降ログインせずに失敗していたため、business 設定へ移した。`playwright.product-input.config.js` は削除し、`npm run test:product-input` は business 設定で `business-product-*` と `business-plant-ai` を実行する。
+
+### Verification
+
+business 設定の `business-product-wizard`、`business-product-create`、`business-product-input`、`business-product-sku`、`business-product-media`、`business-product-crud`、`business-plant-ai` で、実API・専用MySQL・実Cognitoを使い、
+バー形式のステップ、ダイアログのキーボード操作と390px幅での収まり、地図モックが外部通信をしないこと、自動採番と編集時の表示のみ・APIでの変更拒否、画像ステップ、AIへのメイン画像の送信、高さの範囲エラー、再読み込み後の表示を確認する。
+成果物は `artifacts/business/product-*/` と `artifacts/business/plant-ai/`。
+
 ## 商品画像（2026-10-19）
 
 ### Context / Decision
@@ -228,4 +264,4 @@ Consequences: 日照・耐寒等の検索用属性と商品写真は維持する
 
 画像APIは既存のローカル限定Host/Origin制限に従う。出品者認証と所有権確認は未実装であり、公開サービス向け認可を実装したものではない。
 
-検証: product-media.spec.jsで画像バイト列、並び替え・削除・再読み込み、商品編集、旧専用APIの404、編集ボタンと購入者表示が存在しないことを実APIと専用MySQLで確認する。画面証跡はartifacts/e2e/product-images-*.png、product-images-public.png。
+検証: product-media.spec.js（2026-11-05に business-product-media.spec.js へ移動）で画像バイト列、並び替え・削除・再読み込み、商品編集、旧専用APIの404、編集ボタンと購入者表示が存在しないことを実APIと専用MySQLで確認する。画面証跡はartifacts/e2e/product-images-*.png、product-images-public.png。

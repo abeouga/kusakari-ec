@@ -71,6 +71,11 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
     const form = formRef.current;
     const root = scope === null ? form : form?.querySelector(`[data-step="${scope}"]`);
     const invalid = root?.querySelector('input:invalid,select:invalid,textarea:invalid');
+    if (invalid instanceof HTMLInputElement && invalid.name === 'modelHeight') {
+      const { rangeUnderflow, rangeOverflow, stepMismatch } = invalid.validity;
+      if (rangeUnderflow || rangeOverflow || stepMismatch)
+        return fail('植物の高さは10〜1500cmの整数にしてください。', invalid);
+    }
     if (invalid) return fail('入力内容を確認してください。', invalid);
     if (scope === INFO || scope === null) {
       // The product number is never typed: the server assigns it on registration (issue #46).

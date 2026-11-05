@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, call, login, prepareMember } from './business-helpers.js';
+import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
 
 test.use({ trace: 'off' });
@@ -75,6 +75,11 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await page.keyboard.type(category);
     const options = categoryDialog.getByRole('list', { name: 'カテゴリー一覧' }).getByRole('button');
     for (const text of await options.allInnerTexts()) expect(text).toContain(category);
+    const categoryBox = await categoryDialog.boundingBox();
+    expect(categoryBox.x).toBeGreaterThanOrEqual(0);
+    expect(categoryBox.x + categoryBox.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${dir}/category-dialog-${width}.png` });
     await page.keyboard.press('Tab');
     await expect(options.filter({ hasText: category }).first()).toBeFocused();
     await page.keyboard.press('Enter');
@@ -143,9 +148,15 @@ test('product wizard registers through the progress bar, dialogs and image step 
     await expect(bar.locator('li[data-state="done"]')).toHaveCount(2);
     await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveCount(1);
     const garden = form.getByRole('region', { name: '庭オブジェクト', exact: true });
+    // Not configured yet: only the height and the AI / manual choices are shown.
+    await expect(garden.getByRole('button', { name: '手動で設定', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: `${dir}/garden-${width}.png`, fullPage: true });
     await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('5');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(form.getByRole('alert')).toHaveCount(1);
+    await expect(form.getByRole('alert')).toHaveText('植物の高さは10〜1500cmの整数にしてください。');
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
     await garden.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('180');
     await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
@@ -220,6 +231,55 @@ test('product wizard registers through the progress bar, dialogs and image step 
       null,
       2,
     ),
+  );
+  expect(errors).toEqual([]);
+});
+
+// Review fix for #46: in the footer 「商品管理」 dialog, Esc in the category dialog closes only that dialog.
+test('Esc in the category dialog keeps the product manager dialog open while editing', async ({ page }) => {
+  test.setTimeout(180000);
+  const dir = 'artifacts/business/product-wizard';
+  await mkdir(dir, { recursive: true });
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  const input = productInput();
+  const created = await call(page.request, '/products', 'POST', input);
+  expect(created.status(), await created.text()).toBe(200);
+  const product = await created.json();
+
+  await page.goto(`${ec}/`);
+  await page.reload();
+  await page.locator('.site-footer').getByRole('button', { name: '商品管理', exact: true }).click();
+  const manager = page.getByRole('dialog', { name: '商品管理', exact: true });
+  await expect(manager).toBeVisible();
+  await manager.getByPlaceholder('商品名・商品番号').fill(product.sku);
+  await manager.getByTestId(`manage-${product.id}`).getByRole('button', { name: '編集', exact: true }).click();
+  const form = manager.locator('.product-form');
+  await expect(form.getByLabel('商品番号', { exact: true })).toHaveText(product.sku);
+  await form.getByLabel('商品名', { exact: true }).fill(`${input.name} 編集中`);
+
+  const categoryButton = form.getByRole('button', { name: 'カテゴリーを選ぶ', exact: true });
+  await categoryButton.focus();
+  await page.keyboard.press('Enter');
+  const categoryDialog = page.getByRole('dialog', { name: 'カテゴリーを選ぶ', exact: true });
+  await expect(categoryDialog.getByLabel('カテゴリー名で絞り込み')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(categoryDialog).toHaveCount(0);
+  await expect(manager).toBeVisible();
+  await expect(categoryButton).toBeFocused();
+  await expect(form.getByLabel('商品名', { exact: true })).toHaveValue(`${input.name} 編集中`);
+  await page.screenshot({ path: `${dir}/manager-after-esc.png` });
+
+  // A second Esc closes the manager itself, and nothing was saved by the first one.
+  await page.keyboard.press('Escape');
+  await expect(manager).toHaveCount(0);
+  const products = await (await call(page.request, '/products?storeId=1')).json();
+  const stored = products.find((item) => item.id === product.id);
+  expect(stored.name).toBe(input.name);
+  await writeFile(
+    `${dir}/manager-esc.json`,
+    JSON.stringify({ id: stored.id, sku: stored.sku, name: stored.name }, null, 2),
   );
   expect(errors).toEqual([]);
 });

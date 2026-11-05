@@ -61,6 +61,30 @@ test('product number is assigned on registration and kept on edit', async ({ pag
   const kept = await call(page.request, `/products/${created.id}`, 'PUT', { ...input, expectedStock: input.stock });
   expect(kept.status(), await kept.text()).toBe(200);
   expect((await kept.json()).sku).toBe(created.sku);
-  const other = created.sku;
-  await writeFile(`${dir}/products.json`, JSON.stringify({ first: product.sku, second: other }, null, 2));
+  // The number cannot be changed through the API either, and another product's number is never reused.
+  const changed = await call(page.request, `/products/${created.id}`, 'PUT', {
+    ...input,
+    sku: `CHANGED-${created.id.slice(0, 8)}`,
+    expectedStock: input.stock,
+  });
+  expect(changed.status()).toBe(409);
+  const refusal = await changed.json();
+  expect(refusal.code).toBe('SKU_IMMUTABLE');
+  expect(JSON.stringify(refusal)).not.toContain('CHANGED-');
+  const taken = await call(page.request, `/products/${created.id}`, 'PUT', {
+    ...input,
+    sku: product.sku,
+    expectedStock: input.stock,
+  });
+  expect(taken.status()).toBe(409);
+  const duplicate = await call(page.request, '/products', 'POST', { ...input, sku: product.sku });
+  expect(duplicate.status()).toBe(409);
+  expect((await duplicate.json()).code).toBe('SKU_EXISTS');
+  const products = await (await call(page.request, '/products?storeId=1')).json();
+  const stored = products.find((item) => item.id === created.id);
+  expect(stored.sku).toBe(created.sku);
+  await writeFile(
+    `${dir}/products.json`,
+    JSON.stringify({ first: product.sku, second: stored.sku, refusal: refusal.code }, null, 2),
+  );
 });
