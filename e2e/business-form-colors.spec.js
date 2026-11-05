@@ -79,6 +79,8 @@ async function expectTiers(page, name, width, field, selectors, { storePage = fa
   if (!storePage) expect(colors.pageToCard, detail).toBeGreaterThanOrEqual(1.1);
   expectFieldContrast(colors);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // A full-page capture taken while scrolled leaves the sticky header in the middle of the image.
+  if (fullPage) await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({
     path: `${dir}/after-reload-${name}-${width}.png`,
     fullPage,
@@ -129,10 +131,19 @@ test('login, seller, operator and buyer forms separate page, card and field colo
     const product = await created.json();
     await add(buyer.page.request, product.id, 1);
 
-    /** @type {[import('@playwright/test').Page, string, string, (page: import('@playwright/test').Page) => import('@playwright/test').Locator, boolean?][]} */
+    /** @type {[import('@playwright/test').Page, string, string, (page: import('@playwright/test').Page) => import('@playwright/test').Locator, boolean?, ((page: import('@playwright/test').Page) => import('@playwright/test').Locator)?][]} */
     const screens = [
       [seller.page, 'seller-product-new', '/seller/products/new', (p) => p.locator('input[name="name"]')],
-      [seller.page, 'seller-products', '/seller/products', (p) => p.locator('.seller-filters input')],
+      // The list is remounted once the seller's store is loaded, so the filters are read after the created product is listed.
+      // The list holds every product of the store, so only the viewport is saved.
+      [
+        seller.page,
+        'seller-products',
+        '/seller/products',
+        (p) => p.locator('.seller-filters input'),
+        false,
+        (p) => p.getByRole('row').filter({ hasText: product.name }),
+      ],
       // The moderation row of the product created above; the list holds every product, so only the viewport is saved.
       [
         admin.page,
@@ -149,10 +160,11 @@ test('login, seller, operator and buyer forms separate page, card and field colo
       [buyer.page, 'buyer-pickup-contact', '/account/pickup-contact', (p) => p.locator('input[name="recipientName"]')],
     ];
     for (const width of [1440, 390]) {
-      for (const [page, name, path, locate, fullPage = true] of screens) {
+      for (const [page, name, path, locate, fullPage = true, ready] of screens) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${ec}${path}`);
         await page.reload();
+        if (ready) await expect(ready(page)).toBeVisible();
         const field = locate(page).first();
         await expect(field).toBeVisible();
         await field.scrollIntoViewIfNeeded();
@@ -164,6 +176,7 @@ test('login, seller, operator and buyer forms separate page, card and field colo
       await admin.page.goto(`${ec}/operator/categories`);
       await admin.page.reload();
       await expect(admin.page.locator('.workspace-form input[name="name"]')).toBeVisible();
+      await admin.page.evaluate(() => scrollTo(0, 0));
       await admin.page.screenshot({ path: `${dir}/after-reload-operator-categories-${width}.png`, fullPage: true });
 
       // The pickup confirmation is a step inside the cart page, so it is reopened after the reload.
