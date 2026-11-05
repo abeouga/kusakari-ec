@@ -6,12 +6,11 @@ import { addImages } from './product-images.js';
 test.use({ trace: 'off' });
 
 /**
- * Full-length capture. At phone width the sticky header and step footer are stitched badly by fullPage, so the
- * viewport is stretched to the document height for the capture instead.
+ * Full-length capture. fullPage stitches the sticky header and step footer into the middle of a scrolled page,
+ * so the viewport is stretched to the document height for the capture instead.
  */
 async function snap(page, path) {
   const { width, height } = page.viewportSize();
-  if (width >= 768) return page.screenshot({ path, fullPage: true });
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.setViewportSize({ width, height: await page.evaluate(() => document.documentElement.scrollHeight) });
   await page.screenshot({ path });
