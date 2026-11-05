@@ -33,12 +33,19 @@ public class PlantSuggestionService {
   widthCm、branchAngle、branchCountは整数、幹・葉・花の寸法は小数1桁以内です。
   seedは資料のseedを維持します。幅や葉・花は全体寸法に収まる値にし、幹は高さ・幅より細くしてください。
   葉の大きさは高さ・幅の小さい方の40%以下を目安とし、写真の葉が大きく見えても全体寸法に収めます。
-  coniferの葉はneedleかscale、grassはgrass、palmはfrond、rosetteはsucculent/narrow/oval、
+  coniferの葉はneedleかscale、grassはgrass、palmはfrond、rosetteはsucculent/narrow/oval/heart/round、
   vineはoval/round/heart/palmate/split/compoundです。coniferとpalmには花を付けません。
-  植物別規則botanicalFormは品種が明確な場合だけ設定します。
+  植物の種類botanicalFormは品種が明確な場合だけ設定します。
   maple=イロハモミジ(tree,palmate,花なし)、monstera=モンステラ(flower,split,花なし)、
   iberis=イベリス(spreading,narrow,花はfour)、hakone=フウチソウ(grass,grass)、
-  goldcrest=ゴールドクレスト(conifer,scale,花なし)。その他はbotanicalForm=nullです。
+  goldcrest=ゴールドクレスト(conifer,scale,花なし)、olive=オリーブ(tree,narrow,花はcluster)、
+  lavender=ラベンダー(shrub,narrow,花はspike)、rose=バラ(shrub,compound,花はfiveかeight)、
+  hydrangea=アジサイ(shrub,oval,花はcluster)、boxwood=ツゲ(shrub,round,花なし)、
+  hosta=ギボウシ(rosette,heart,花はbell)。その他はbotanicalForm=nullです。
+  leafDensityはsparse/low/medium/high/denseの5段階です。
+  stemCount・stemCurve・stemTaper・twigLength・branchLevels・branchDroop・branchStart・
+  leafSizeVariation・leafTipRatio・leafArrangementは、写真や品種から明確な場合だけ値を入れ、
+  判断できない項目はnullにします（植物タイプ・種類に合わせた自動値になります）。
   flowerEnabled=falseでも花の形・大きさ・色に有効な既定値を返してください。
   写真や文章から推測できない細部は控えめな一般値とし、warningsに推定上の注意を日本語で最大5件記載します。
   """;
