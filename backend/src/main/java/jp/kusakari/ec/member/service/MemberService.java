@@ -5,9 +5,7 @@ import java.time.Instant;
 import java.util.*;
 import jp.kusakari.ec.auth.*;
 import jp.kusakari.ec.common.web.ApiException;
-import jp.kusakari.ec.member.persistence.entity.AddressEntity;
 import jp.kusakari.ec.member.persistence.entity.PickupContactEntity;
-import jp.kusakari.ec.member.persistence.repository.AddressRepository;
 import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,16 +18,9 @@ public class MemberService {
 
   private final AuthService auth;
   private final AuthMemberRepository members;
-  private final AddressRepository addresses;
   private final PickupContactRepository pickupContacts;
   private final WithdrawalGuard withdrawalGuard;
   private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
-
-  public record Address(
-    @NotBlank @Size(max = 100) String recipient,
-    @NotNull @Pattern(regexp = "[0-9]{3}-?[0-9]{4}") String postal,
-    @NotBlank @Size(max = 200) String address
-  ) {}
 
   public record PickupContact(
     @NotNull @Size(max = 100) String recipientName,
@@ -46,24 +37,6 @@ public class MemberService {
     boolean enabled,
     Instant withdrawnAt
   ) {}
-
-  @Transactional(readOnly = true)
-  public Address address() {
-    return addresses
-      .findById(auth.current().getId())
-      .map(a -> new Address(a.getRecipient(), a.getPostal(), a.getAddress()))
-      .orElse(new Address("", "", ""));
-  }
-
-  public Address save(Address input) {
-    var a = new AddressEntity(auth.current().getId(), input.recipient().trim(), input.postal(), input.address().trim());
-    addresses.save(a);
-    return input;
-  }
-
-  public void deleteAddress() {
-    addresses.deleteById(auth.current().getId());
-  }
 
   @Transactional(readOnly = true)
   public PickupContact pickupContact() {

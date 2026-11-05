@@ -34,7 +34,7 @@ Canvasは既存FastAPI / SQLAlchemy / Alembicを維持する。今回Canvas DB�
 | 受注 | GET /api/seller/orders?storeId=、GET /api/seller/orders/{id}、PUT /api/seller/orders/{id}/status |
 | キャンセル | POST /api/orders/{id}/cancellation、PUT /api/seller/orders/{id}/cancellation |
 | 運営者注文 | GET /api/operator/orders |
-| 住所・退会・パスワード | /api/account/address、DELETE /api/account、PUT /api/account/password |
+| 受取連絡先・退会・パスワード | /api/account/pickup-contact、DELETE /api/account、PUT /api/account/password（住所APIは2026-11-05に削除） |
 | 店舗 | GET /api/stores/{id}、PUT /api/seller/stores/{id}、/api/operator/stores |
 | 出店申請 | /api/account/store-applications、/api/operator/applications、/api/account/store-applications/{id}/document |
 | 管理 | /api/operator/members、/api/operator/products、/api/operator/categories |
