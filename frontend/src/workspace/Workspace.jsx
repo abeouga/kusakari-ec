@@ -62,6 +62,8 @@ const pageTitles = {
   '/materials': '配置素材の商品候補',
   [applicationPaths.form]: '出店申請',
   [applicationPaths.status]: '出店申請状況',
+  // Issue #44: the new-product page has no sidebar link; show what the page is for.
+  '/seller/products/new': '商品登録',
 };
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
@@ -154,7 +156,13 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/operator/categories') content = <CategoriesPage />;
   else if (path === '/materials') content = <Materials shop={shop} onClose={() => navigate('/')} embedded />;
   else if (publicStore) content = <ProfilePage storeId={Number(path.split('/')[2])} readOnly />;
-  else content = <p>ページが見つかりません。</p>;
+  else content = <p>URLを確認するか、メニューからページを選んでください。</p>;
+  // Issue #44: every page gets a heading that describes it instead of the generic "Kusakari".
+  const title =
+    action?.[1] ||
+    menu.find(([url]) => url === path)?.[1] ||
+    pageTitles[path] ||
+    (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
     <>
       {header}
@@ -168,7 +176,7 @@ export function Workspace({ shop, path, header }) {
             onToggle={() => setSidebarClosed(!collapsed)}
           />
           <main className="workspace-main">
-            <h1>{action?.[1] || menu.find(([url]) => url === path)?.[1] || pageTitles[path] || 'Kusakari'}</h1>
+            <h1>{title}</h1>
             {content}
           </main>
         </div>
