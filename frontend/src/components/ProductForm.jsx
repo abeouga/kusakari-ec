@@ -149,7 +149,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
           <ProductGardenStep plant={plant} draft={values} active={step === GARDEN} />
         </section>
         {step === REVIEW && (
-          <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} onEdit={move} />
+          <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} />
         )}
       </fieldset>
       <div className="wizard-footer">
