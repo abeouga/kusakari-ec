@@ -47,7 +47,16 @@ public final class CatalogDtos {
     Long sellerStoreId
   ) {}
 
-  public record StoreView(long id, String name, String address, String hours, Double distanceKm) {}
+  /** Latitude and longitude place the store on the seller's in-page store map (issue #46). */
+  public record StoreView(
+    long id,
+    String name,
+    String address,
+    String hours,
+    double latitude,
+    double longitude,
+    Double distanceKm
+  ) {}
 
   public record ProductReferenceRequest(
     @NotEmpty @Size(max = 200) List<@NotBlank @Size(max = 40) String> productIds
