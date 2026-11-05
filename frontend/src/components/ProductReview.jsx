@@ -43,12 +43,7 @@ export function ProductReview({ draft: p, plant, storeName }) {
       </div>
       <div className="product-review-body">
         <h4>{p.name}</h4>
-        {p.latinName && (
-          <p className="latin">
-            <span className="visually-hidden">学名 </span>
-            {p.latinName}
-          </p>
-        )}
+        {p.latinName && <p className="latin">{p.latinName}</p>}
         <p className="product-review-price">
           {yen(Number(p.priceYen))}
           <small>税込</small>

@@ -161,7 +161,10 @@ test('garden step previews automatically, guides required input and saves groupe
     await snap(page, `${dir}/garden-${width}.png`);
 
     await form.getByRole('button', { name: '次へ', exact: true }).click();
-    await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('設定あり（幅 160 cm）');
+    // #53: the review shows the garden object as its 3D preview instead of its sizes.
+    await expect(
+      form.getByRole('region', { name: '出品内容の確認' }).getByTitle('出品する植物の3Dプレビュー', { exact: true }),
+    ).toHaveAttribute('src', param('widthCm', 160));
     const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
     await form.getByRole('button', { name: '出品する', exact: true }).click();
     const response = await posted;
@@ -342,9 +345,10 @@ test('non-plant category keeps only the product height and saves no plant model'
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await expect(form.getByRole('alert')).toHaveCount(0);
     const review = form.getByRole('region', { name: '出品内容の確認' });
-    await expect(review).toContainText('なし（植物以外のカテゴリー）');
-    await expect(review.getByText('商品の高さ', { exact: true })).toBeVisible();
-    await expect(review.getByText('植物の高さ', { exact: true })).toHaveCount(0);
+    // #53: no plant model and no size on the review of a non-plant product.
+    await expect(review).toContainText(category);
+    await expect(review.getByTitle('出品する植物の3Dプレビュー', { exact: true })).toHaveCount(0);
+    await expect(review).not.toContainText('高さ');
     const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
     await form.getByRole('button', { name: '出品する', exact: true }).click();
     const response = await posted;
