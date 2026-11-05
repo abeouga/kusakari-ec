@@ -21,7 +21,14 @@ export function ProductInfoFields({ p, set, plant, storeSelector, onImageBusy })
             </label>
             <label>
               商品番号
-              <input name="sku" value={p.sku} required maxLength={50} onChange={change} />
+              <input
+                name="sku"
+                value={p.sku}
+                required={Boolean(p.id)}
+                maxLength={50}
+                placeholder={p.id ? '' : '空欄なら自動で設定'}
+                onChange={change}
+              />
             </label>
             <label>
               カテゴリー

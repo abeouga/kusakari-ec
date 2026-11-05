@@ -21,7 +21,7 @@ export function ProductReview({ draft: p, plant, storeName, onEdit }) {
           <dt>カテゴリー</dt>
           <dd>{p.category}</dd>
           <dt>商品番号</dt>
-          <dd>{p.sku}</dd>
+          <dd>{p.sku || '登録時に自動で設定します'}</dd>
           <dt>高さ / 鉢径</dt>
           <dd>
             {p.heightCm || '未設定'} / {p.potDiameterCm || '未設定'} cm
