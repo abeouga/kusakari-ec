@@ -120,7 +120,7 @@
   }
   .catalog {
     padding-top: 40px;
-    padding-inline: 4%;
+    padding-inline: calc(20px + 4%);
   }
   .catalog-controls {
     align-items: stretch;
