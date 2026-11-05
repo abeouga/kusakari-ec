@@ -33,8 +33,8 @@ for (const width of [1440, 390, 320]) {
     const previous = pagination.getByRole('button', { name: '前のページ', exact: true });
     const current = pagination.locator('[aria-current="page"]');
 
-    // Switching pages from the bottom pager must bring the list top (summary row) to the viewport top,
-    // or to the page end when the document is too short to scroll that far.
+    // Switching pages from the bottom pager must bring the list top (summary row) just below the
+    // sticky header (issue #31), or to the page end when the document is too short to scroll that far.
     async function switchPage(button, pageNumber, keyboard = false) {
       await pagination.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
       const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
@@ -49,7 +49,8 @@ for (const width of [1440, 390, 320]) {
       await expect
         .poll(() =>
           page.evaluate(() => {
-            const top = document.querySelector('.catalog-page-summary')?.getBoundingClientRect().top ?? NaN;
+            const header = document.querySelector('.ec-sticky-header')?.getBoundingClientRect().bottom ?? NaN;
+            const top = (document.querySelector('.catalog-page-summary')?.getBoundingClientRect().top ?? NaN) - header;
             const atEnd = Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight;
             return Math.abs(top) <= 1 || (top > 0 && atEnd);
           }),
