@@ -75,7 +75,7 @@
   background: #42634f;
   color: white;
 }
-.workspace-sidebar-toggle {
+.workspace-shell .workspace-sidebar-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -89,7 +89,7 @@
   color: #e7eee5;
   cursor: pointer;
 }
-.workspace-sidebar-toggle:hover {
+.workspace-shell .workspace-sidebar-toggle:hover {
   background: #42634f;
   color: white;
 }
@@ -103,7 +103,7 @@
 .is-sidebar-closed .workspace-sidebar {
   padding-inline: 12px;
 }
-.is-sidebar-closed .workspace-sidebar-toggle {
+.workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
   margin-inline: auto;
 }
 .workspace-main {
@@ -339,8 +339,8 @@
   .workspace-layout {
     display: block;
   }
-  .workspace-sidebar-toggle,
-  .is-sidebar-closed .workspace-sidebar-toggle {
+  .workspace-shell .workspace-sidebar-toggle,
+  .workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
     margin: 0 0 8px;
   }
   .workspace-sidebar {
