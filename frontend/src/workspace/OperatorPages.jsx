@@ -169,7 +169,9 @@ export function MembersPage({ sellers = false }) {
             {m.email} / {m.role || m.address}
           </p>
           <p>{m.withdrawnAt ? '退会済み' : m.enabled ? '利用中' : '利用停止'}</p>
-          <button disabled={resource.busy || m.role === 'ADMIN' || !!m.withdrawnAt} onClick={() => setTarget(m)}>
+          {/* EC-A02 6a: administrators and withdrawn members also go through the dialog; the server rejects the
+              change with its message, so the button is never disabled for them. */}
+          <button disabled={resource.busy} onClick={() => setTarget(m)}>
             {m.enabled ? '利用を停止' : '利用を再開'}
           </button>
         </section>
