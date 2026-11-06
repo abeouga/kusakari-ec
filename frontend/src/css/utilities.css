@@ -57,6 +57,26 @@
   padding: 5px;
   font-size: 11px;
 }
+/* Issue #44: "戻る" with an arrow, used where the seller leaves a product form for the product list.
+   The .workspace-shell selector outranks the generic `.workspace-shell button`, so the button looks the same
+   on the seller pages and in the product dialog outside the workspace. */
+.page-back-button,
+.workspace-shell .page-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 7px 14px 7px 10px;
+  border: 1px solid #cbd3c7;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--green);
+  font-size: 13px;
+}
+.page-back-button:hover,
+.workspace-shell .page-back-button:hover {
+  background: #edf2e9;
+}
 .icon-button {
   border: 0;
   background: none;

@@ -35,6 +35,15 @@ export async function login(page, email, secret = password) {
   return page.request.get(`${ec}/api/auth/me`).then((r) => r.json());
 }
 
+// PR screenshots: wait for the page data, show the top of the page (or the given element), and hide email addresses.
+export async function capture(page, path, target) {
+  await expect(page.locator('.workspace-main [role=status]').filter({ hasText: '読み込んでいます。' })).toHaveCount(0);
+  // The site scrolls smoothly; jump instantly so the shot is not taken mid-scroll.
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  if (target) await target.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await page.screenshot({ path, mask: [page.locator('.workspace-main').getByText(/@/)], maskColor: '#d9ded6' });
+}
+
 export function prepareMember(member, role) {
   if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
     throw new Error('Fixtures cannot change the development database.');
