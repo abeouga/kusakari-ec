@@ -211,7 +211,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
           {step > 0 && (
             <button type="button" className="secondary-button" disabled={locked} onClick={() => move(step - 1)}>
               <ArrowLeft className="seller-ui-icon" size={16} aria-hidden="true" />
-              戻る
+              前の手順へ
             </button>
           )}
           {!product && step === 1 && (

@@ -93,7 +93,7 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   await form.getByRole('button', { name: 'AI設定を元に戻す', exact: true }).click();
   await expect(form.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveValue('');
   await expect(form.getByLabel('この植物を庭に配置できるようにする', { exact: true })).not.toBeChecked();
-  await form.getByRole('button', { name: '戻る', exact: true }).click();
+  await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
   await form.locator('summary').getByText('サイズ', { exact: true }).click();
   await form.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('75');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
