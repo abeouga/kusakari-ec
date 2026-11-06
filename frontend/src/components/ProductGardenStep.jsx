@@ -1,59 +1,45 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { useRef } from 'react';
 import { PlantModelFields } from './PlantModelFields';
-import { PlantSuggestionControls } from './PlantSuggestionControls';
+import { PlantPreview } from './PlantPreview';
 import { RangeField } from './RangeField';
+import { usePlantPreview } from './usePlantPreview';
 
 /**
- * Garden-object step. The plant height is entered only here and is also the product height shown on the
- * product page, so it stays editable even when no garden object is configured (issue #50).
- * @param {{plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,draft:Record<string,any>,editing:boolean}} props
+ * Garden-object step: the preview with the AI button on the left and the grouped plant features on the right.
+ * Plants always have a garden object (issue #49); a product in a non-plant category keeps only its height.
+ * @param {{plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,draft:Record<string,any>,active:boolean}} props
  */
-export function ProductGardenStep({ plant, draft, editing }) {
+export function ProductGardenStep({ plant, draft, active }) {
+  const fields = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const preview = usePlantPreview(plant, fields, active);
+  if (!plant.plant)
+    return (
+      <div className="garden-non-plant">
+        <p className="preview-placeholder">
+          「{draft.category}」の商品は植物の3Dモデルを作りません。庭ではCanvasに登録されたモデルを使います。
+        </p>
+        <RangeField
+          label="商品の高さ"
+          name="modelHeight"
+          min={10}
+          max={1500}
+          unit="cm"
+          value={plant.height}
+          onChange={plant.setHeight}
+          hint="商品ページに表示"
+        />
+      </div>
+    );
   return (
     <div className="model-layout">
-      <div className="model-preview-pane">
-        {plant.previewUrl ? (
-          <iframe className="plant-model-preview" title="植物の3Dプレビュー" src={plant.previewUrl} />
-        ) : (
-          <div className="preview-placeholder">
-            {plant.enabled
-              ? '設定後に「植物のプレビューを確認」を押してください。'
-              : 'AIまたは手動で設定すると、ここで形を確認できます。'}
-          </div>
+      <PlantPreview plant={plant} preview={preview} draft={draft} />
+      <div ref={fields} onInput={preview.edited}>
+        {!plant.configured && (
+          <p className="fine-print garden-unset">
+            この商品は庭オブジェクトが未設定です。特徴を変更すると、保存時に設定されます。
+          </p>
         )}
-      </div>
-      <div>
-        <PlantSuggestionControls plant={plant} imageUrl={draft.imageUrl} editing={editing} draft={draft} />
-        {!plant.enabled && (
-          <button type="button" className="secondary-button" onClick={() => plant.setEnabled(true)}>
-            <SlidersHorizontal className="seller-ui-icon" size={16} aria-hidden="true" />
-            手動で設定
-          </button>
-        )}
-        <PlantModelFields
-          profile={plant.profile}
-          enabled={plant.enabled}
-          onEnabledChange={plant.setEnabled}
-          onChange={plant.changeProfile}
-          onPreview={plant.preview}
-          heightControl={
-            <>
-              <RangeField
-                label="植物の高さ（cm・土際から）"
-                name="modelHeight"
-                min={10}
-                max={1500}
-                value={plant.height}
-                onChange={plant.setHeight}
-                required={plant.enabled}
-                hint="10〜1500 · 商品ページの高さにも使います"
-              />
-              {plant.estimated && <p className="ai-estimate">AI推定・実寸未確認。高さを確認してください。</p>}
-            </>
-          }
-        >
-          {null}
-        </PlantModelFields>
+        <PlantModelFields plant={plant} />
       </div>
     </div>
   );

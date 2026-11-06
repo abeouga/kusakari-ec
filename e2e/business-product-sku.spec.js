@@ -27,7 +27,9 @@ test('product number is assigned on registration and kept on edit', async ({ pag
   await addImages(form);
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
-  await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+  // Issue #49: plants always get a garden object, so the required height is entered before 「次へ」.
+  await form.getByLabel('植物の高さ', { exact: true }).fill('120');
+  await form.getByRole('button', { name: '次へ', exact: true }).click();
   const review = form.getByRole('region', { name: '出品内容の確認' });
   await expect(review).toContainText('保存時に自動で決まります');
 

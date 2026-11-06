@@ -63,7 +63,9 @@ test('product images persist after editing and removed guidance is unavailable',
   await page.setViewportSize({ width: 1440, height: 900 });
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
-  await form.getByRole('button', { name: '設定せず次へ', exact: true }).click();
+  // Issue #49: plants always get a garden object, so the required height is entered before 「次へ」.
+  await form.getByLabel('植物の高さ', { exact: true }).fill('120');
+  await form.getByRole('button', { name: '次へ', exact: true }).click();
   const pending = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
   await form.getByRole('button', { name: '出品する', exact: true }).click();
   const response = await pending;

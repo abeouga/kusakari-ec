@@ -1,39 +1,28 @@
-.plant-model-fields {
-  padding: 18px;
-  border: 1px solid #d6e0d0;
-  border-radius: 8px;
-  background: #f8faf5;
-  min-width: 0;
-}
-.plant-model-fields legend {
-  font-weight: 600;
-  font-size: 14px;
-  padding: 0 8px;
-}
-.plant-model-fields .form-grid {
-  margin: 16px 0;
-}
-.plant-model-fields [hidden] {
-  display: none;
-}
-.plant-model-inputs {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
+/* Slider + number + unit, shared by the product form (issue #52 aligned every column). */
 .range-field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   align-content: start;
 }
-.range-field > label {
-  display: block;
+.range-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.range-field-head > label,
+.range-field-head > span:first-child {
+  min-width: 0;
+  font-size: 13px;
 }
 .range-field-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px;
+  grid-template-columns: minmax(0, 1fr) 104px;
   align-items: center;
   gap: 12px;
 }
@@ -41,7 +30,7 @@
   width: 100%;
   min-width: 0;
   padding: 0;
-  height: 32px;
+  height: 28px;
   accent-color: #446735;
   cursor: pointer;
 }
@@ -50,45 +39,49 @@
   border-color: transparent;
   background: transparent;
 }
-.range-field input[type='number'] {
+.range-field-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+.range-field-number input[type='number'] {
   width: 100%;
   min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
-.range-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  font-size: 11px;
+.range-field-unit {
+  min-width: 1.6em;
+  font-size: 12px;
   color: #596253;
 }
 .range-field output {
-  font-size: 14px;
+  font-size: 13px;
+  text-align: right;
+  padding-right: calc(1.6em + 6px);
 }
-.plant-ai-controls {
-  padding: 14px;
-  margin-top: 16px;
-  border: 1px solid #c5d4bb;
-  border-radius: 8px;
-  background: white;
-  overflow-wrap: anywhere;
+.range-field-note,
+.range-field-error {
+  font-size: 11px;
+  line-height: 1.5;
 }
-.plant-ai-controls .form-actions {
-  flex-wrap: wrap;
+.range-field-error {
+  color: #aa4e35;
+}
+.range-field[data-invalid] input[type='number'] {
+  border-color: #c9826f;
+  background: #fdf5f1;
 }
 .ai-estimate {
   color: #7b4e13;
   font-size: 13px;
-}
-.plant-model-fields input[type='color'] {
-  min-height: 36px;
-  width: 100%;
 }
 .plant-model-preview {
   width: 100%;
   height: 340px;
   border: 1px solid #d6e0d0;
   border-radius: 7px;
-  margin-top: 16px;
   background: #eef1e7;
 }
 .product-form-content {
@@ -107,62 +100,20 @@
   min-width: 0;
   background: white;
 }
-.product-form-section > legend,
-.plant-model-fields > legend {
+.product-form-section > legend {
   padding: 0 10px;
   font-size: 18px;
   font-weight: 600;
   color: var(--ink);
 }
-.product-form-section > .fine-print,
-.plant-model-fields > .fine-print {
+.product-form-section > .fine-print {
   margin: 0 0 20px;
 }
-.plant-model-group {
-  margin: 24px 0;
-  padding: 14px 0 0;
-  border: 0;
-  border-top: 1px solid #d6e0d0;
-  min-width: 0;
-}
-.plant-model-group > legend {
-  padding: 0 10px 0 0;
-  font-weight: 600;
-  font-size: 14px;
-}
-.plant-model-group .form-grid {
-  margin: 10px 0 0;
-}
 @media (max-width: 650px) {
-  .product-form-section,
-  .plant-model-fields {
+  .product-form-section {
     padding: 16px 12px;
   }
-  .product-form-section > legend,
-  .plant-model-fields > legend {
+  .product-form-section > legend {
     font-size: 16px;
   }
-}
-.plant-species-select {
-  display: grid;
-  gap: 6px;
-  max-width: 420px;
-  margin: 12px 0 4px;
-}
-.auto-field {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-  min-width: 0;
-}
-.auto-field-value {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  font-weight: 600;
-  font-size: 14px;
-}
-.auto-field-value .muted {
-  font-weight: 400;
-  font-size: 13px;
 }

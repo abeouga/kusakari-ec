@@ -61,8 +61,8 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       'frontend/public/images/lavender.png',
     ]);
     await manager.getByRole('button', { name: '次へ', exact: true }).click();
-    await manager.getByRole('button', { name: '手動で設定', exact: true }).click();
-    await manager.getByLabel('植物の高さ（cm・土際から）', { exact: true }).fill('275');
+    // Issue #49: the feature inputs are shown as soon as the garden-object step opens.
+    await manager.getByLabel('植物の高さ', { exact: true }).fill('275');
     await manager.getByRole('button', { name: '次へ', exact: true }).click();
     const created = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
     await manager.getByRole('button', { name: '出品する', exact: true }).click();
