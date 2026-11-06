@@ -175,10 +175,14 @@
   padding: 26px;
   margin-bottom: 20px;
 }
-.workspace-card h2 {
+.workspace-card h2,
+.workspace-main .workspace-card-title {
   font-size: 20px;
   font-weight: 500;
   margin: 0 0 18px;
+}
+.page-back-button + .workspace-card-title {
+  margin-top: 18px;
 }
 .workspace-card hr {
   border: 0;

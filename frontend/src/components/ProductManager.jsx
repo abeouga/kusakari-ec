@@ -34,9 +34,6 @@ export function ProductManager({ shop, onClose, embedded = false }) {
   }
   return (
     <ManagerFrame embedded={embedded} onClose={onClose}>
-      <p className="muted">
-        在庫・非表示・削除は選択店舗だけに反映されます。商品名・価格などの商品情報は全店舗共通です。
-      </p>
       {(catalog.error || shop.error) && (
         <p className="error" role="alert">
           {catalog.error || shop.error}
@@ -114,7 +111,7 @@ function ManagerFrame({ embedded, onClose, children }) {
   if (embedded)
     return (
       <section className="workspace-card">
-        <h2>商品一覧・登録・編集</h2>
+        <h1 className="workspace-card-title">商品管理</h1>
         {children}
       </section>
     );

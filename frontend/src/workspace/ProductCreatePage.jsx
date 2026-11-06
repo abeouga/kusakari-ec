@@ -24,6 +24,7 @@ export function ProductCreatePage({ shop }) {
         <ArrowLeft size={16} aria-hidden />
         戻る
       </button>
+      <h1 className="workspace-card-title">商品登録</h1>
 
       {shop.error && (
         <p className="error" role="alert">

@@ -63,6 +63,8 @@ const pageTitles = {
   // Issue #44: the new-product page has no sidebar link; show what the page is for.
   '/seller/products/new': '商品登録',
 };
+// Issue #71: these pages show their heading inside the card instead of above it.
+const cardTitlePaths = new Set(['/seller/products', '/seller/products/new']);
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
   const { session, error } = useAuth();
@@ -174,7 +176,7 @@ export function Workspace({ shop, path, header }) {
             onToggle={() => setSidebarClosed(!collapsed)}
           />
           <main className="workspace-main">
-            <h1>{title}</h1>
+            {!cardTitlePaths.has(path) && <h1>{title}</h1>}
             {content}
           </main>
         </div>
