@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, FileJson } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileJson } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { api, yen } from '../api';
 import { PageLink } from '../workspace/Common';
@@ -104,7 +104,8 @@ export function Materials({ shop, onClose, embedded = false }) {
             <PageLink className="primary-button" href="/cart">
               カートを確認（{shop.cart?.itemCount || 0}点）
             </PageLink>
-            <a className="outline-button" href={import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/'}>
+            <a className="outline-button back-link" href={import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/'}>
+              <ArrowLeft size={16} aria-hidden />
               Canvasへ戻る
             </a>
           </div>
