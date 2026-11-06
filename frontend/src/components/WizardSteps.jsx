@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 
 /**
- * Progress bar for the product wizard (issue #45). A new product moves only with 「次へ」「戻る」, so the
+ * Progress bar for the product wizard (issue #45). A new product moves only with 「次へ」「前の手順へ」, so the
  * steps are plain text; while editing, each step stays a tab-like button that switches the page.
  * @param {{labels:string[],step:number,editing:boolean,disabled:boolean,onSelect:(index:number)=>void}} props
  */

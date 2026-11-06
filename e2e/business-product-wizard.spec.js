@@ -176,7 +176,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
       await expect(garden.getByRole('group', { name, exact: true })).toBeVisible();
     await expect(garden.getByText('この植物を庭に配置できるようにする')).toHaveCount(0);
     await expect(form.getByRole('button', { name: '手動で設定', exact: true })).toHaveCount(0);
-    await expect(form.locator('.wizard-actions button')).toHaveText(['戻る', '次へ']);
+    await expect(form.locator('.wizard-actions button')).toHaveText(['前の手順へ', '次へ']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
     await snap(page, `${dir}/garden-${width}.png`);
@@ -198,12 +198,15 @@ test('product wizard registers through the progress bar, dialogs and image step 
 
     const review = form.getByRole('region', { name: '出品内容の確認' });
     await expect(bar.locator('[aria-current="step"]')).toContainText('確認');
-    await expect(review).toContainText('保存時に自動で決まります');
-    await expect(review).toContainText('180 cm');
+    // #53: the review shows the product like its card; the number and the sizes are not shown.
+    await expect(review).not.toContainText('商品番号');
+    await expect(review).not.toContainText('cm');
     await expect(review).toContainText(category);
     await expect(review).toContainText(home.name);
-    await expect(review).toContainText('画像：2枚');
-    await expect(review).toContainText('設定あり（幅 140 cm）');
+    await expect(review.getByRole('list', { name: '商品画像 2枚' }).getByRole('listitem')).toHaveCount(2);
+    const model = review.getByTitle('出品する植物の3Dプレビュー', { exact: true });
+    await expect(model).toHaveAttribute('src', /%22heightCm%22%3A180/);
+    await expect(model).toHaveAttribute('src', /%22widthCm%22%3A140/);
     await snap(page, `${dir}/review-${width}.png`);
 
     const posted = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');

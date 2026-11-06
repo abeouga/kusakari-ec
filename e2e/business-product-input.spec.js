@@ -66,7 +66,9 @@ test('product sliders preserve optional values, keyboard precision and persisted
   await expect(form.getByText('入力を直すと更新します', { exact: true })).toHaveCount(0);
   await expect(preview).toHaveAttribute('src', /%22heightCm%22%3A275/);
   await form.getByRole('button', { name: '次へ', exact: true }).click();
-  await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('275 cm');
+  await expect(
+    form.getByRole('region', { name: '出品内容の確認' }).getByTitle('出品する植物の3Dプレビュー', { exact: true }),
+  ).toHaveAttribute('src', /%22heightCm%22%3A275/);
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
   await form.getByRole('button', { name: '出品する', exact: true }).click();
   const response = await saved;

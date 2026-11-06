@@ -62,8 +62,17 @@ test('product wizard navigation, validation, responsive screenshots and edit tab
     await page.screenshot({ path: `${dir}/wizard-model-${width}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await form.getByRole('button', { name: '次へ', exact: true }).click();
-    await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('設定あり（幅 140 cm）');
-    await form.getByRole('button', { name: '商品情報を修正', exact: true }).click();
+    const review = form.getByRole('region', { name: '出品内容の確認' });
+    await expect(review.getByTitle('出品する植物の3Dプレビュー', { exact: true })).toHaveAttribute(
+      'src',
+      /%22widthCm%22%3A140/,
+    );
+    // #53: the review has no edit buttons; 「前の手順へ」 leads back to the first step with the values kept.
+    await expect(review.getByRole('button')).toHaveCount(0);
+    for (const heading of ['庭オブジェクト', '画像', '商品情報']) {
+      await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
+      await expect(form.locator('.wizard-heading')).toHaveText(heading);
+    }
     await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('24');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await form.getByRole('button', { name: '次へ', exact: true }).click();

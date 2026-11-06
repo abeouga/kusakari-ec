@@ -2,6 +2,7 @@
 @import './css/product-images.css';
 @import './css/product-pickers.css';
 @import './css/plant-step.css';
+@import './css/product-review.css';
 
 .product-wizard {
   position: relative;
@@ -66,32 +67,8 @@
 .wizard-footer .error {
   margin: 0 0 8px;
 }
-.product-review {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
-  gap: 24px;
-}
-.product-review > img {
-  width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-}
-.product-review h4 {
-  font-size: 22px;
-  margin: 0;
-}
-.product-review dt {
-  font-size: 12px;
-  color: #596253;
-}
-.product-review dd {
-  margin: 0 0 10px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 @media (max-width: 700px) {
-  .model-layout,
-  .product-review {
+  .model-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
@@ -106,9 +83,6 @@
   .wizard-footer {
     bottom: 0;
     padding-bottom: max(10px, env(safe-area-inset-bottom));
-  }
-  .product-review > img {
-    max-height: 160px;
   }
 }
 
