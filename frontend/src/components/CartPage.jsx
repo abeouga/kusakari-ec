@@ -1,39 +1,19 @@
-import { ShoppingCart, Sprout } from 'lucide-react';
 import { BrandIcon } from './BrandIcon';
 import { Cart } from './Cart';
 import { ShoppingListDetail, ShoppingListOverview, ShoppingTransferNotice } from './ShoppingLists';
-import { navigate } from '../workspace/navigation';
 import { PageLink } from '../workspace/Common';
 import { login } from '../auth';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,gardenId?:string,showGardens:boolean,header:import('react').ReactNode}} props */
 export function CartPage({ shop, onStores, gardenId = '', showGardens, header }) {
   const gardens = showGardens || !!gardenId;
-  function switchTab() {
-    navigate(gardens ? '/cart' : '/cart#garden-shopping-lists');
-    requestAnimationFrame(() => document.getElementById(gardens ? 'cart-tab' : 'gardens-tab')?.focus());
-  }
-  /** @param {import('react').KeyboardEvent} event */
-  function moveTab(event) {
-    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-      event.preventDefault();
-      if ((event.key === 'Home' && !gardens) || (event.key === 'End' && gardens)) return;
-      switchTab();
-    }
-  }
   return <>
     {header}
     <main className="standalone-cart-main">
       <div className="shopping-page-intro">
         <PageLink className="text-link back-link" href="/#plants">戻る</PageLink>
-        <div className="shopping-segments" role="tablist" aria-label="お買い物の表示" onKeyDown={moveTab}>
-          <button type="button" role="tab" id="cart-tab" aria-controls="cart-panel" aria-selected={!gardens} tabIndex={gardens ? -1 : 0}
-            onClick={() => navigate('/cart')}><ShoppingCart size={18} aria-hidden="true"/>カート<span>{shop.cart?.itemCount ?? 0}</span></button>
-          <button type="button" role="tab" id="gardens-tab" aria-controls="gardens-panel" aria-selected={gardens} tabIndex={gardens ? 0 : -1}
-            onClick={() => navigate('/cart#garden-shopping-lists')}><Sprout size={18} aria-hidden="true"/>庭の買い物リスト</button>
-        </div>
       </div>
-      <div role="tabpanel" id={gardens ? 'gardens-panel' : 'cart-panel'} aria-labelledby={gardens ? 'gardens-tab' : 'cart-tab'}>
+      <div>
         {gardens && shop.isGuest ? <section className="cart-content">
           <h2>庭の買い物リスト</h2><p>保存した庭の買い物リストはログイン後に利用できます。</p>
           <button type="button" className="primary-button" onClick={() => login()}>ログイン</button>

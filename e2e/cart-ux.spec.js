@@ -7,7 +7,7 @@ const canvas = 'http://127.0.0.1:15173';
 const api = 'http://127.0.0.1:18081/api';
 const evidence = 'artifacts/e2e/cart-ux';
 
-test('seeded products render, drag, persist and transfer through accessible cart segments', async ({ page, request }) => {
+test('seeded products render, drag, persist and transfer from the garden list to the cart', async ({ page, request }) => {
   test.setTimeout(150000);
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -44,12 +44,13 @@ test('seeded products render, drag, persist and transfer through accessible cart
     await expect.poll(async () => (await request.get(api+'/gardens/'+garden.id+'/thumbnail')).headers()['x-thumbnail-source']).toBe('scene');
     await page.getByRole('tab',{name:/買い物リスト/}).click();
     await page.getByRole('button',{name:'ECで買い物リストを確認',exact:true}).click();
-    await expect(page.getByRole('tab',{name:'庭の買い物リスト',exact:true})).toHaveAttribute('aria-selected','true');
+    await expect(page).toHaveURL(/\/cart\/gardens\//);
     await expect(page.locator('.kusakari-site-header')).toHaveCount(1);
     await expect(page.getByRole('checkbox')).toHaveCount(6);
     await page.getByRole('button',{name:'全選択',exact:true}).click();
     await page.getByRole('button',{name:'選択した商品をカートに追加',exact:true}).click();
-    await expect(page.getByRole('tab',{name:/^カート/})).toHaveAttribute('aria-selected','true');
+    await expect(page).toHaveURL(/\/cart$/);
+    await expect(page.getByRole('tablist')).toHaveCount(0);
     await expect(page.locator('.cart-line')).toHaveCount(6);
     await expect(page.getByTestId('garden-list-'+garden.id)).toHaveCount(0);
     await page.reload({waitUntil:'domcontentloaded'});
@@ -59,22 +60,17 @@ test('seeded products render, drag, persist and transfer through accessible cart
     await page.getByRole('button',{name:'ログイン',exact:true}).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('button',{name:'閉じる',exact:true}).click();
-    await page.getByRole('tab',{name:/^カート/}).focus();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('tab',{name:'庭の買い物リスト',exact:true})).toBeFocused();
+    await page.goto('/cart#garden-shopping-lists');
     await expect(page.getByTestId('garden-list-'+garden.id)).toContainText('必要数 6点');
     await expect(page.locator('.cart-line')).toHaveCount(0);
     await page.reload({waitUntil:'domcontentloaded'});
-    await expect(page.getByRole('tab',{name:'庭の買い物リスト',exact:true})).toHaveAttribute('aria-selected','true');
+    await expect(page.getByTestId('garden-list-'+garden.id)).toBeVisible();
     await page.screenshot({path:evidence+'/lists-desktop.png',fullPage:true});
-    await page.getByRole('tab',{name:/^カート/}).click();
-    await page.goBack();
-    await expect(page.getByRole('tab',{name:'庭の買い物リスト',exact:true})).toHaveAttribute('aria-selected','true');
     await page.setViewportSize({width:390,height:844});
-    for (const tab of ['カート','庭の買い物リスト']) {
-      await page.getByRole('tab',{name:new RegExp('^'+tab)}).click();
+    for (const [path,shot] of [['/cart','/cart-mobile.png'],['/cart#garden-shopping-lists','/lists-mobile.png']]) {
+      await page.goto(path);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
-      await page.screenshot({path:evidence+(tab==='カート'?'/cart-mobile.png':'/lists-mobile.png'),fullPage:true});
+      await page.screenshot({path:evidence+shot,fullPage:true});
     }
     const cart = await page.request.get('/api/cart').then(r=>r.json());
     await writeFile(evidence+'/cart-after-reload.json',JSON.stringify(cart,null,2));

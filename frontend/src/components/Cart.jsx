@@ -6,6 +6,7 @@ import { DeliverySummary } from './DeliverySummary';
 import { CheckoutConfirm } from './CheckoutConfirm';
 import { paymentLabel, paymentStatus } from '../payment';
 import { PageLink } from '../workspace/Common';
+import { AddFromGardenCard } from './GardenItemsDialog';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void}} props */
 export function Cart({ shop, onStores }) {
@@ -62,6 +63,7 @@ export function Cart({ shop, onStores }) {
             商品を探す
           </PageLink>
         </div>
+        <AddFromGardenCard shop={shop} />
       </section>
     );
   }
@@ -142,6 +144,7 @@ export function Cart({ shop, onStores }) {
                 </article>
               ))}
             </div>
+            <AddFromGardenCard shop={shop} />
           </div>
         )}
         <aside className="checkout-summary">

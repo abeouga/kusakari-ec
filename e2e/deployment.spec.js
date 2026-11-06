@@ -48,13 +48,13 @@ test('packaged single-origin EC and Canvas preserve routing, models, photos and 
     expect((await request.get('/canvas/api/assets', { headers: { Origin: 'https://untrusted.invalid' } })).status()).toBe(403);
     await page.getByRole('tab', { name: /買い物リスト/ }).click();
     await page.getByRole('button', { name: 'ECで買い物リストを確認', exact: true }).click();
-    await expect(page.getByRole('tab', { name: '庭の買い物リスト', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await expect(page).toHaveURL(new RegExp(`/cart/gardens/${garden.id}$`));
     await page.getByRole('button', { name: '全選択', exact: true }).click();
     const transferResponse = page.waitForResponse((response) => response.url().endsWith(`/api/cart/shopping-lists/${garden.id}/items`));
     await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
     const transferred = await transferResponse;
     expect(transferred.status(), await transferred.text()).toBe(200);
-    await expect(page.getByRole('tab', { name: /^カート/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page).toHaveURL(/\/cart$/);
     await expect(page.locator('.cart-line')).toHaveCount(1);
     await page.reload();
     await expect(page.locator('.cart-line')).toHaveCount(1);

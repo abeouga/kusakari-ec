@@ -64,11 +64,6 @@
 .standalone-cart-main { padding-top: 38px; }
 .shopping-page-intro { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 32px; }
 .shopping-page-intro .back-link { white-space: nowrap; }
-.shopping-segments { display: inline-flex; gap: 5px; padding: 5px; border-radius: 12px; background: #e9ede5; }
-.shopping-segments button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 10px 24px; border: 0; border-radius: 8px; background: transparent; color: #536352; font-size: 14px; }
-.shopping-segments button[aria-selected="true"] { background: #285746; color: white; box-shadow: 0 2px 5px #254b3520; }
-.shopping-segments button:focus-visible { outline: 3px solid #b98b42; outline-offset: 3px; }
-.shopping-segments button span { min-width: 23px; padding: 2px 6px; border-radius: 20px; background: #ffffff26; font-size: 12px; }
 .standalone-cart-main .cart-content { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .cart-content h2 { margin: 0 0 12px; font-size: 24px; font-weight: 500; }
 .standalone-cart-main .cart-empty-state { padding-top: 26px; }
@@ -91,8 +86,6 @@
 @media (max-width: 600px) {
   .shopping-page-intro { flex-direction: column; align-items: stretch; gap: 14px; margin-bottom: 20px; }
   .shopping-page-intro .back-link { align-self: flex-start; }
-  .shopping-segments { display: flex; width: 100%; }
-  .shopping-segments button { flex: 1; gap: 6px; padding: 10px 7px; font-size: 12px; }
   .garden-shopping-section { padding: 0; }
   .garden-shopping-grid article { grid-template-columns: 100px 1fr; gap: 12px; }
   .garden-list-thumbnail { width: 100px; height: 80px; }
@@ -105,3 +98,48 @@
 .garden-select-note { margin: 16px 0; padding: 14px 18px; background: #fbf6ea; border: 1px solid #e6d7b0; border-radius: 10px; }
 .garden-select-note p, .garden-select-note ul { margin: 0; }
 .garden-select-note ul { padding-left: 1.2em; }
+/* Issue #64: dashed card under the cart lines and the "add from garden" dialog. */
+.add-from-garden-card { display: flex; align-items: center; gap: 17px; width: 100%; margin-top: 18px; padding: 18px 20px; border: 2px dashed #b9c4b0; border-radius: 12px; background: transparent; text-align: left; transition: background .15s, border-color .15s; }
+.add-from-garden-card:hover { border-color: #285746; background: #f3f6ee; }
+.add-from-garden-card strong { display: block; color: var(--green); font-size: 14px; font-weight: 600; }
+.add-from-garden-card small { color: var(--muted); font-size: 12px; }
+.add-from-garden-icon { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: #eef2e7; color: var(--green); }
+.cart-empty-state .add-from-garden-card { max-width: 520px; margin: 28px auto 0; }
+.garden-items-dialog { width: min(720px, calc(100% - 28px)); }
+.garden-items-dialog .shopping-picker-description { margin-bottom: 16px; }
+.garden-items-gardens { display: flex; gap: 8px; margin: 0 -28px; padding: 0 28px 16px; overflow-x: auto; border-bottom: 1px solid #edf0e8; }
+.garden-items-gardens button { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; border: 1px solid #d3d9cb; border-radius: 999px; background: #fff; color: #293f30; font-size: 13px; text-align: left; }
+.garden-items-gardens img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #f2f5ee; }
+.garden-items-gardens span { display: grid; line-height: 1.3; }
+.garden-items-gardens small { color: #7c8777; font-size: 11px; }
+.garden-items-gardens button[aria-pressed="true"] { border-color: #285746; background: #285746; color: #fff; }
+.garden-items-gardens button[aria-pressed="true"] small { color: #dfe9e1; }
+.garden-items-toolbar { display: flex; justify-content: flex-end; margin: 12px 0 10px; }
+.garden-items-toolbar .text-button { font-size: 12px; }
+.garden-items-list { display: grid; gap: 10px; max-height: min(46vh, 420px); overflow-y: auto; }
+.garden-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #d3d9cb; border-radius: 12px; background: #fff; cursor: pointer; transition: background .15s, border-color .15s; }
+.garden-item:hover { border-color: #9fb09a; }
+.garden-item:has(input:checked) { border-color: #285746; background: #f1f5ee; }
+.garden-item:has(input:focus-visible) { outline: 3px solid #b98b42; outline-offset: 2px; }
+.garden-item.is-unavailable { cursor: default; opacity: .6; }
+.garden-item > input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: #285746; }
+.garden-item > img, .garden-item-noimage { flex: 0 0 auto; width: 56px; height: 70px; border-radius: 8px; object-fit: cover; background: #f2f5ee; }
+.garden-item-info { display: grid; flex: 1; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.garden-item-info strong { font-size: 14px; font-weight: 600; }
+.garden-item-info small { color: #7c8777; font-size: 12px; }
+.garden-item-info select { max-width: 100%; padding: 6px 10px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--surface-field); color: var(--field-text); font-size: 12px; }
+.garden-item-tag, .garden-item-reason { justify-self: start; padding: 2px 8px; border-radius: 10px; background: #eef2e7; color: var(--green); font-size: 11px; }
+.garden-item-reason { background: #fbeceb; color: #a03b30; }
+.garden-item-price { flex: 0 0 auto; font-size: 14px; white-space: nowrap; }
+.garden-items-footer { display: flex; justify-content: space-between; gap: 12px; margin: 16px -28px -28px; padding: 16px 28px; border-top: 1px solid #edf0e8; }
+.garden-items-footer button { gap: 8px; border-radius: 8px; font-size: 14px; }
+@media (max-width: 600px) {
+  .garden-items-gardens { margin: 0 -18px; padding: 0 18px 14px; }
+  .garden-items-footer { margin: 14px -18px -22px; padding: 14px 18px; }
+  .garden-items-footer button { flex: 1; padding: 12px; white-space: nowrap; }
+  .garden-item { gap: 10px; padding: 10px; }
+  .garden-item > img, .garden-item-noimage { width: 48px; height: 60px; }
+  .garden-item-price { font-size: 13px; }
+  .add-from-garden-card { padding: 14px 16px; }
+  .garden-items-dialog .dialog-heading h2 { font-size: 18px; }
+}
