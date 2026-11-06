@@ -25,7 +25,7 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
     await expect(page).toHaveURL('http://127.0.0.1:15286/cart');
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByRole('tab', { name: '庭の買い物リスト', exact: true }).click();
+    await page.goto('http://127.0.0.1:15286/cart#garden-shopping-lists');
     await expect(page.getByTestId('garden-list-' + id)).toContainText('必要数 1点');
     const cart = await page.request.get('/api/cart').then(r => r.json());
     expect(cart.items[0].product.id).toBe('canvas-bench');

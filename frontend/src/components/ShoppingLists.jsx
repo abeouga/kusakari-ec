@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { yen } from '../api';
 import { navigate } from '../workspace/navigation';
 import { useShoppingData } from './useShoppingData';
+import { chosenProduct as productFor, lineReason, quantityInCart } from '../shoppingSelection';
 
 /** @param {string} version */
 function thumbnailLabel(version) {
@@ -58,27 +59,18 @@ export function ShoppingListDetail({ shop, gardenId }) {
   }, [detail, cart, initialize]);
   /** @param {string} productId */
   function inCart(productId) {
-    return cart?.items.find((item) => item.product.id === productId)?.quantity ?? 0;
-  }
-  /** EC-B24: stock is short when it is below the cart's quantity plus the list's quantity. The server checks the same.
-   * @param {import('../types').ShoppingProduct} product @param {number} quantity */
-  function unavailable(product, quantity) {
-    if (!product.active) return '販売終了';
-    const total = inCart(product.id) + quantity;
-    if (total > 99) return 'カートの数量と合わせると上限99点を超えます';
-    if (product.stock < total) return '在庫不足';
-    return '';
+    return quantityInCart(cart, productId);
   }
   /** @param {import('../types').ShoppingLine} line */
   function chosenProduct(line) {
-    return line.products.find(p => p.id === choices[line.key]) ?? (line.products.length === 1 ? line.products[0] : null);
+    return productFor(line, choices[line.key]);
   }
   function selectAll() {
     const next = /** @type {Record<string,string>} */ ({});
     const left = [];
     for (const line of detail?.items ?? []) {
       const product = chosenProduct(line);
-      const reason = product ? unavailable(product, line.quantity) : line.products.length ? '購入商品を選択してください' : '対応する販売商品がありません';
+      const reason = lineReason(line, product, product ? inCart(product.id) : 0);
       if (product && !reason) next[line.key] = product.id;
       else left.push(`${product?.name ?? line.name}（${reason}）`);
     }
@@ -117,7 +109,7 @@ export function ShoppingListDetail({ shop, gardenId }) {
         <button type="button" disabled={shop.busy} onClick={() => { setSelection({}); setSelectNote([]); }}>選択解除</button></div>
       {detail.items.map(line => {
         const product = chosenProduct(line);
-        const reason = product ? unavailable(product, line.quantity) : line.products.length ? '購入商品を選択してください' : '対応する販売商品がありません';
+        const reason = lineReason(line, product, product ? inCart(product.id) : 0);
         return <article className="garden-shopping-line" key={line.key} data-testid={'ec-shopping-line-' + line.key}>
           <input type="checkbox" aria-label={line.name + 'を選択'} checked={!!selection[line.key]} disabled={shop.busy || !!data.error || (!!reason && !selection[line.key])}
             onChange={event => {
