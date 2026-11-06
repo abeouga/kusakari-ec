@@ -16,7 +16,7 @@
 .shopping-picker-label { display: flex; align-items: center; justify-content: space-between; margin: 26px 0 14px; }
 .shopping-picker-label h3 { margin: 0; font-size: 13px; font-weight: 600; }
 .shopping-picker-label > span { background: #f2f4ef; padding: 3px 9px; border-radius: 20px; color: #7b8577; font-size: 11px; }
-.shopping-picker-search { display: flex; align-items: center; gap: 10px; border: 1px solid #e3e8de; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: #7b8577; }
+.shopping-picker-search { display: flex; align-items: center; gap: 10px; border: 1px solid var(--field-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; color: #7b8577; background: var(--surface-field); }
 .shopping-picker-search input { width: 100%; min-width: 0; background: transparent; border: 0; font-size: 13px; }
 .shopping-list-options { display: grid; gap: 10px; }
 .shopping-list-option > button { display: flex; align-items: center; gap: 16px; width: 100%; padding: 10px; border: 1px solid #e5e9e1; border-radius: 14px; background: #fff; text-align: left; transition: background .18s, border-color .18s, box-shadow .18s; }
@@ -49,13 +49,13 @@
   .shopping-picker-description { font-size: 12px; }
 }
 .garden-shopping-actions { display: flex; gap: 12px; margin: 24px 0; }
-.garden-shopping-actions button, .garden-shopping-line select { padding: 10px 16px; border: 1px solid #cad6c7; border-radius: 6px; background: #fff; }
+.garden-shopping-actions button { padding: 10px 16px; border: 1px solid #cad6c7; border-radius: 6px; background: #fff; }
 .garden-shopping-line { display: flex; align-items: flex-start; gap: 18px; padding: 22px 0; border-bottom: 1px solid #e5eade; }
 .garden-shopping-line > input { width: 20px; height: 20px; margin-top: 8px; accent-color: #285746; }
 .garden-shopping-line > img { width: 94px; height: 115px; object-fit: cover; border-radius: 8px; }
 .garden-shopping-line h3 { margin: 0; }
 .garden-shopping-line > div { min-width: 0; flex: 1; }
-.garden-shopping-line select { max-width: 100%; }
+.garden-shopping-line select { max-width: 100%; padding: 10px 16px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--surface-field); color: var(--field-text); }
 .garden-shopping-line > input, .garden-shopping-line > img { flex-shrink: 0; }
 .garden-shopping-line p { margin: 8px 0; }
 .garden-shopping-line label { display: grid; gap: 8px; }

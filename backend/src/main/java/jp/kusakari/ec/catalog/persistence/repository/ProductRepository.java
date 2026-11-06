@@ -54,8 +54,6 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
 
   boolean existsBySku(String sku);
 
-  boolean existsBySkuAndIdNot(String sku, String id);
-
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from ProductEntity p where p.id = :id")
   Optional<ProductEntity> findLocked(@Param("id") String id);

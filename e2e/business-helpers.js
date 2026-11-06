@@ -35,6 +35,15 @@ export async function login(page, email, secret = password) {
   return page.request.get(`${ec}/api/auth/me`).then((r) => r.json());
 }
 
+// PR screenshots: wait for the page data, show the top of the page (or the given element), and hide email addresses.
+export async function capture(page, path, target) {
+  await expect(page.locator('.workspace-main [role=status]').filter({ hasText: '読み込んでいます。' })).toHaveCount(0);
+  // The site scrolls smoothly; jump instantly so the shot is not taken mid-scroll.
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  if (target) await target.evaluate((element) => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await page.screenshot({ path, mask: [page.locator('.workspace-main').getByText(/@/)], maskColor: '#d9ded6' });
+}
+
 export function prepareMember(member, role) {
   if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
     throw new Error('Fixtures cannot change the development database.');
@@ -166,4 +175,28 @@ export function deletePasswordTestAccount(email) {
   cognitoAccount('admin-delete-user', { Username: email });
   // Retain dedicated-DB records for audit; never delete carts or orders here.
   sql(`UPDATE auth_members SET enabled=FALSE WHERE email='${email}'`);
+}
+
+const applicationPdf = { name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
+
+/**
+ * Walks the EC-B17 application wizard (issue #20) to its confirmation step.
+ * @param {import('@playwright/test').Page} page
+ * @param {{company:string,contact:string,email:string,address:string,phone:string}} input
+ * @param {{plan?:string,file?:any}} [options]
+ */
+export async function fillApplication(page, input, { plan, file = applicationPdf } = {}) {
+  const next = () => page.getByRole('button', { name: '次へ', exact: true }).click();
+  await page.getByLabel('会社・事業者名', { exact: true }).fill(input.company);
+  await page.getByLabel('所在地', { exact: true }).fill(input.address);
+  await next();
+  await page.getByLabel('担当者名', { exact: true }).fill(input.contact);
+  await page.getByLabel('連絡先メール', { exact: true }).fill(input.email);
+  await page.getByLabel('電話番号', { exact: true }).fill(input.phone);
+  await next();
+  if (plan) await page.getByLabel('希望出店プラン').selectOption(plan);
+  await next();
+  await page.locator('input[type=file]').setInputFiles(file);
+  await page.getByRole('button', { name: '確認画面へ', exact: true }).click();
+  return page.getByRole('region', { name: '入力内容の確認' });
 }

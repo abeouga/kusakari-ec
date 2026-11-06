@@ -1,4 +1,4 @@
-import { formText } from './forms';
+import { shapeFields } from './plantSpecies';
 
 /** @type {import('./types').PlantModelProfile} */
 export const plantDefaults = {
@@ -19,33 +19,18 @@ export const plantDefaults = {
   flowerSizeCm: 10,
   flowerColor: '#df7799',
   seed: 12345,
+  ...Object.fromEntries(shapeFields.map((field) => [field, null])),
 };
 
-/** @param {FormData} form @returns {import('./types').PlantModelProfile|null} */
-export function readPlantProfile(form) {
-  if (!form.has('plantModelEnabled')) return null;
-  const heightCm = Number(formText(form, 'heightCm'));
-  if (!Number.isInteger(heightCm) || heightCm < 10 || heightCm > 1500)
-    throw new Error('植物モデルを設定する場合、高さを10〜1500cmで入力してください。');
-  return {
-    botanicalForm: formText(form, 'modelBotanicalForm') || null,
-    plantType: formText(form, 'modelPlantType'),
-    heightCm,
-    widthCm: Number(formText(form, 'modelWidthCm')),
-    crownShape: formText(form, 'modelCrownShape'),
-    branchCount: Number(formText(form, 'modelBranchCount')),
-    branchAngle: Number(formText(form, 'modelBranchAngle')),
-    trunkThicknessCm: Number(formText(form, 'modelTrunkThicknessCm')),
-    leafShape: formText(form, 'modelLeafShape'),
-    leafSizeCm: Number(formText(form, 'modelLeafSizeCm')),
-    leafDensity: formText(form, 'modelLeafDensity'),
-    leafColor: formText(form, 'modelLeafColor'),
-    flowerEnabled: form.has('modelFlowerEnabled'),
-    flowerShape: formText(form, 'modelFlowerShape'),
-    flowerSizeCm: Number(formText(form, 'modelFlowerSizeCm')),
-    flowerColor: formText(form, 'modelFlowerColor'),
-    seed: Number(formText(form, 'modelSeed')),
-  };
+/**
+ * Categories whose products are not plants. Their garden models (e.g. the brick and bench of V3) are Canvas assets,
+ * not plant compositions, so the seller form does not build a plant model for them (issue #49).
+ */
+export const nonPlantCategories = ['鉢・庭材'];
+
+/** @param {string} category */
+export function isPlantCategory(category) {
+  return !nonPlantCategories.includes(category);
 }
 
 /** @param {import('./types').PlantModelProfile} profile */

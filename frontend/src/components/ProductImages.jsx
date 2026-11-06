@@ -53,46 +53,56 @@ export function ProductImages({ main, extra, onChange, onBusy }) {
   }
   return (
     <div className="product-image-picker" data-testid="product-images">
-      <label className="image-drop-label">
-        <ImagePlus className="seller-ui-icon" size={16} aria-hidden="true" />
-        {busy ? '画像を保存中…' : '画像を追加'}
-        <input
-          aria-label="商品画像を追加"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          multiple
-          onChange={upload}
-          disabled={busy || urls.length >= 5}
-        />
-      </label>
-      <p className="fine-print">最大5枚・1枚5MBまで。メイン画像は商品一覧とAI設定に使います。</p>
-      {urls.length === 0 && <div className="image-placeholder">商品の写真を選択してください</div>}
-      <div className="product-image-thumbnails">
+      <p className="product-image-intro">
+        商品一覧と商品詳細に表示する写真です。1枚目がメイン画像になり、庭オブジェクトのAI推定にも使います。
+      </p>
+      <p className="fine-print">最大5枚・1枚5MBまで（PNG・JPEG・WebP）。</p>
+      <div className="product-image-gallery" data-empty={urls.length === 0 || undefined}>
         {urls.map((url, index) => (
-          <div key={url} className="product-image-tile">
+          <figure key={url} className="product-image-tile" data-main={index === 0 || undefined}>
             <img src={url} alt={`商品画像${index + 1}`} />
-            <button
-              type="button"
-              className="text-button"
-              aria-pressed={index === 0}
-              onClick={() => change([url, ...urls.filter((_, i) => i !== index)])}
-              disabled={busy}
-            >
-              {index === 0 ? 'メイン画像' : `画像${index + 1}をメインにする`}
-            </button>
-            <button
-              type="button"
-              className="text-button"
-              aria-label={`商品画像${index + 1}を削除`}
-              onClick={() => change(urls.filter((_, i) => i !== index))}
-              disabled={busy}
-            >
-              <Trash2 className="seller-ui-icon" size={16} aria-hidden="true" />
-              削除
-            </button>
-          </div>
+            <figcaption>
+              <button
+                type="button"
+                className="text-button"
+                aria-pressed={index === 0}
+                onClick={() => change([url, ...urls.filter((_, i) => i !== index)])}
+                disabled={busy}
+              >
+                {index === 0 ? 'メイン画像' : `画像${index + 1}をメインにする`}
+              </button>
+              <button
+                type="button"
+                className="text-button"
+                aria-label={`商品画像${index + 1}を削除`}
+                onClick={() => change(urls.filter((_, i) => i !== index))}
+                disabled={busy}
+              >
+                <Trash2 className="seller-ui-icon" size={16} aria-hidden="true" />
+                削除
+              </button>
+            </figcaption>
+          </figure>
         ))}
+        {urls.length < 5 && (
+          <label className="image-drop-label">
+            <ImagePlus size={28} aria-hidden="true" />
+            <span>{busy ? '画像を保存中…' : urls.length ? '画像を追加' : '商品の写真を選択'}</span>
+            <small>あと{5 - urls.length}枚追加できます</small>
+            <input
+              aria-label="商品画像を追加"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              onChange={upload}
+              disabled={busy}
+            />
+          </label>
+        )}
       </div>
+      {urls.length >= 5 && (
+        <p className="fine-print">画像は5枚までです。追加するときは不要な画像を削除してください。</p>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}

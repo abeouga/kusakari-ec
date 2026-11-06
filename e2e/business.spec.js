@@ -11,6 +11,7 @@ import {
   add,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  fillApplication,
 } from './business-helpers.js';
 
 test.use({ trace: 'off' });
@@ -273,15 +274,13 @@ test('account, applications with private documents, store profile, categories an
     prepareMember(member, 'USER');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     await user.goto(`${ec}/seller/application`);
-    await user.getByLabel('会社・事業者名').fill(`検証店舗 ${randomUUID().slice(0, 8)}`);
-    await user.getByLabel('担当者名').fill('担当者');
-    await user.getByLabel('連絡先メール').fill('test.user@example.com');
-    await user.getByLabel('所在地').fill('東京都 検証用店舗');
-    await user.getByLabel('電話番号').fill('0312345678');
-    await user
-      .locator('input[type=file]')
-      .setInputFiles({ name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\\n%%EOF') });
-    await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
+    await fillApplication(user, {
+      company: `検証店舗 ${randomUUID().slice(0, 8)}`,
+      contact: '担当者',
+      email: 'test.user@example.com',
+      address: '東京都 検証用店舗',
+      phone: '0312345678',
+    });
     const submission = user.waitForResponse(
       (r) => r.url().endsWith('/api/account/store-applications') && r.request().method() === 'POST',
     );

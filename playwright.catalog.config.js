@@ -3,7 +3,7 @@ import base from './playwright.config.js';
 
 export default defineConfig({
   ...base,
-  testMatch: 'catalog-pagination.spec.js',
+  testMatch: ['catalog-pagination.spec.js', 'sticky-header.spec.js'],
   timeout: 90000,
   reporter: [['list'], ['json', { outputFile: 'artifacts/catalog-pagination/report.json' }]],
   outputDir: 'artifacts/catalog-pagination/results',

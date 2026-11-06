@@ -37,7 +37,7 @@
  * @property {string|null} [canvasMaterialCode]
  * @property {number|null} [sellerStoreId] Store that introduces this product (EC-B05).
  *
- * @typedef {{id:number, name:string, address:string, hours:string, distanceKm:number|null}} Store
+ * @typedef {{id:number, name:string, address:string, hours:string, latitude:number, longitude:number, distanceKm:number|null}} Store
  * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean}} CartLine
  * @typedef {{guest?:boolean,revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
  * @typedef {{revision:number,storeId:number,items:{productId:string,quantity:number}[]}} GuestCartPlan
@@ -46,7 +46,9 @@
  * @typedef {{recipientName:string,recipientPhone:string,contactEmail:string}} PickupInput
  * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
  * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'> & {storeId:number}} ProductInput
- * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number}} PlantModelProfile
+ * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number} & PlantShape} PlantModelProfile
+ * Shape controls; null (or absent in older profiles) lets Canvas use the plant type / species value.
+ * @typedef {{stemCount?:number|null,stemCurve?:number|null,stemTaper?:number|null,twigLength?:number|null,branchLevels?:number|null,branchDroop?:number|null,branchStart?:number|null,leafSizeVariation?:number|null,leafTipRatio?:number|null,leafArrangement?:string|null}} PlantShape
  * @typedef {{name:string,latinName:string,category:string,description:string,heightCm:number|null,currentProfile:PlantModelProfile,imageUrl:string|null,imageDataUrl:string|null}} PlantSuggestionInput
  * @typedef {{profile:PlantModelProfile,estimatedFields:string[],warnings:string[]}} PlantSuggestion
  * @typedef {{requestId:string, revision:number, expectedTotalYen:number, paymentMethod:string}} Checkout

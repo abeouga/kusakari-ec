@@ -149,6 +149,8 @@ public class CatalogService {
           store.getName(),
           store.getAddress(),
           store.getHours(),
+          store.getLatitude(),
+          store.getLongitude(),
           latitude == null ? null : distance(latitude, longitude, store.getLatitude(), store.getLongitude())
         )
       )

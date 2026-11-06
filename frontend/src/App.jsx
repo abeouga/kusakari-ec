@@ -17,6 +17,7 @@ import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
 import { LoginPage } from './components/LoginPage';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
+import { StickyHeader } from './components/StickyHeader';
 import { login } from './auth';
 import { useAuth } from './useAuth';
 
@@ -95,19 +96,21 @@ export default function App() {
   }
   const header = (
     <>
-      <KusakariHeader
-        ecUrl={window.location.origin}
-        canvasUrl={canvasUrl}
-        logoUrl="/icon/kusakari_ico.png"
-        activeSection={path === '/' ? 'plants' : ''}
-        cartCount={itemCount}
-        authenticated={session?.authenticated ?? false}
-        showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
-        showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
-        onPanel={openHeaderPanel}
-        onNavigate={navigateFromHeader}
-      />
-      <SessionNotice />
+      <StickyHeader>
+        <KusakariHeader
+          ecUrl={window.location.origin}
+          canvasUrl={canvasUrl}
+          logoUrl="/icon/kusakari_ico.png"
+          activeSection={path === '/' ? 'plants' : ''}
+          cartCount={itemCount}
+          authenticated={session?.authenticated ?? false}
+          showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
+          showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
+          onPanel={openHeaderPanel}
+          onNavigate={navigateFromHeader}
+        />
+        <SessionNotice />
+      </StickyHeader>
       {flash && (
         <p className="flash-notice" role="status">
           {flash}{' '}

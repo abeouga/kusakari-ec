@@ -1,58 +1,83 @@
-/** @param {{draft:Record<string,any>,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,storeName:string,onEdit:(step:number)=>void}} props */
-export function ProductReview({ draft: p, plant, storeName, onEdit }) {
+import { yen } from '../api';
+import { modelPreviewUrl } from '../plantModel';
+
+/**
+ * Last step of a new product: the product as buyers will see it, close to the catalog card (issue #53).
+ * Values decided later (the product number) and sizes are left out. 「前の手順へ」 leads back step by step;
+ * the progress bar only shows the current step (#45).
+ * @param {{draft:Record<string,any>,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,storeName:string}} props
+ */
+export function ProductReview({ draft: p, plant, storeName }) {
+  const images = [p.imageUrl, ...String(p.images).split('\n')].filter(Boolean);
   const details = [
-    ['商品説明', p.description],
     ['生産者名', p.nurseryName],
-    ['学名', p.latinName],
     ['科名・属名', p.familyName],
-    ['樹齢', p.ageYears],
-  ];
+    ['樹齢目安', p.ageYears === '' || p.ageYears === null ? '' : `${p.ageYears}年`],
+  ].filter(([, value]) => String(value).trim() !== '');
+  // The same Canvas preview as the garden-object step; the step has already checked the height.
+  const model =
+    plant.configured && plant.height !== ''
+      ? modelPreviewUrl({ ...plant.profile, heightCm: Number(plant.height) })
+      : '';
+  const stock = Number(p.stock);
   return (
     <section className="product-review" aria-label="出品内容の確認">
-      <img src={p.imageUrl} alt="出品する商品画像" />
-      <div>
-        <h4>{p.name}</h4>
-        <p>
-          {Number(p.priceYen).toLocaleString()}円（税込） · 在庫 {p.stock}
-        </p>
-        <dl>
-          <dt>登録店舗</dt>
-          <dd>{storeName}</dd>
-          <dt>カテゴリー</dt>
-          <dd>{p.category}</dd>
-          <dt>商品番号</dt>
-          <dd>{p.sku}</dd>
-          <dt>高さ / 鉢径</dt>
-          <dd>
-            {p.heightCm || '未設定'} / {p.potDiameterCm || '未設定'} cm
-          </dd>
-        </dl>
-        <button type="button" className="text-button" onClick={() => onEdit(0)}>
-          商品情報を修正
-        </button>
-        <p>庭オブジェクト：{plant.enabled ? '設定あり' : '設定なし'}</p>
-        {plant.enabled && (
-          <p>
-            高さ {plant.height} cm / 幅 {plant.profile.widthCm} cm
-          </p>
+      <div className="product-review-media">
+        <div className="product-review-photo">
+          <img src={images[0]} alt={p.name || '出品する商品画像'} />
+        </div>
+        {images.length > 1 && (
+          <ul className="product-review-thumbs" aria-label={`商品画像 ${images.length}枚`}>
+            {images.map((url, index) => (
+              <li key={url}>
+                {/* The first image is already shown large above, so its thumbnail is not read twice. */}
+                <img src={url} alt={index === 0 ? '' : `商品画像 ${index + 1}`} />
+              </li>
+            ))}
+          </ul>
         )}
-        {plant.enabled && plant.estimated && <p className="ai-estimate">AI推定・実寸未確認</p>}
-        <button type="button" className="text-button" onClick={() => onEdit(1)}>
-          庭オブジェクトを修正
-        </button>
-        <details>
-          <summary>詳しい情報を確認</summary>
-          <dl>
-            {details
-              .filter(([, v]) => v !== '' && v !== null)
-              .map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
+        {model && (
+          <figure className="product-review-model">
+            <iframe src={model} title="出品する植物の3Dプレビュー" />
+            <figcaption>庭に置いたときの3Dモデル</figcaption>
+          </figure>
+        )}
+      </div>
+      <div className="product-review-body">
+        <h4>{p.name}</h4>
+        {p.latinName && <p className="latin">{p.latinName}</p>}
+        <p className="product-review-price">
+          {yen(Number(p.priceYen))}
+          <small>税込</small>
+        </p>
+        <dl className="product-review-facts">
+          <div>
+            <dt>登録店舗</dt>
+            <dd>{storeName}</dd>
+          </div>
+          <div>
+            <dt>在庫</dt>
+            <dd className={stock > 0 ? 'stock' : 'sold-out'}>{stock > 0 ? `${stock} 点` : '在庫なし'}</dd>
+          </div>
+          <div>
+            <dt>カテゴリー</dt>
+            <dd>{p.category}</dd>
+          </div>
+        </dl>
+        <div className="product-review-description">
+          <h5>商品説明</h5>
+          <p>{p.description}</p>
+        </div>
+        {details.length > 0 && (
+          <dl className="product-review-details">
+            {details.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
           </dl>
-        </details>
+        )}
       </div>
     </section>
   );

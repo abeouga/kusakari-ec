@@ -16,7 +16,7 @@ test('account settings have no address management and the other settings still o
   await page.screenshot({ path: `${dir}/account-reloaded.png`, fullPage: true });
 
   await page.goto(`${ec}/account/address`);
-  await expect(page.locator('.workspace-main')).toContainText('ページが見つかりません。');
+  await expect(page.locator('.workspace-main')).toContainText('ページが見つかりません');
   await expect(page.getByLabel('郵便番号', { exact: true })).toHaveCount(0);
   for (const method of ['GET', 'PUT', 'DELETE']) {
     const response = await call(page.request, '/account/address', method, method === 'PUT' ? {} : undefined);

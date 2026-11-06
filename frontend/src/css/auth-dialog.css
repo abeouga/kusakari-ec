@@ -4,7 +4,7 @@
 .login-page {
   min-height: 100dvh;
   padding: 48px 20px 64px;
-  background: #f1f4ec;
+  background: var(--surface-page);
 }
 .login-brand {
   display: block;
@@ -19,9 +19,9 @@
   width: min(100%, 460px);
   margin: auto;
   padding: 40px 32px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface-card);
 }
 .login-card h1 { margin: 16px 0; font-size: 30px; font-weight: 500; }
 .login-description { margin-bottom: 28px; color: #526056; line-height: 1.8; font-size: 14px; }
@@ -96,10 +96,10 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid #cdd8cb;
+  border: 1px solid var(--field-border);
   border-radius: 8px;
-  color: var(--ink);
-  background: #fff;
+  color: var(--field-text);
+  background: var(--surface-field);
 }
 .auth-form .auth-submit {
   width: 100%;

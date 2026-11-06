@@ -28,6 +28,8 @@ export function Dialog({ title, onClose, children, wide = false, role = 'dialog'
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
+        // React propagates cancel through portals to an enclosing Dialog; Esc must close only this one.
+        event.stopPropagation();
         onClose();
       }}
       onClick={(event) => {

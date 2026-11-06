@@ -3,7 +3,18 @@ import { ProfilePage } from './PartnerForms';
 import { ApplicationPage, ApplicationStatusPage, applicationPaths, applicationsChanged } from './StoreApplication';
 import { useResource } from './useResource';
 import { useEffect, useState } from 'react';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  Bell,
+  ChartColumn,
+  ClipboardCheck,
+  LayoutDashboard,
+  Package,
+  ReceiptText,
+  Store,
+  Tags,
+  UserRound,
+  Users,
+} from 'lucide-react';
 import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -12,39 +23,45 @@ import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
 import { Materials } from '../components/Materials';
-import { PageLink } from './Common';
+import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
 import { AuthPanel } from '../components/AuthPanel';
+/** @typedef {import('./WorkspaceSidebar').MenuItem} MenuItem */
+/** @type {MenuItem[]} */
 const sellerMenu = [
-  ['/seller', 'ダッシュボード'],
-  ['/seller/products', '商品管理'],
-  ['/seller/orders', '店舗受け取り'],
-  ['/seller/sales', '注文実績'],
-  ['/seller/profile', '店舗プロフィール'],
-  ['/seller/notifications', '出店者通知'],
+  ['/seller', 'ダッシュボード', LayoutDashboard],
+  ['/seller/products', '商品管理', Package],
+  ['/seller/orders', '店舗受け取り', Store],
+  ['/seller/sales', '注文実績', ChartColumn],
+  ['/seller/profile', '店舗プロフィール', UserRound],
+  ['/seller/notifications', '出店者通知', Bell],
 ];
+/** @type {MenuItem[]} */
 const operatorMenu = [
-  ['/operator/members', '会員管理'],
-  ['/operator/products', '商品管理'],
-  ['/operator/categories', 'カテゴリ管理'],
-  ['/operator/applications', '出店審査'],
-  ['/operator/sellers', '店舗管理'],
-  ['/operator/orders', '全注文管理'],
+  ['/operator/members', '会員管理', Users],
+  ['/operator/products', '商品管理', Package],
+  ['/operator/categories', 'カテゴリ管理', Tags],
+  ['/operator/applications', '出店審査', ClipboardCheck],
+  ['/operator/sellers', '店舗管理', Store],
+  ['/operator/orders', '全注文管理', ReceiptText],
 ];
+/** @type {MenuItem[]} */
 const buyerMenu = [
   ['/account', 'アカウント情報'],
   ['/purchases', '注文履歴'],
   ['/notifications', '通知一覧'],
 ];
-const accountSettings = accountActions.filter(([url]) =>
-  ['/account/pickup-contact', '/account/password', '/account/delete'].includes(url),
-);
+const accountSettings = accountActions
+  .filter(([url]) => ['/account/pickup-contact', '/account/password', '/account/delete'].includes(url))
+  .map(([url, label]) => /** @type {MenuItem} */ ([url, label]));
 /** @type {Record<string,string>} Pages whose sidebar link may be absent or labelled differently. */
 const pageTitles = {
   '/materials': '配置素材の商品候補',
   [applicationPaths.form]: '出店申請',
   [applicationPaths.status]: '出店申請状況',
+  // Issue #44: the new-product page has no sidebar link; show what the page is for.
+  '/seller/products/new': '商品登録',
 };
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
@@ -60,6 +77,7 @@ export function Workspace({ shop, path, header }) {
     window.addEventListener(applicationsChanged, reload);
     return () => window.removeEventListener(applicationsChanged, reload);
   }, [reloadApplications]);
+  /** @type {MenuItem} */
   const applicationLink = applications.data?.length
     ? [applicationPaths.status, '出店申請状況']
     : [applicationPaths.form, '出店申請'];
@@ -136,42 +154,27 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/operator/categories') content = <CategoriesPage />;
   else if (path === '/materials') content = <Materials shop={shop} onClose={() => navigate('/')} embedded />;
   else if (publicStore) content = <ProfilePage storeId={Number(path.split('/')[2])} readOnly />;
-  else content = <p>ページが見つかりません。</p>;
+  else content = <p>URLを確認するか、メニューからページを選んでください。</p>;
+  // Issue #44: every page gets a heading that describes it instead of the generic "Kusakari".
+  const title =
+    action?.[1] ||
+    menu.find(([url]) => url === path)?.[1] ||
+    pageTitles[path] ||
+    (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
     <>
       {header}
       <div className="workspace-shell">
         <div className={`workspace-layout${collapsed ? ' is-sidebar-closed' : ''}`}>
-          <aside className="workspace-sidebar">
-            {collapsible && (
-              <button
-                type="button"
-                className="workspace-sidebar-toggle"
-                aria-controls="workspace-sidebar-menu"
-                aria-expanded={!collapsed}
-                aria-label={collapsed ? 'メニューを開く' : 'メニューを閉じる'}
-                title={collapsed ? 'メニューを開く' : 'メニューを閉じる'}
-                onClick={() => setSidebarClosed(!collapsed)}
-              >
-                {collapsed ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
-              </button>
-            )}
-            <div id="workspace-sidebar-menu" className="workspace-sidebar-menu" hidden={collapsed}>
-              <PageLink href="/">商品一覧へ戻る</PageLink>
-              {groups.map((group) => (
-                <nav key={group.label} aria-label={group.label}>
-                  {!seller && !operator && <p>{group.label}</p>}
-                  {group.items.map(([url, label]) => (
-                    <PageLink key={url} href={url} className={path === url ? 'is-active' : ''}>
-                      {label}
-                    </PageLink>
-                  ))}
-                </nav>
-              ))}
-            </div>
-          </aside>
+          <WorkspaceSidebar
+            path={path}
+            groups={groups}
+            collapsible={collapsible}
+            collapsed={collapsed}
+            onToggle={() => setSidebarClosed(!collapsed)}
+          />
           <main className="workspace-main">
-            <h1>{action?.[1] || menu.find(([url]) => url === path)?.[1] || pageTitles[path] || 'Kusakari'}</h1>
+            <h1>{title}</h1>
             {content}
           </main>
         </div>

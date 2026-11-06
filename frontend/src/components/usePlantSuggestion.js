@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
-import { modelPreviewUrl, plantDefaults } from '../plantModel';
+import { isPlantCategory, plantDefaults } from '../plantModel';
 
 /** @param {Blob} blob @returns {Promise<string>} */
 function dataUrl(blob) {
@@ -14,50 +14,59 @@ function dataUrl(blob) {
   });
 }
 
-/** @param {import('../types').Product} product @param {boolean} _editing */
-export function usePlantSuggestion(product, _editing) {
-  const [profile, setProfile] = useState(product.plantModelProfile ?? plantDefaults);
-  const [enabled, setEnabled] = useState(!!product.plantModelProfile);
-  const [height, setHeightValue] = useState(String(product.heightCm ?? product.plantModelProfile?.heightCm ?? ''));
+/** The main image is always sent when there is one (issue #48). @param {string} source */
+async function photo(source) {
+  if (!source) return { imageUrl: null, imageDataUrl: null };
+  if (/^\/images\/[a-zA-Z0-9_.-]+$|^\/api\/product-images\/[a-f0-9-]{36}$/.test(source)) {
+    const response = await fetch(source);
+    if (!response.ok) throw new Error('商品写真を取得できません。「画像」で画像を選び直してください。');
+    return { imageUrl: null, imageDataUrl: await dataUrl(await response.blob()) };
+  }
+  if (source.startsWith('https://')) return { imageUrl: source, imageDataUrl: null };
+  throw new Error('商品写真を読み込めません。「画像」で画像を選び直してください。');
+}
+
+/**
+ * Garden-object state of the product form. Plants always get a garden object (issue #49): a new plant product saves
+ * its profile, and products already saved with one keep it. Two cases keep `plantModelProfile` null so that saving
+ * does not change existing data: products in a non-plant category, and existing products saved without a model until
+ * the seller changes a feature or uses the AI.
+ * @param {import('../types').Product} product @param {boolean} editing @param {string} category
+ */
+export function usePlantSuggestion(product, editing, category) {
+  const saved = product.plantModelProfile ?? null;
+  const [profile, setProfile] = useState(saved ?? plantDefaults);
+  const [touched, setTouched] = useState(false);
+  const [height, setHeightValue] = useState(String(product.heightCm ?? saved?.heightCm ?? ''));
   const [estimated, setEstimated] = useState(false);
-  const [includeImage, setIncludeImage] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [warnings, setWarnings] = useState(/** @type {string[]} */ ([]));
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [revision, setRevision] = useState(0);
   const [undo, setUndo] = useState(
-    /** @type {{profile:import('../types').PlantModelProfile,enabled:boolean,height:string,estimated:boolean,previewUrl:string,warnings:string[]}|null} */ (
+    /** @type {{profile:import('../types').PlantModelProfile,touched:boolean,height:string,estimated:boolean,warnings:string[]}|null} */ (
       null
     ),
   );
+  const plant = !!saved || isPlantCategory(category);
+  const configured = plant && (!editing || !!saved || touched);
 
   /** @param {string} value */
   function setHeight(value) {
     setHeightValue(value);
     setEstimated(false);
-    setPreviewUrl('');
   }
   /** @param {import('../types').PlantModelProfile} value */
   function changeProfile(value) {
     setProfile(value);
-    setPreviewUrl('');
+    setTouched(true);
   }
+  /** The profile to save, or null when this product keeps no garden object. */
   function currentProfile() {
-    if (!enabled) return null;
+    if (!configured) return null;
     const heightCm = Number(height);
-    if (!Number.isInteger(heightCm) || heightCm < 10 || heightCm > 1500)
-      throw new Error('庭オブジェクトの高さは10〜1500cmにしてください。');
+    if (height === '' || !Number.isInteger(heightCm) || heightCm < 10 || heightCm > 1500)
+      throw new Error('植物の高さは10〜1500cmの整数にしてください。');
     return { ...profile, heightCm };
-  }
-  function preview() {
-    setError('');
-    try {
-      const value = currentProfile();
-      if (value) setPreviewUrl(modelPreviewUrl(value));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '設定を確認してください。');
-    }
   }
   /** @param {Record<string,any>} values */
   async function suggest(values) {
@@ -65,31 +74,17 @@ export function usePlantSuggestion(product, _editing) {
     const name = String(values.name).trim();
     setError('');
     if (!name) {
-      setError('AI設定の前に商品名を入力してください。');
+      setError('AIで生成する前に商品名を入力してください。');
       return;
     }
     const heightCm = height === '' ? null : Number(height);
     if (heightCm !== null && (!Number.isInteger(heightCm) || heightCm < 10 || heightCm > 1500)) {
-      setError('庭オブジェクトの高さは10〜1500cmにしてください。');
+      setError('植物の高さは10〜1500cmの整数にしてください。');
       return;
     }
-    const snapshot = { profile, enabled, height, estimated, previewUrl, warnings };
+    const snapshot = { profile, touched, height, estimated, warnings };
     setBusy(true);
     try {
-      let imageUrl = null;
-      let imageDataUrl = null;
-      const source = String(values.imageUrl);
-      if (includeImage) {
-        if (source) {
-          if (/^\/images\/[a-zA-Z0-9_.-]+$|^\/api\/product-images\/[a-f0-9-]{36}$/.test(source)) {
-            const response = await fetch(source);
-            if (!response.ok)
-              throw new Error('商品写真を取得できません。写真なしに切り替えるかファイルを選択してください。');
-            imageDataUrl = await dataUrl(await response.blob());
-          } else if (source.startsWith('https://')) imageUrl = source;
-          else if (source) throw new Error('商品写真を読み込めません。商品情報で画像を選び直してください。');
-        }
-      }
       const result = await api.suggestPlantModel({
         name,
         latinName: String(values.latinName),
@@ -97,19 +92,16 @@ export function usePlantSuggestion(product, _editing) {
         description: String(values.description),
         heightCm,
         currentProfile: profile,
-        imageUrl,
-        imageDataUrl,
+        ...(await photo(String(values.imageUrl))),
       });
       setUndo(snapshot);
       setProfile(result.profile);
-      setEnabled(true);
+      setTouched(true);
       setHeightValue(String(result.profile.heightCm));
       setEstimated(heightCm === null || estimated);
       setWarnings(result.warnings);
-      setPreviewUrl(modelPreviewUrl(result.profile));
-      setRevision((value) => value + 1);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'AI設定を取得できませんでした。');
+      setError(reason instanceof Error ? reason.message : 'AIで特徴を推定できませんでした。');
     } finally {
       setBusy(false);
     }
@@ -117,34 +109,27 @@ export function usePlantSuggestion(product, _editing) {
   function restore() {
     if (!undo) return;
     setProfile(undo.profile);
-    setEnabled(undo.enabled);
+    setTouched(undo.touched);
     setHeightValue(undo.height);
     setEstimated(undo.estimated);
-    setPreviewUrl(undo.previewUrl);
     setWarnings(undo.warnings);
     setUndo(null);
     setError('');
-    setRevision((value) => value + 1);
   }
   return {
     profile,
     currentProfile,
-    enabled,
-    setEnabled,
+    plant,
+    configured,
     height,
     setHeight,
     estimated,
-    includeImage,
-    setIncludeImage,
     busy,
     error,
     warnings,
-    previewUrl,
-    revision,
     undo,
     restore,
     suggest,
-    preview,
     changeProfile,
   };
 }

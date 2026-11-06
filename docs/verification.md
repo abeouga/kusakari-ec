@@ -81,7 +81,7 @@
 `npm run check` のcheckJs、ESLint、Viteビルド、Java 21向けMaven packageは成功しました。
 Javaユニットテストは既存構成どおり追加せず、実API・MySQLでのCRUDと既存購入フローを検証します。
 
-追加シナリオは `e2e/crud.spec.js` です。商品CRUDと画像・絞り込み、価格更新後の合計、販売終了商品の購入拒否、受取情報CRUD、注文情報の独立保存、他セッションの操作拒否、履歴削除後の注文再送、390px画面の保存・再読み込みを確認します。
+追加シナリオは `e2e/crud.spec.js` です（2026-11-05に商品CRUDの部分は出品者ログインが必要なため `e2e/business-product-crud.spec.js` へ移動）。商品CRUDと画像・絞り込み、価格更新後の合計、販売終了商品の購入拒否、受取情報CRUD、注文情報の独立保存、他セッションの操作拒否、履歴削除後の注文再送、390px画面の保存・再読み込みを確認します。
 保存した画像とAPI JSONは `artifacts/e2e/crud-*` に出力します。
 
 現時点でE2Eは未完了です。MySQL80サービスが停止しており、APIはFlywayのDB接続段階で失敗しています。
