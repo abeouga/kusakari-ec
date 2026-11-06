@@ -1,9 +1,12 @@
 import { catalogText } from '../catalogText';
-import { ArrowUpRight, ListPlus, Plus } from 'lucide-react';
+// #65 ListPlus は「買い物リストに追加」ボタンのアイコン。ボタンを戻すときに import へ戻す。
+import { ArrowUpRight, Plus } from 'lucide-react';
 import { yen } from '../api';
 
-/** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, onAddToList:()=>void, disabled:boolean}} props */
-export function ProductCard({ product, onOpen, onAdd, onAddToList, disabled }) {
+// #65 カート追加ボタンと区別しにくいため「買い物リストに追加」ボタンを画面から外した。
+// 別の形で戻す可能性があるため、ボタンはコメントで残している。戻すときは型と引数に onAddToList:()=>void を加える。
+/** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, disabled:boolean}} props */
+export function ProductCard({ product, onOpen, onAdd, disabled }) {
   let stockClass = 'sold-out';
   let stockLabel = 'この店舗では在庫なし';
   if (product.stock > 0) {
@@ -34,6 +37,7 @@ export function ProductCard({ product, onOpen, onAdd, onAddToList, disabled }) {
           {yen(product.priceYen)} <small>税込</small>
         </span>
         <div className="product-actions">
+          {/* #65 「買い物リストに追加」ボタン。カート追加ボタンと混同されるため無効化している。
           <button
             type="button"
             className="add-button shopping-list-button"
@@ -44,6 +48,7 @@ export function ProductCard({ product, onOpen, onAdd, onAddToList, disabled }) {
           >
             <ListPlus size={18} aria-hidden="true" />
           </button>
+          */}
           <button
             className="add-button"
             onClick={onAdd}
