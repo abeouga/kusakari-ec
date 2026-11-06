@@ -28,6 +28,8 @@ test('seller returns from product registration and product editing with the back
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${ec}/seller/products/new`);
     await expect(heading).toHaveText('商品登録');
+    // Issue #71: the only page heading sits inside the card, below the back button.
+    await expect(page.locator('.workspace-card > .page-back-button + h1')).toHaveText('商品登録');
     await expect(page.locator('.workspace-main')).not.toContainText('Kusakari');
     await expect(form).toBeVisible();
     await expect(back).toHaveText('戻る');
@@ -68,6 +70,10 @@ test('seller returns from product registration and product editing with the back
     await back.click();
     await expect(page).toHaveURL(`${ec}/seller/products`);
     await expect(heading).toHaveText('商品管理');
+    // Issue #71: 「商品管理」 replaces the card's old 「商品一覧・登録・編集」, and the store-scope note is gone.
+    await expect(page.locator('.workspace-card > h1')).toHaveText('商品管理');
+    await expect(page.locator('.workspace-main')).not.toContainText('商品一覧・登録・編集');
+    await expect(page.locator('.workspace-main')).not.toContainText('選択店舗だけに反映されます');
     await expect(productsLink).toHaveAttribute('aria-current', 'page');
 
     await page.getByPlaceholder('商品名・商品番号').fill(product.sku);
