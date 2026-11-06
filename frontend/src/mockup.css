@@ -117,9 +117,9 @@
 .manager-toolbar select {
   width: 100%;
   min-width: 0;
-  border: 1px solid #d9dfd3;
-  background: #fffefa;
-  color: var(--ink);
+  border: 1px solid var(--field-border);
+  background: var(--surface-field);
+  color: var(--field-text);
   padding: 11px;
   border-radius: 4px;
   font-size: 12px;
@@ -149,9 +149,9 @@
 }
 .basic-form {
   padding: 24px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-border);
   border-radius: 6px;
-  background: #fffefa;
+  background: var(--surface-card);
   margin-top: 24px;
 }
 .basic-form h3,
@@ -392,8 +392,8 @@
 .detail-quantity input {
   width: 80px;
   padding: 10px;
-  border: 1px solid var(--line);
-  background: white;
+  border: 1px solid var(--field-border);
+  background: var(--surface-field);
 }
 .nursery-profile {
   padding: 20px;

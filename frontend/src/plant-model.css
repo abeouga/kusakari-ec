@@ -34,6 +34,11 @@
   accent-color: #446735;
   cursor: pointer;
 }
+/* A slider is not a text field, so it does not take the field box color from workspace.css. */
+.workspace-shell .range-field input[type='range'] {
+  border-color: transparent;
+  background: transparent;
+}
 .range-field-number {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

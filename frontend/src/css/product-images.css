@@ -70,9 +70,9 @@
   justify-content: center;
   gap: 6px;
   padding: 16px;
-  border: 2px dashed #b6c8b0;
+  border: 2px dashed var(--field-border);
   border-radius: 8px;
-  background: #f5f8f1;
+  background: var(--surface-field);
   color: var(--green);
   cursor: pointer;
   text-align: center;

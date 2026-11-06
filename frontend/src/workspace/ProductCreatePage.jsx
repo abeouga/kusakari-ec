@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { ProductForm } from '../components/ProductForm';
 import { StorePicker } from '../components/StorePicker';
 import { navigate } from './navigation';
@@ -13,8 +14,15 @@ export function ProductCreatePage({ shop }) {
   else if (!storeId) storeSelector = <p role="alert">管理できる店舗がありません。</p>;
   return (
     <section className="workspace-card">
-      <button className="text-button" onClick={() => navigate('/seller/products')} disabled={shop.busy}>
-        商品一覧へ戻る
+      <button
+        type="button"
+        className="page-back-button"
+        aria-label="商品一覧へ戻る"
+        onClick={() => navigate('/seller/products')}
+        disabled={shop.busy}
+      >
+        <ArrowLeft size={16} aria-hidden />
+        戻る
       </button>
 
       {shop.error && (

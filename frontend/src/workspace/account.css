@@ -67,7 +67,7 @@
   padding: 8px;
   border-radius: 6px;
   background: #f1f4ec;
-  color: #7b8577;
+  color: var(--muted);
 }
 .application-steps span {
   display: grid;
