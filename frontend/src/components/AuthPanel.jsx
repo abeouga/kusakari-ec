@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../useAuth';
 import { login, logout, passwordLogin } from '../auth';
 import { PageLink } from '../workspace/Common';
@@ -58,7 +59,7 @@ export function AuthPanel({ onAuthenticated } = {}) {
       )}
       {destination ? <>
         <button onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
-        <PageLink href="/cart">カートに戻る</PageLink>
+        <PageLink className="back-link" href="/cart"><ArrowLeft size={16} aria-hidden />カートに戻る</PageLink>
       </> : session.authenticated ? (
         <>
           <p>{session.name || session.email}</p>
