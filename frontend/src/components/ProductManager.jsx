@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { ProductForm } from './ProductForm';
 import { SellerProductList } from './SellerProductList';
@@ -82,8 +83,15 @@ export function ProductManager({ shop, onClose, embedded = false }) {
         />
       </div>
       {editing && (
-        <button className="text-button" disabled={catalog.busy} onClick={resetEditor}>
-          商品一覧へ戻る
+        <button
+          type="button"
+          className="page-back-button"
+          aria-label="商品一覧へ戻る"
+          disabled={catalog.busy}
+          onClick={resetEditor}
+        >
+          <ArrowLeft size={16} aria-hidden />
+          戻る
         </button>
       )}
       {editing && <p className="muted">変更前の在庫数：{expectedStock}</p>}
