@@ -171,7 +171,7 @@ test('buyer, seller and operator routes render without script errors', async ({ 
   const sidebar = await page.locator('.workspace-sidebar').boundingBox();
   expect(sidebar.x).toBe(0);
   await expect(page.locator('.workspace-header select')).toHaveCount(0);
-  await expect(page.locator('.workspace-sidebar nav a svg')).toHaveCount(8);
+  await expect(page.locator('.workspace-sidebar nav a svg')).toHaveCount(7);
   await page.screenshot({ path: 'artifacts/e2e/workspace-dashboard.png', fullPage: true });
   await page.getByRole('button', { name: '戻る', exact: true }).click();
   const navigation = page.getByRole('navigation', { name: 'メインナビゲーション' });
