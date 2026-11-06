@@ -7,6 +7,7 @@ export function ProductReview({ draft: p, plant, storeName, onEdit }) {
     ['科名・属名', p.familyName],
     ['樹齢', p.ageYears],
   ];
+  const imageCount = [p.imageUrl, ...String(p.images).split('\n')].filter(Boolean).length;
   return (
     <section className="product-review" aria-label="出品内容の確認">
       <img src={p.imageUrl} alt="出品する商品画像" />
@@ -21,23 +22,26 @@ export function ProductReview({ draft: p, plant, storeName, onEdit }) {
           <dt>カテゴリー</dt>
           <dd>{p.category}</dd>
           <dt>商品番号</dt>
-          <dd>{p.sku || '登録時に自動で設定します'}</dd>
-          <dt>高さ / 鉢径</dt>
-          <dd>
-            {p.heightCm || '未設定'} / {p.potDiameterCm || '未設定'} cm
-          </dd>
+          <dd>{p.sku || '保存時に自動で決まります'}</dd>
+          <dt>鉢径</dt>
+          <dd>{p.potDiameterCm ? `${p.potDiameterCm} cm` : '未設定'}</dd>
         </dl>
         <button type="button" className="text-button" onClick={() => onEdit(0)}>
           商品情報を修正
         </button>
-        <p>庭オブジェクト：{plant.enabled ? '設定あり' : '設定なし'}</p>
-        {plant.enabled && (
-          <p>
-            高さ {plant.height} cm / 幅 {plant.profile.widthCm} cm
-          </p>
-        )}
-        {plant.enabled && plant.estimated && <p className="ai-estimate">AI推定・実寸未確認</p>}
+        <p>画像：{imageCount}枚</p>
         <button type="button" className="text-button" onClick={() => onEdit(1)}>
+          画像を修正
+        </button>
+        {/* Issue #50: the height comes only from the garden-object step. */}
+        <dl>
+          <dt>植物の高さ</dt>
+          <dd>{plant.height ? `${plant.height} cm` : '未設定'}</dd>
+          <dt>庭オブジェクト</dt>
+          <dd>{plant.enabled ? `設定あり（幅 ${plant.profile.widthCm} cm）` : '設定なし'}</dd>
+        </dl>
+        {plant.estimated && <p className="ai-estimate">高さはAI推定・実寸未確認です。</p>}
+        <button type="button" className="text-button" onClick={() => onEdit(2)}>
           庭オブジェクトを修正
         </button>
         <details>

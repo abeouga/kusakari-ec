@@ -54,7 +54,8 @@ test('seller returns from product registration and product editing with the back
     await form.getByLabel('税込価格（円）', { exact: true }).fill('1500');
     await form.getByLabel('選択店舗の在庫', { exact: true }).fill('2');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
-    await expect(form.locator('.wizard-heading')).toHaveText('庭オブジェクト');
+    // Step 2 of the four-step wizard (#46) is 「画像」.
+    await expect(form.locator('.wizard-heading')).toHaveText('画像');
     await expect(back).toHaveText('戻る');
     await expect(stepBack).toBeVisible();
     await expect(form.getByRole('button', { name: '戻る', exact: true })).toHaveCount(0);
@@ -79,7 +80,7 @@ test('seller returns from product registration and product editing with the back
     expect(await page.evaluate(noSideScroll)).toBe(true);
     await capture(page, `${dir}/edit-${width}.png`, back);
 
-    // The second edit tab offers "前の手順へ", which stays in the form, next to the page-level "戻る".
+    // The garden-object edit tab offers "前の手順へ", which stays in the form, next to the page-level "戻る".
     await form
       .getByRole('navigation', { name: '商品編集のタブ' })
       .getByRole('button', { name: '庭オブジェクト' })
@@ -88,7 +89,7 @@ test('seller returns from product registration and product editing with the back
     await expect(stepBack).toBeVisible();
     await expect(back).toBeVisible();
     await stepBack.click();
-    await expect(form.locator('.wizard-heading')).toHaveText('商品情報');
+    await expect(form.locator('.wizard-heading')).toHaveText('画像');
     await expect(form).toBeVisible();
 
     await back.click();

@@ -1,22 +1,28 @@
 import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { ec, call, login, prepareMember } from './business-helpers.js';
 
+test.use({ trace: 'off' });
+
+// Moved from the product-input configuration so the seller signs in through Cognito first.
+// Issue #50: the plant height is entered only on the garden-object step (10–1500 cm).
 test('product sliders preserve optional values, keyboard precision and persisted plant settings', async ({ page }) => {
-  await mkdir('artifacts/e2e', { recursive: true });
-  await page.goto('/seller/products/new');
+  test.setTimeout(240000);
+  const dir = 'artifacts/business/product-input';
+  await mkdir(dir, { recursive: true });
+  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  await page.goto(`${ec}/seller/products/new`);
   const form = page.locator('.product-form');
-  for (const name of ['ageYears', 'heightCm', 'potDiameterCm'])
+  for (const name of ['ageYears', 'modelHeight', 'potDiameterCm'])
     await expect(form.locator(`input[name="${name}"]`)).toHaveValue('');
-  await addImages(form);
+  await expect(form.locator('input[name="heightCm"]')).toHaveCount(0);
   await form.getByLabel('商品名', { exact: true }).fill('スライダー検証用植物');
-  await form.getByLabel('商品番号', { exact: true }).fill(`RANGE-${randomUUID().slice(0, 8)}`);
   await form.getByLabel('商品説明', { exact: true }).fill('専用DBで数値入力の保存を確認します。');
   await form.getByLabel('選択店舗の在庫', { exact: true }).fill('3');
   await form.locator('summary').getByText('サイズ', { exact: true }).click();
-  await form.getByRole('slider', { name: '植物の高さ（cm・土際から）のスライダー', exact: true }).fill('275');
-  await expect(form.locator('input[name="heightCm"]')).toHaveValue('275');
+  const info = form.getByRole('region', { name: '商品情報', exact: true });
+  await expect(info.getByLabel('植物の高さ（cm・土際から）', { exact: true })).toHaveCount(0);
   await form.getByLabel('鉢径（cm）', { exact: true }).fill('25');
   await expect(form.getByRole('slider', { name: '鉢径（cm）のスライダー', exact: true })).toHaveValue('25');
   await form.getByLabel('鉢径（cm）', { exact: true }).fill('');
@@ -26,7 +32,11 @@ test('product sliders preserve optional values, keyboard precision and persisted
   await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('1');
   await form.getByLabel('鉢径（cm）', { exact: true }).fill('');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
+  await addImages(form);
+  await form.getByRole('button', { name: '次へ', exact: true }).click();
   await form.getByLabel('この植物を庭に配置できるようにする', { exact: true }).check();
+  await form.getByRole('slider', { name: '植物の高さ（cm・土際から）のスライダー', exact: true }).fill('275');
+  await expect(form.locator('input[name="modelHeight"]')).toHaveValue('275');
   await form.locator('summary').getByText('詳細を調整', { exact: true }).click();
   const branch = form.getByRole('slider', { name: '枝の数のスライダー', exact: true });
   await branch.fill('23');
@@ -49,6 +59,7 @@ test('product sliders preserve optional values, keyboard precision and persisted
   await form.getByRole('button', { name: '植物のプレビューを確認', exact: true }).click();
   await expect(form.getByTitle('植物の3Dプレビュー')).toBeVisible();
   await form.getByRole('button', { name: '次へ', exact: true }).click();
+  await expect(form.getByRole('region', { name: '出品内容の確認' })).toContainText('275 cm');
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/products') && r.request().method() === 'POST');
   await form.getByRole('button', { name: '出品する', exact: true }).click();
   const response = await saved;
@@ -56,16 +67,18 @@ test('product sliders preserve optional values, keyboard precision and persisted
   const product = await response.json();
   await expect(page).toHaveURL(/\/seller\/products$/);
   await page.reload();
+  await page.getByPlaceholder('商品名・商品番号').fill(product.sku);
   await page.getByTestId(`manage-${product.id}`).getByRole('button', { name: '編集', exact: true }).click();
   await form
     .locator('.wizard-steps')
     .getByRole('button', { name: /庭オブジェクト/ })
     .click();
+  await expect(form.locator('input[name="modelHeight"]')).toHaveValue('275');
   await form.locator('summary').getByText('詳細を調整', { exact: true }).click();
   await expect(form.getByLabel('幹の太さ（cm）', { exact: true })).toHaveValue('8.3');
   await expect(form.getByRole('slider', { name: '葉の密度', exact: true })).toHaveValue('3');
   await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('');
-  const products = await page.request.get('/api/products?storeId=1').then((r) => r.json());
+  const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const stored = products.find((item) => item.id === product.id);
   expect(stored.heightCm).toBe(275);
   expect(stored.potDiameterCm).toBeNull();
@@ -78,6 +91,6 @@ test('product sliders preserve optional values, keyboard precision and persisted
     trunkThicknessCm: 8.3,
     leafDensity: 'high',
   });
-  await writeFile('artifacts/e2e/product-sliders-after-reload.json', JSON.stringify(stored, null, 2));
-  await page.screenshot({ path: 'artifacts/e2e/product-sliders-after-reload.png', fullPage: true });
+  await writeFile(`${dir}/product-sliders-after-reload.json`, JSON.stringify(stored, null, 2));
+  await page.screenshot({ path: `${dir}/product-sliders-after-reload.png`, fullPage: true });
 });

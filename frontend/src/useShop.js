@@ -239,9 +239,10 @@ export function useShop() {
   function saveProduct(id, input) {
     return run(async () => {
       if (id) await api.updateProduct(id, input);
-      else await api.createProduct(input);
+      const created = id ? null : await api.createProduct(input);
       await refresh();
-      setNotice('商品を保存しました。');
+      // Issue #46: the server assigns the product number; show it once the product is saved.
+      setNotice(created ? `商品を保存しました。商品番号は ${created.sku} です。` : '商品を保存しました。');
     });
   }
   /** @param {string} id */
@@ -283,7 +284,7 @@ export function useShop() {
 
   // Sellers manage only the store recorded on their member account; administrators may choose any store.
   const ownStoreIds = session?.role === 'ADMIN' ? null : (session?.storeIds ?? []);
-  /** @type {{id:number,name:string}[]} */
+  /** @type {{id:number,name:string,address?:string,latitude?:number,longitude?:number}[]} */
   const sellerStores = ownStoreIds
     ? ownStoreIds.map((id) => stores.find((store) => store.id === id) ?? { id, name: `店舗 ${id}` })
     : stores;

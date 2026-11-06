@@ -106,8 +106,9 @@ public class ProductRequest {
   @Max(1000)
   private Integer ageYears;
 
-  @Min(1)
-  @Max(3000)
+  // Same range as the garden-object height, the only place the seller enters it (issue #50).
+  @Min(10)
+  @Max(1500)
   private Integer heightCm;
 
   @Min(1)

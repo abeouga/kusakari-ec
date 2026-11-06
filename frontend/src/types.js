@@ -37,7 +37,7 @@
  * @property {string|null} [canvasMaterialCode]
  * @property {number|null} [sellerStoreId] Store that introduces this product (EC-B05).
  *
- * @typedef {{id:number, name:string, address:string, hours:string, distanceKm:number|null}} Store
+ * @typedef {{id:number, name:string, address:string, hours:string, latitude:number, longitude:number, distanceKm:number|null}} Store
  * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean}} CartLine
  * @typedef {{guest?:boolean,revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
  * @typedef {{revision:number,storeId:number,items:{productId:string,quantity:number}[]}} GuestCartPlan

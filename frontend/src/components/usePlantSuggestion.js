@@ -87,7 +87,7 @@ export function usePlantSuggestion(product, _editing) {
               throw new Error('商品写真を取得できません。写真なしに切り替えるかファイルを選択してください。');
             imageDataUrl = await dataUrl(await response.blob());
           } else if (source.startsWith('https://')) imageUrl = source;
-          else if (source) throw new Error('商品写真を読み込めません。商品情報で画像を選び直してください。');
+          else if (source) throw new Error('商品写真を読み込めません。「画像」で画像を選び直してください。');
         }
       }
       const result = await api.suggestPlantModel({

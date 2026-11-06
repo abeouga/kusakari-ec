@@ -68,8 +68,11 @@ public class ProductEditorService {
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
     auth.requireProductOwner(product.getOwnerMemberId());
     if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
+    // The product number is assigned on registration and cannot be changed afterwards (issue #46).
     if (input.getSku() == null || input.getSku().isBlank()) input.setSku(product.getSku());
-    if (products.existsBySkuAndIdNot(input.getSku(), id)) throw duplicateSku();
+    else if (!input.getSku().equals(product.getSku())) {
+      throw new ApiException(409, "SKU_IMMUTABLE", "商品番号は変更できません。");
+    }
     // Check the store stock before changing anything: a form opened before an order or a cancellation
     // restock must not overwrite the current quantity (EC-S05 5b).
     InventoryEntity stock = inventory

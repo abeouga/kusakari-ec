@@ -5,6 +5,7 @@ import { ec, login, prepareMember } from './business-helpers.js';
 test.use({ trace: 'off' });
 
 // Issue #23: product registration fields were centered; text must start at the left like other forms.
+// Issue #46 removed the product-number input from registration.
 test('product form fields are left aligned and checkboxes keep their size', async ({ page }) => {
   const dir = 'artifacts/business/product-form-alignment';
   await mkdir(dir, { recursive: true });
@@ -22,16 +23,16 @@ test('product form fields are left aligned and checkboxes keep their size', asyn
         selector,
         align: style.textAlign,
         width: element.getBoundingClientRect().width,
-        label: element.closest('label')?.getBoundingClientRect().width ?? 0,
+        label: element.closest('label, .picker-field')?.getBoundingClientRect().width ?? 0,
       };
     };
     return {
       text: [
         '[name="name"]',
-        '[name="sku"]',
         '[name="priceYen"]',
         '[name="stock"]',
-        '[name="category"]',
+        // Issue #46: category and store are chosen in dialogs; their value boxes span the field.
+        '.picker-field-value',
         '[name="description"]',
       ].map(pick),
       checkbox: [...root.querySelectorAll('input[type="checkbox"]')].map((box) => box.getBoundingClientRect().width),

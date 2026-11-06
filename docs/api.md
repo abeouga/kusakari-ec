@@ -8,7 +8,7 @@
 |---|---|---|
 | GET | `/health` | アプリ名と状態 |
 | GET | `/products?storeId=1` | 商品、SKU、単価、単位、画像、選択店舗の在庫、出所/更新日時 |
-| GET | `/stores?latitude=35.6812&longitude=139.7671` | 指定地点から直線距離順の店舗。座標は両方省略可能 |
+| GET | `/stores?latitude=35.6812&longitude=139.7671` | 指定地点から直線距離順の店舗。座標は両方省略可能。各店舗は`latitude`・`longitude`（店舗の緯度・経度）を含む |
 | GET | `/cart` | Cookieのカート。初回はサーバーが作成 |
 | PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除 |
 | PUT | `/cart/store` | `{ "storeId": 2, "revision": 1 }`。在庫不足の商品もカートには残す |
@@ -46,7 +46,9 @@
 商品入力は `ProductRequest.java`、受取情報は `DeliveryDtos.java` を正本とします。
 商品には生産者、日照、手入れレベル、用途、温度、耐暑性・耐乾性、樹齢、高さ、鉢径、科名、開花、季節管理、空間との相性、追加画像を含みます。
 価格は1〜100,000円、店舗在庫は0〜10,000点、追加画像は4枚までです。
-登録・更新で商品番号が重複した場合は409、入力不正・未知フィールドは400です。
+商品番号（`sku`）は登録時に空ならサーバーが `KS-yyyyMMdd-XXXXXX` 形式で自動採番します。更新時は空または現在の値だけを受け付け、異なる値は409 `SKU_IMMUTABLE` で何も保存しません。
+高さ（`heightCm`）は省略可能で、指定する場合は10〜1500cmです（庭オブジェクトの高さと同じ範囲）。
+登録で商品番号が重複した場合は409 `SKU_EXISTS`、入力不正・未知フィールドは400です。
 
 `details` は `fulfillmentMethod`, `paymentMethod`, `recipientName`, `recipientPhone`, `contactEmail`, `postalCode`, `addressLine1`, `addressLine2`, `requestedDate`, `timeSlot` を持ちます。
 受取は `PICKUP` または `DELIVERY`、支払は `DEMO_CARD`, `DEMO_WALLET`, `STORE` です。
