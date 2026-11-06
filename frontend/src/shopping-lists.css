@@ -101,8 +101,7 @@
 /* Issue #64: dashed card under the cart lines and the "add from garden" dialog. */
 .add-from-garden-card { display: flex; align-items: center; gap: 17px; width: 100%; margin-top: 18px; padding: 18px 20px; border: 2px dashed #b9c4b0; border-radius: 12px; background: transparent; text-align: left; transition: background .15s, border-color .15s; }
 .add-from-garden-card:hover { border-color: #285746; background: #f3f6ee; }
-.add-from-garden-card strong { display: block; color: var(--green); font-size: 14px; font-weight: 600; }
-.add-from-garden-card small { color: var(--muted); font-size: 12px; }
+.add-from-garden-card strong { color: var(--green); font-size: 15px; font-weight: 600; }
 .add-from-garden-icon { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; background: #eef2e7; color: var(--green); }
 .cart-empty-state .add-from-garden-card { max-width: 520px; margin: 28px auto 0; }
 .garden-items-dialog { width: min(720px, calc(100% - 28px)); }
@@ -114,7 +113,7 @@
 .garden-items-gardens small { color: #7c8777; font-size: 11px; }
 .garden-items-gardens button[aria-pressed="true"] { border-color: #285746; background: #285746; color: #fff; }
 .garden-items-gardens button[aria-pressed="true"] small { color: #dfe9e1; }
-.garden-items-toolbar { display: flex; justify-content: flex-end; margin: 12px 0 10px; }
+.garden-items-toolbar { display: flex; justify-content: flex-start; margin: 12px 0 10px; }
 .garden-items-toolbar .text-button { font-size: 12px; }
 .garden-items-list { display: grid; gap: 10px; max-height: min(46vh, 420px); overflow-y: auto; }
 .garden-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #d3d9cb; border-radius: 12px; background: #fff; cursor: pointer; transition: background .15s, border-color .15s; }
@@ -132,7 +131,7 @@
 .garden-item-reason { background: #fbeceb; color: #a03b30; }
 .garden-item-price { flex: 0 0 auto; font-size: 14px; white-space: nowrap; }
 .garden-items-footer { display: flex; justify-content: space-between; gap: 12px; margin: 16px -28px -28px; padding: 16px 28px; border-top: 1px solid #edf0e8; }
-.garden-items-footer button { gap: 8px; border-radius: 8px; font-size: 14px; }
+.garden-items-footer button { gap: 8px; border-radius: 12px; font-size: 14px; }
 @media (max-width: 600px) {
   .garden-items-gardens { margin: 0 -18px; padding: 0 18px 14px; }
   .garden-items-footer { margin: 14px -18px -22px; padding: 14px 18px; }
@@ -140,6 +139,5 @@
   .garden-item { gap: 10px; padding: 10px; }
   .garden-item > img, .garden-item-noimage { width: 48px; height: 60px; }
   .garden-item-price { font-size: 13px; }
-  .add-from-garden-card { padding: 14px 16px; }
   .garden-items-dialog .dialog-heading h2 { font-size: 18px; }
 }

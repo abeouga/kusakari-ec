@@ -40,6 +40,13 @@ test('cart adds a garden item through the dashed card dialog and keeps it after 
     await line.getByRole('checkbox').check();
     const add = dialog.getByRole('button', { name: '1点をカートに追加', exact: true });
     await expect(add.locator('svg')).toHaveCount(1);
+    // PR #66 review: "すべて選択" sits on the left, and the footer buttons share the item cards' corner radius.
+    const selectAll = await dialog.getByRole('button', { name: 'すべて選択', exact: true }).boundingBox();
+    expect(Math.abs(selectAll.x - (await line.boundingBox()).x)).toBeLessThanOrEqual(2);
+    const radius = (locator) => locator.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+    const cardRadius = await radius(line);
+    expect(await radius(add)).toBe(cardRadius);
+    expect(await radius(dialog.getByRole('button', { name: 'キャンセル', exact: true }))).toBe(cardRadius);
     await page.screenshot({ path: `${evidence}/dialog-desktop.png` });
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
@@ -48,15 +55,29 @@ test('cart adds a garden item through the dashed card dialog and keeps it after 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await add.click();
     await expect(dialog).toHaveCount(0);
+    // Product names are not unique in the E2E database, so the line is found by its product ID.
     const cartLine = page
       .locator('.cart-line')
-      .filter({ has: page.getByRole('heading', { name: product.name, exact: true }) });
+      .filter({ has: page.locator(`a[href*="productId=${encodeURIComponent(product.id)}"]`) });
     await expect(cartLine).toHaveCount(1);
     await page.reload();
     await expect(cartLine).toHaveCount(1);
-    await page
-      .getByRole('button', { name: /庭に設置したものから追加/ })
-      .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    // PR #66 review: the dashed card has only its label and is as tall as the cart line right above it.
+    const card = page.getByRole('button', { name: '庭に設置したものから追加', exact: true });
+    await expect(card).toHaveText('庭に設置したものから追加');
+    const heights = async () => [
+      (await card.boundingBox()).height,
+      (await page.locator('.cart-line').last().boundingBox()).height,
+    ];
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+      const [cardHeight, lineHeight] = await heights();
+      expect(
+        Math.abs(cardHeight - lineHeight),
+        `width ${width}: card ${cardHeight} / line ${lineHeight}`,
+      ).toBeLessThanOrEqual(1);
+    }
+    await card.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.screenshot({ path: `${evidence}/cart-after-reload.png` });
     await page.getByRole('button', { name: /庭に設置したものから追加/ }).click();
     await dialog.getByRole('button', { name: new RegExp(garden.name) }).click();

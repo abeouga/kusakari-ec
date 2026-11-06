@@ -12,6 +12,7 @@ import { AddFromGardenCard } from './GardenItemsDialog';
 export function Cart({ shop, onStores }) {
   const [confirming, setConfirming] = useState(false);
   const [payment, setPayment] = useState('PAY_AT_STORE');
+  const [lastLine, setLastLine] = useState(/** @type {HTMLElement|null} */ (null));
   const cart = shop.cart;
   if (shop.lastOrder) {
     return (
@@ -104,8 +105,12 @@ export function Cart({ shop, onStores }) {
               </button>
             </div>
             <div className="cart-items">
-              {cart.items.map((line) => (
-                <article className="cart-line" key={line.product.id}>
+              {cart.items.map((line, index) => (
+                <article
+                  className="cart-line"
+                  key={line.product.id}
+                  ref={index === cart.items.length - 1 ? setLastLine : undefined}
+                >
                   <img src={line.product.imageUrl} alt={line.product.name} />
                   <div className="cart-line-main">
                     <h3>{line.product.name}</h3>
@@ -144,7 +149,7 @@ export function Cart({ shop, onStores }) {
                 </article>
               ))}
             </div>
-            <AddFromGardenCard shop={shop} />
+            <AddFromGardenCard shop={shop} matchHeight={lastLine} />
           </div>
         )}
         <aside className="checkout-summary">

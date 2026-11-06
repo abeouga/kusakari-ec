@@ -8,20 +8,35 @@ import { chosenProduct, lineReason, quantityInCart } from '../shoppingSelection'
 const TITLE = '庭に設置したものから追加';
 
 /** Dashed card under the cart lines (issue #64). Guests have no saved gardens, so it is shown to members only.
- * @param {{shop:ReturnType<import('../useShop').useShop>}} props */
-export function AddFromGardenCard({ shop }) {
+ * PR #66 review: the card is as tall as the cart line right above it. A line's height depends on how its product
+ * name wraps, so the card follows the measured height of `matchHeight` instead of a fixed value.
+ * @param {{shop:ReturnType<import('../useShop').useShop>,matchHeight?:HTMLElement|null}} props */
+export function AddFromGardenCard({ shop, matchHeight = null }) {
   const [open, setOpen] = useState(false);
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (!matchHeight) {
+      setHeight(0);
+      return;
+    }
+    const observer = new ResizeObserver(() => setHeight(matchHeight.getBoundingClientRect().height));
+    observer.observe(matchHeight);
+    return () => observer.disconnect();
+  }, [matchHeight]);
   if (shop.isGuest) return null;
   return (
     <>
-      <button type="button" className="add-from-garden-card" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="add-from-garden-card"
+        style={height ? { height } : undefined}
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+      >
         <span className="add-from-garden-icon">
           <Plus size={22} aria-hidden="true" />
         </span>
-        <span>
-          <strong>{TITLE}</strong>
-          <small>庭に配置した商品をえらんでカートに入れます</small>
-        </span>
+        <strong>{TITLE}</strong>
       </button>
       {open && <GardenItemsDialog shop={shop} onClose={() => setOpen(false)} />}
     </>
