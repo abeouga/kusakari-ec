@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { BrandIcon } from './BrandIcon';
 import { Cart } from './Cart';
 import { ShoppingListDetail, ShoppingListOverview, ShoppingTransferNotice } from './ShoppingLists';
@@ -11,7 +12,7 @@ export function CartPage({ shop, onStores, gardenId = '', showGardens, header })
     {header}
     <main className="standalone-cart-main">
       <div className="shopping-page-intro">
-        <PageLink className="text-link back-link" href="/#plants">戻る</PageLink>
+        <PageLink className="text-link back-link" href="/#plants"><ArrowLeft size={16} aria-hidden />戻る</PageLink>
       </div>
       <div>
         {gardens && shop.isGuest ? <section className="cart-content">

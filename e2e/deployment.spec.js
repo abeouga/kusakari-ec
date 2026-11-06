@@ -51,7 +51,7 @@ test('packaged single-origin EC and Canvas preserve routing, models, photos and 
     await expect(page).toHaveURL(new RegExp(`/cart/gardens/${garden.id}$`));
     await page.getByRole('button', { name: '全選択', exact: true }).click();
     const transferResponse = page.waitForResponse((response) => response.url().endsWith(`/api/cart/shopping-lists/${garden.id}/items`));
-    await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
+    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
     const transferred = await transferResponse;
     expect(transferred.status(), await transferred.text()).toBe(200);
     await expect(page).toHaveURL(/\/cart$/);

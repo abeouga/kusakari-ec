@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { yen } from '../api';
 import { navigate } from '../workspace/navigation';
 import { useShoppingData } from './useShoppingData';
@@ -15,7 +16,6 @@ export function ShoppingListOverview() {
   const data = useShoppingData('');
   return <section className="garden-shopping-section" id="garden-shopping-lists" aria-label="庭の買い物リスト">
     <h2>庭の買い物リスト</h2>
-    <p>庭ごとに必要な商品を確認し、購入する商品をカートへ追加できます。</p>
     {data.loading && <p role="status">庭の買い物リストを読み込み中…</p>}
     {data.error && <p role="alert">{data.error}<button type="button" onClick={data.reload}>再取得</button></p>}
     {!data.loading && !data.error && data.lists.length === 0 && <p>庭はまだありません。</p>}
@@ -89,11 +89,18 @@ export function ShoppingListDetail({ shop, gardenId }) {
     setSelectNote([]);
     if (result.added.length) navigate('/cart');
   }
-  return <section className="garden-shopping-section" aria-label="庭の買い物リスト詳細">
-    <button type="button" className="text-button" onClick={() => navigate('/cart#garden-shopping-lists')}>庭の買い物リスト一覧へ</button>
+  const lines = detail?.items ?? [];
+  const chosen = lines.flatMap(line => {
+    const product = line.products.find(p => p.id === selection[line.key]);
+    return product ? [{ line, product }] : [];
+  });
+  const count = chosen.reduce((sum, { line }) => sum + line.quantity, 0);
+  const subtotal = chosen.reduce((sum, { line, product }) => sum + product.priceYen * line.quantity, 0);
+  const canAdd = chosen.length > 0 && !shop.busy && !data.error && !!cart && detail?.storeId === cart.storeId;
+  return <section className="garden-shopping-section cart-content" aria-label="庭の買い物リスト詳細">
+    <button type="button" className="text-button garden-list-back" onClick={() => navigate('/cart#garden-shopping-lists')}>
+      <ArrowLeft size={16} aria-hidden />庭の買い物リスト一覧へ</button>
     <h2>{detail ? detail.name + 'の買い物リスト' : '庭の買い物リスト'}</h2>
-    <p>庭に配置した商品と、商品一覧から追加した商品を表示します。購入する商品を選択してください。</p>
-    {detail && <p>受取店舗：{detail.storeName} <button type="button" className="text-button" onClick={() => navigate('/cart')}>カートで店舗を変更</button></p>}
     {data.loading && <p role="status">読み込み中…</p>}
     {data.error && <p role="alert">{data.error}<button type="button" onClick={data.reload}>再取得</button></p>}
     {shop.error && <p role="alert">{shop.error}</p>}
@@ -104,38 +111,52 @@ export function ShoppingListDetail({ shop, gardenId }) {
       <ul>{selectNote.map(note => <li key={note}>{note}</li>)}</ul></div>}
     <ShoppingTransferNotice shop={shop}/>
     {detail?.items.length === 0 && <p>この庭の買い物リストは空です。</p>}
-    {detail && <>
-      <div className="garden-shopping-actions"><button type="button" disabled={shop.busy || !!data.error} onClick={selectAll}>全選択</button>
-        <button type="button" disabled={shop.busy} onClick={() => { setSelection({}); setSelectNote([]); }}>選択解除</button></div>
-      {detail.items.map(line => {
-        const product = chosenProduct(line);
-        const reason = lineReason(line, product, product ? inCart(product.id) : 0);
-        return <article className="garden-shopping-line" key={line.key} data-testid={'ec-shopping-line-' + line.key}>
-          <input type="checkbox" aria-label={line.name + 'を選択'} checked={!!selection[line.key]} disabled={shop.busy || !!data.error || (!!reason && !selection[line.key])}
-            onChange={event => {
-              const next = { ...selection };
-              if (event.target.checked && product) next[line.key] = product.id;
-              else delete next[line.key];
-              setSelection(next);
-            }}/>
-          {product && <img src={product.imageUrl} alt=""/>}
-          <div><h3>{product?.name ?? line.name}</h3><p>必要数 {line.quantity}点</p>
-            {line.products.length > 1 && <label>購入商品<select aria-label={line.name + 'の購入商品'} value={choices[line.key] ?? ''} disabled={shop.busy}
+    {detail && <div className="checkout-layout">
+      <div>
+        <div className="garden-shopping-actions"><button type="button" className="text-button" disabled={shop.busy || !!data.error} onClick={selectAll}>全選択</button>
+          <button type="button" className="text-button" disabled={shop.busy} onClick={() => { setSelection({}); setSelectNote([]); }}>選択解除</button></div>
+        <div className="cart-items">{lines.map(line => {
+          const product = chosenProduct(line);
+          const reason = lineReason(line, product, product ? inCart(product.id) : 0);
+          const held = product ? inCart(product.id) : 0;
+          return <article className="cart-line garden-shopping-line" key={line.key} data-testid={'ec-shopping-line-' + line.key}>
+            <input type="checkbox" aria-label={line.name + 'を選択'} checked={!!selection[line.key]} disabled={shop.busy || !!data.error || (!!reason && !selection[line.key])}
               onChange={event => {
-                setChoices({ ...choices, [line.key]: event.target.value });
                 const next = { ...selection };
-                delete next[line.key];
+                if (event.target.checked && product) next[line.key] = product.id;
+                else delete next[line.key];
                 setSelection(next);
-              }}><option value="">選択してください</option>{line.products.map(p => <option key={p.id} value={p.id}>{p.name} / {yen(p.priceYen)}</option>)}</select></label>}
-            {product && <><p>{yen(product.priceYen)} / 点・小計 {yen(product.priceYen * line.quantity)}</p>
-              <p>店舗在庫 {product.stock}点{inCart(product.id) > 0 && `・カートに${inCart(product.id)}点`}</p></>}
-            {reason && <p className="error">{reason}</p>}
-          </div>
-        </article>;
-      })}
-      <p>同じ商品がカートにある場合は数量を加算します。在庫不足などの商品は追加せず、理由を表示します。</p>
-      <button type="button" className="primary-button" disabled={!Object.keys(selection).length || shop.busy || !!data.error || !cart || detail.storeId !== cart.storeId} onClick={transfer}>選択した商品をカートに追加</button>
-    </>}
+              }}/>
+            {product ? <img src={product.imageUrl} alt={product.name}/> : <span className="garden-shopping-noimage" aria-hidden/>}
+            <div className="cart-line-main">
+              <h3>{product?.name ?? line.name}</h3>
+              {product && <p>{yen(product.priceYen)} / 1鉢</p>}
+              <p>必要数 {line.quantity}点{product && `・店舗在庫 ${product.stock}点`}{held > 0 && `・カートに${held}点`}</p>
+              {line.products.length > 1 && <label>購入商品<select aria-label={line.name + 'の購入商品'} value={choices[line.key] ?? ''} disabled={shop.busy}
+                onChange={event => {
+                  setChoices({ ...choices, [line.key]: event.target.value });
+                  const next = { ...selection };
+                  delete next[line.key];
+                  setSelection(next);
+                }}><option value="">選択してください</option>{line.products.map(p => <option key={p.id} value={p.id}>{p.name} / {yen(p.priceYen)}</option>)}</select></label>}
+              {reason && <p className="error-text">{reason}</p>}
+            </div>
+            <div className="cart-line-end">{product && <strong>{yen(product.priceYen * line.quantity)}</strong>}</div>
+          </article>;
+        })}</div>
+      </div>
+      <aside className="checkout-summary" aria-label="選択した商品の小計">
+        <p className="eyebrow">SELECTED ITEMS</p>
+        <h3>選択した商品</h3>
+        <div className="totals">
+          <div><span>選択した商品</span><span>{count}点</span></div>
+          <div><span>商品小計（税込）<small> / 内税10%</small></span><span>{yen(subtotal)}</span></div>
+          <div><span>うち消費税（内税10%）</span><span>{yen(Math.floor((subtotal * 10) / 110))}</span></div>
+          <div className="grand-total"><strong>合計</strong><strong>{yen(subtotal)}</strong></div>
+        </div>
+        <button type="button" className="primary-button full" disabled={!canAdd} onClick={transfer}>カートに追加<Plus size={18} aria-hidden/></button>
+      </aside>
+    </div>}
   </section>;
 }
 

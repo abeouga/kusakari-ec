@@ -1,6 +1,6 @@
 import { productCanvasUrl } from '../canvasLink';
 import { useState } from 'react';
-import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { yen } from '../api';
 import { DeliverySummary } from './DeliverySummary';
 import { CheckoutConfirm } from './CheckoutConfirm';
@@ -194,6 +194,7 @@ export function Cart({ shop, onStores }) {
                 <CheckCircle2 size={18} />
               </button>
               <button className="text-button back-button" disabled={shop.busy} onClick={() => setConfirming(false)}>
+                <ArrowLeft size={16} aria-hidden />
                 カートに戻る
               </button>
             </>
