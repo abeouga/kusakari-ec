@@ -1,6 +1,6 @@
 .workspace-shell {
   min-height: 100vh;
-  background: #f6f7f2;
+  background: var(--surface-page);
   color: #263d32;
   font:
     14px/1.7 'Yu Gothic',
@@ -169,8 +169,8 @@
   margin: 5px 0;
 }
 .workspace-card {
-  background: #fff;
-  border: 1px solid #dce2d8;
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 26px;
   margin-bottom: 20px;
@@ -213,11 +213,11 @@
   width: 100%;
   font: inherit;
   padding: 10px 12px;
-  border: 1px solid #cdd8cb;
+  border: 1px solid var(--field-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface-field);
   margin-top: 6px;
-  color: #263d32;
+  color: var(--field-text);
 }
 .workspace-shell input[type='checkbox'] {
   width: auto;
@@ -229,7 +229,7 @@
 .workspace-shell input:focus,
 .workspace-shell select:focus,
 .workspace-shell textarea:focus {
-  outline: 2px solid #6d8c6c;
+  outline: 2px solid var(--field-focus);
   outline-offset: 2px;
 }
 .workspace-form {
@@ -291,9 +291,9 @@
   margin-bottom: 24px;
 }
 .workspace-metrics section {
-  background: #fff;
+  background: var(--surface-card);
   padding: 25px;
-  border: 1px solid #dce2d8;
+  border: 1px solid var(--card-border);
   border-radius: 12px;
 }
 .workspace-metrics small {

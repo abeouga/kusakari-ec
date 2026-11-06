@@ -24,7 +24,7 @@
   font-size: 12px;
 }
 .fine-print {
-  color: #7f8579;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.9;
   margin: 16px 0;

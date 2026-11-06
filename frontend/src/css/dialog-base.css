@@ -138,9 +138,9 @@
 }
 .location-controls select {
   padding: 12px;
-  background: white;
-  border: 1px solid var(--line);
-  color: var(--ink);
+  background: var(--surface-field);
+  border: 1px solid var(--field-border);
+  color: var(--field-text);
   font-size: 12px;
   height: 46px;
 }
