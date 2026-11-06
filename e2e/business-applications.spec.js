@@ -26,7 +26,7 @@ async function submitApplication(page, input) {
   });
 }
 
-test('application rejection permits resubmission and address deletion persists', async ({ browser }) => {
+test('application rejection permits resubmission', async ({ browser }) => {
   const userContext = await browser.newContext();
   const adminContext = await browser.newContext();
   const user = await userContext.newPage();
@@ -74,18 +74,6 @@ test('application rejection permits resubmission and address deletion persists',
         })
       ).status(),
     ).toBe(200);
-    expect(
-      (
-        await call(user.request, '/account/address', 'PUT', {
-          recipient: '検証利用者',
-          postal: '100-0001',
-          address: '東京都 検証住所',
-        })
-      ).status(),
-    ).toBe(200);
-    expect((await call(user.request, '/account/address', 'DELETE')).status()).toBe(200);
-    await user.goto(`${ec}/account/address`);
-    await expect(user.getByLabel('受取人', { exact: true })).toHaveValue('');
   } finally {
     if (member) prepareMember(member, 'USER');
     await userContext.close();

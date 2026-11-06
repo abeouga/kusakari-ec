@@ -253,7 +253,7 @@ test('account entry from Canvas shows member settings without guest or technical
       '通知一覧',
     ]);
     await expect(sidebar.getByRole('navigation', { name: 'アカウント設定', exact: true }).getByRole('link')).toHaveText(
-      ['住所管理', '受取連絡先', 'パスワード変更', '退会'],
+      ['受取連絡先', 'パスワード変更', '退会'],
     );
     // EC-B18: the label becomes 出店申請状況 once this shared account has applied in another spec.
     await expect(sidebar.getByRole('link', { name: /^出店申請(状況)?$/ })).toBeVisible();
@@ -263,7 +263,7 @@ test('account entry from Canvas shows member settings without guest or technical
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `artifacts/custom-login/account-sidebar-${width}.png`, fullPage: true });
   }
-  for (const name of ['注文履歴', '通知一覧', '住所管理', '受取連絡先', 'パスワード変更', '退会', 'アカウント情報']) {
+  for (const name of ['注文履歴', '通知一覧', '受取連絡先', 'パスワード変更', '退会', 'アカウント情報']) {
     await sidebar.getByRole('link', { name, exact: true }).click();
     await expect(page.locator('.workspace-main h1')).toHaveText(name);
     await expect(sidebar.getByRole('link', { name, exact: true })).toHaveClass('is-active');

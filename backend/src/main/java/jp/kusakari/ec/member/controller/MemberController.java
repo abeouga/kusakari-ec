@@ -16,22 +16,6 @@ public class MemberController {
 
   public record EnabledRequest(boolean enabled) {}
 
-  @GetMapping("/api/account/address")
-  public MemberService.Address address() {
-    return service.address();
-  }
-
-  @PutMapping("/api/account/address")
-  public MemberService.Address save(@Valid @RequestBody MemberService.Address input) {
-    return service.save(input);
-  }
-
-  @DeleteMapping("/api/account/address")
-  public Map<String, Boolean> delete() {
-    service.deleteAddress();
-    return Map.of("deleted", true);
-  }
-
   @GetMapping("/api/account/pickup-contact")
   public MemberService.PickupContact pickupContact() {
     return service.pickupContact();

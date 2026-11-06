@@ -273,14 +273,6 @@ test('account, applications with private documents, store profile, categories an
     member = await login(user, 'test.user@example.com');
     prepareMember(member, 'USER');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
-    await user.goto(`${ec}/account/address`);
-    await user.getByLabel('受取人', { exact: true }).fill('検証利用者');
-    await user.getByLabel('郵便番号', { exact: true }).fill('100-0001');
-    await user.getByLabel('住所', { exact: true }).fill('東京都 検証用住所');
-    await user.getByRole('button', { name: '住所を保存' }).click();
-    await expect(user.getByRole('status')).toContainText('保存しました');
-    await user.reload();
-    await expect(user.getByLabel('受取人', { exact: true })).toHaveValue('検証利用者');
     await user.goto(`${ec}/seller/application`);
     await fillApplication(user, {
       company: `検証店舗 ${randomUUID().slice(0, 8)}`,

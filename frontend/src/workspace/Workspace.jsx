@@ -53,9 +53,7 @@ const buyerMenu = [
   ['/notifications', '通知一覧'],
 ];
 const accountSettings = accountActions
-  .filter(([url]) =>
-    ['/account/address', '/account/pickup-contact', '/account/password', '/account/delete'].includes(url),
-  )
+  .filter(([url]) => ['/account/pickup-contact', '/account/password', '/account/delete'].includes(url))
   .map(([url, label]) => /** @type {MenuItem} */ ([url, label]));
 /** @type {Record<string,string>} Pages whose sidebar link may be absent or labelled differently. */
 const pageTitles = {

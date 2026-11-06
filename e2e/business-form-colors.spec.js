@@ -156,7 +156,6 @@ test('login, seller, operator and buyer forms separate page, card and field colo
             .getByLabel('理由・コメント'),
         false,
       ],
-      [buyer.page, 'buyer-address', '/account/address', (p) => p.locator('input[name="recipient"]')],
       [buyer.page, 'buyer-pickup-contact', '/account/pickup-contact', (p) => p.locator('input[name="recipientName"]')],
     ];
     for (const width of [1440, 390]) {
