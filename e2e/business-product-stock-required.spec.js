@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
+import { ec, call, capture, login, prepareMember, productInput } from './business-helpers.js';
 import { sql } from './database.js';
 import { addImages } from './product-images.js';
 
@@ -153,8 +153,10 @@ test('new product stock must be 1 or more in the wizard and the API, and only re
   await edit.getByLabel('選択店舗の在庫', { exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${dir}/edit-sold-out.png` });
   await page.reload();
-  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
-  await page.screenshot({ path: `${dir}/edit-sold-out-reloaded.png` });
+  // The edit form is not part of the URL, so the reloaded list shows the sold-out product.
+  await page.getByPlaceholder('商品名・商品番号').fill(product.sku);
+  await expect(page.getByTestId(`manage-${product.id}`)).toBeVisible();
+  await capture(page, `${dir}/edit-sold-out-reloaded.png`);
   const stored = (await call(page.request, '/seller/products?storeId=1').then((r) => r.json())).find(
     (item) => item.id === product.id,
   );
