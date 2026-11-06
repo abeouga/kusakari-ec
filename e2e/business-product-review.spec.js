@@ -104,8 +104,8 @@ test('review step shows the product like its card with the 3D preview at 1440px 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await snap(page, `${dir}/review-${width}.png`);
 
-    // 「戻る」 leads back step by step with the values kept, and 「次へ」 returns to the same review.
-    await form.getByRole('button', { name: '戻る', exact: true }).click();
+    // 「前の手順へ」 leads back step by step with the values kept, and 「次へ」 returns to the same review.
+    await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('庭オブジェクト');
     await expect(form.getByLabel('植物の高さ', { exact: true })).toHaveValue('150');
     // The garden step draws the kept plant again.
@@ -114,9 +114,9 @@ test('review step shows the product like its card with the 3D preview at 1440px 
       { timeout: 30000 },
     );
     await snap(page, `${dir}/back-to-garden-${width}.png`);
-    await form.getByRole('button', { name: '戻る', exact: true }).click();
+    await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('画像');
-    await form.getByRole('button', { name: '戻る', exact: true }).click();
+    await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
     await expect(bar.locator('[aria-current="step"]')).toContainText('商品情報');
     await expect(form.getByLabel('商品名', { exact: true })).toHaveValue(name);
     for (let step = 0; step < 3; step++) await form.getByRole('button', { name: '次へ', exact: true }).click();

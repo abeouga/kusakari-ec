@@ -67,10 +67,10 @@ test('product wizard navigation, validation, responsive screenshots and edit tab
       'src',
       /%22widthCm%22%3A140/,
     );
-    // #53: the review has no edit buttons; 「戻る」 leads back to the first step with the values kept.
+    // #53: the review has no edit buttons; 「前の手順へ」 leads back to the first step with the values kept.
     await expect(review.getByRole('button')).toHaveCount(0);
     for (const heading of ['庭オブジェクト', '画像', '商品情報']) {
-      await form.getByRole('button', { name: '戻る', exact: true }).click();
+      await form.getByRole('button', { name: '前の手順へ', exact: true }).click();
       await expect(form.locator('.wizard-heading')).toHaveText(heading);
     }
     await expect(form.getByLabel('鉢径（cm）', { exact: true })).toHaveValue('24');

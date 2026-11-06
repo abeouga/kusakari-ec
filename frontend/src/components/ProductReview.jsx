@@ -3,7 +3,7 @@ import { modelPreviewUrl } from '../plantModel';
 
 /**
  * Last step of a new product: the product as buyers will see it, close to the catalog card (issue #53).
- * Values decided later (the product number) and sizes are left out. 「戻る」 leads back step by step;
+ * Values decided later (the product number) and sizes are left out. 「前の手順へ」 leads back step by step;
  * the progress bar only shows the current step (#45).
  * @param {{draft:Record<string,any>,plant:ReturnType<import('./usePlantSuggestion').usePlantSuggestion>,storeName:string}} props
  */

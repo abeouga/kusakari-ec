@@ -176,7 +176,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
       await expect(garden.getByRole('group', { name, exact: true })).toBeVisible();
     await expect(garden.getByText('この植物を庭に配置できるようにする')).toHaveCount(0);
     await expect(form.getByRole('button', { name: '手動で設定', exact: true })).toHaveCount(0);
-    await expect(form.locator('.wizard-actions button')).toHaveText(['戻る', '次へ']);
+    await expect(form.locator('.wizard-actions button')).toHaveText(['前の手順へ', '次へ']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
     await snap(page, `${dir}/garden-${width}.png`);
