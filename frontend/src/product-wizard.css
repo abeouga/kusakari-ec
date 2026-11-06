@@ -172,3 +172,38 @@
   margin-inline-start: 6px;
   margin-inline-end: 0;
 }
+/*
+ * Issue #72: red ※ after the label of a required field. The empty alternative text keeps it out of the accessible
+ * name; the input's `required` tells screen readers instead, and pickers add a hidden 「必須」.
+ */
+.required-label::after {
+  content: '※' / '';
+  margin-left: 2px;
+  color: #c62828;
+  font-weight: 700;
+}
+/* The number-field labels are flex columns, which would put ※ on its own line. */
+.range-field-head > label.required-label {
+  display: block;
+}
+.required-mark-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.product-wizard .field-error {
+  color: #aa4e35;
+  font-size: 12px;
+}
+.product-wizard input[aria-invalid='true'] {
+  border-color: #c9826f;
+}
+.product-wizard .stock-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}

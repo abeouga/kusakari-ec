@@ -6,10 +6,12 @@ import { RangeField } from './RangeField';
 /**
  * Step 1 of the product wizard. The product number is assigned by the server and only shown while editing,
  * the plant height lives in the garden-object step, and images have their own step (issues #46, #50).
- * @param {{storeSelector?:import('react').ReactNode,p:Record<string, any>,set:(name:string,value:any)=>void}} props
+ * A new product needs at least one in stock; an edited one may go to 0 to mark it sold out (issue #72).
+ * @param {{storeSelector?:import('react').ReactNode,p:Record<string, any>,set:(name:string,value:any)=>void,stockError?:string}} props
  */
-export function ProductInfoFields({ p, set, storeSelector }) {
+export function ProductInfoFields({ p, set, storeSelector, stockError = '' }) {
   const skuLabel = useId();
+  const stockErrorId = useId();
   /** @param {import('react').ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>} event */
   function change(event) {
     const el = event.target;
@@ -20,7 +22,7 @@ export function ProductInfoFields({ p, set, storeSelector }) {
       <div className="product-info-main">
         <div className="form-grid">
           <label>
-            商品名
+            <span className="required-label">商品名</span>
             <input name="name" value={p.name} required maxLength={120} onChange={change} />
           </label>
           {p.id && (
@@ -32,14 +34,14 @@ export function ProductInfoFields({ p, set, storeSelector }) {
           )}
           <CategoryPicker value={p.category} onChange={(value) => set('category', value)} />
           <label className="form-full">
-            商品説明
+            <span className="required-label">商品説明</span>
             <textarea name="description" value={p.description} required rows={2} maxLength={5000} onChange={change} />
           </label>
         </div>
 
         <div className="form-grid">
           <label>
-            税込価格（円）
+            <span className="required-label">税込価格（円）</span>
             <input
               name="priceYen"
               type="number"
@@ -51,10 +53,28 @@ export function ProductInfoFields({ p, set, storeSelector }) {
               onChange={change}
             />
           </label>
-          <label>
-            選択店舗の在庫
-            <input name="stock" type="number" min="0" max="10000" step="1" required value={p.stock} onChange={change} />
-          </label>
+          <div className="stock-field">
+            <label>
+              <span className="required-label">選択店舗の在庫</span>
+              <input
+                name="stock"
+                type="number"
+                min={p.id ? 0 : 1}
+                max="10000"
+                step="1"
+                required
+                value={p.stock}
+                aria-invalid={stockError ? true : undefined}
+                aria-describedby={stockError ? stockErrorId : undefined}
+                onChange={change}
+              />
+            </label>
+            {stockError && (
+              <small id={stockErrorId} className="field-error">
+                {stockError}
+              </small>
+            )}
+          </div>
           {storeSelector}
         </div>
       </div>

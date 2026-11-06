@@ -20,7 +20,10 @@ export function StorePicker({ stores, value, disabled, onChange }) {
   }
   return (
     <div className="picker-field">
-      <span className="picker-field-label">在庫を登録する店舗</span>
+      <span className="picker-field-label required-label">
+        在庫を登録する店舗
+        <span className="required-mark-text">必須</span>
+      </span>
       <div className="picker-field-value">
         <strong id={nameId}>{current?.name ?? '未選択'}</strong>
         <button

@@ -20,6 +20,8 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   const plant = usePlantSuggestion(product ?? emptyProduct, !!product, String(draft.category));
   const [step, setStep] = useState(INFO);
   const [error, setError] = useState('');
+  // The reason shown under the stock input, next to the field the seller has to fix (issue #72).
+  const [stockError, setStockError] = useState('');
   const formRef = useRef(/** @type {HTMLFormElement|null} */ (null));
   const heading = useRef(/** @type {HTMLHeadingElement|null} */ (null));
   const saving = useRef(false);
@@ -44,6 +46,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   function move(next) {
     setStep(next);
     setError('');
+    setStockError('');
     requestAnimationFrame(() => {
       heading.current?.focus({ preventScroll: true });
       formRef.current?.scrollIntoView({ block: 'start' });
@@ -64,6 +67,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
   /** @param {string} message @param {Element|null|undefined} field */
   function fail(message, field) {
     setError(message);
+    setStockError(field instanceof HTMLInputElement && field.name === 'stock' ? message : '');
     if (field instanceof HTMLElement) reveal(field);
     return false;
   }
@@ -78,6 +82,12 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       if (invalid.validity.valueMissing) return fail(`${label}を入力してください。`, invalid);
       if (invalid.name === 'modelHeight') return fail(`${label}は10〜1500cmの整数にしてください。`, invalid);
       return fail(`${label}を確認してください。`, invalid);
+    }
+    if (invalid instanceof HTMLInputElement && invalid.name === 'stock') {
+      // A new product starts with 0 in stock and cannot be listed until at least one is in stock (issue #72).
+      if (invalid.validity.valueMissing) return fail('在庫を入力してください。', invalid);
+      if (invalid.validity.rangeUnderflow) return fail(`在庫は${invalid.min}以上にしてください。`, invalid);
+      return fail(`在庫は${invalid.min}〜${invalid.max}の整数にしてください。`, invalid);
     }
     if (invalid) return fail('入力内容を確認してください。', invalid);
     if (scope === INFO || scope === null) {
@@ -123,7 +133,10 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       ref={formRef}
       className="basic-form product-form product-wizard"
       onSubmit={save}
-      onChange={() => setError('')}
+      onChange={() => {
+        setError('');
+        setStockError('');
+      }}
       noValidate
     >
       <WizardSteps labels={labels} step={step} editing={!!product} disabled={locked} onSelect={move} />
@@ -132,7 +145,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
       </h3>
       <fieldset disabled={locked} className="product-form-content">
         <section data-step={INFO} hidden={step !== INFO} aria-label="商品情報">
-          <ProductInfoFields p={values} set={set} storeSelector={storeSelector} />
+          <ProductInfoFields p={values} set={set} storeSelector={storeSelector} stockError={stockError} />
         </section>
         <section data-step={IMAGES} hidden={step !== IMAGES} aria-label="画像">
           <ProductImages
@@ -148,9 +161,7 @@ export function ProductForm({ product, storeId, storeName, storeSelector, busy, 
         <section data-step={GARDEN} hidden={step !== GARDEN} aria-label="庭オブジェクト">
           <ProductGardenStep plant={plant} draft={values} active={step === GARDEN} />
         </section>
-        {step === REVIEW && (
-          <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} />
-        )}
+        {step === REVIEW && <ProductReview draft={values} plant={plant} storeName={storeName ?? String(storeId)} />}
       </fieldset>
       <div className="wizard-footer">
         {error && (

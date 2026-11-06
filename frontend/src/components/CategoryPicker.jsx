@@ -20,7 +20,10 @@ export function CategoryPicker({ value, onChange }) {
   }
   return (
     <div className="picker-field">
-      <span className="picker-field-label">カテゴリー</span>
+      <span className="picker-field-label required-label">
+        カテゴリー
+        <span className="required-mark-text">必須</span>
+      </span>
       <input type="hidden" name="category" value={value} />
       <div className="picker-field-value">
         <strong id={currentId}>{value}</strong>
