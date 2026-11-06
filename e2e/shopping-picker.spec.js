@@ -5,7 +5,7 @@ import { ec, canvas, login, call, add, prepareMember, productInput } from './bus
 
 const evidence = 'artifacts/shopping-picker';
 
-test('product picker saves to one owned garden, remains after reload and transfers to cart', async ({
+test('product card has no shopping-list button; a saved list stays owned, survives reload and transfers to cart', async ({
   page,
   browser,
 }) => {
@@ -34,28 +34,22 @@ test('product picker saves to one owned garden, remains after reload and transfe
     const [a, b] = gardens;
     await page.goto(ec);
     const card = page.getByTestId(`product-${product.id}`);
-    const open = card.getByRole('button', { name: `${product.name}を買い物リストに追加`, exact: true });
-    const cartButton = card.getByRole('button', { name: `${product.name}をカートに追加`, exact: true });
-    await expect(open).toBeVisible();
-    const listBounds = await open.boundingBox();
-    const cartBounds = await cartButton.boundingBox();
-    expect(listBounds.x + listBounds.width).toBeLessThanOrEqual(cartBounds.x);
-    await open.click();
-    const dialog = page.getByRole('dialog', { name: '買い物リストに追加', exact: true });
-    const choose = dialog.getByRole('button', { name: `${a.name}の買い物リストに追加`, exact: true });
-    await expect(choose).toBeVisible();
-    await expect(dialog.getByRole('button', { name: `${b.name}の買い物リストに追加`, exact: true })).toBeVisible();
-    const image = choose.getByRole('img');
-    await expect.poll(() => image.evaluate((img) => img.complete && img.naturalWidth > 0)).toBeTruthy();
-    await page.screenshot({ path: `${evidence}/picker-desktop.png` });
+    // #65 カート追加ボタンと混同されるため、商品カードには「買い物リストに追加」ボタンを表示しない。
+    await expect(card.getByRole('button', { name: `${product.name}をカートに追加`, exact: true })).toBeVisible();
+    await page.reload();
+    await expect(card.getByRole('button', { name: `${product.name}をカートに追加`, exact: true })).toBeVisible();
+    await expect(card.getByRole('button', { name: /を買い物リストに追加$/ })).toHaveCount(0);
+    await expect(page.locator('.shopping-list-button')).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: '買い物リストに追加', exact: true })).toHaveCount(0);
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${evidence}/catalog-without-list-button.png` });
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(choose).toBeVisible();
-    expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBeTruthy();
-    await page.screenshot({ path: `${evidence}/picker-mobile.png` });
+    await expect(page.locator('.shopping-list-button')).toHaveCount(0);
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${evidence}/catalog-without-list-button-mobile.png` });
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await choose.click();
-    await expect(choose).toContainText('追加済み');
-    await expect(dialog.getByRole('status')).toContainText(`${a.name}に保存しました`);
+    // 買い物リストへの保存APIは残しているため、画面の代わりにAPIで保存して以降の所有者・カート移動を確認する。
+    expect((await call(page.request, `/shopping-lists/${a.id}/items/${product.id}`, 'PUT')).status()).toBe(200);
     expect(await call(page.request, '/cart').then((r) => r.json())).toEqual(beforeCart);
     expect(
       (await call(page.request, `/gardens/${a.id}`, 'GET', undefined, canvas).then((r) => r.json())).objects,
@@ -110,7 +104,9 @@ test('product picker saves to one owned garden, remains after reload and transfe
   }
 });
 
-test('picker creates a numbered garden project and saves the product into it', async ({ page, browser }) => {
+// #65 商品一覧の「買い物リストに追加」ボタンを画面から外したため、ダイアログを画面から開けない。
+// ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
+test.skip('picker creates a numbered garden project and saves the product into it', async ({ page, browser }) => {
   await mkdir(evidence, { recursive: true });
   await login(page, 'test.user@example.com');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
@@ -139,7 +135,10 @@ test('picker creates a numbered garden project and saves the product into it', a
     const added = after.filter((list) => !before.some((old) => old.gardenId === list.gardenId));
     created.push(...added);
     expect(added).toHaveLength(1);
-    const numbers = before.map((l) => /^買い物リスト(\d+)$/.exec(l.name)).filter(Boolean).map((m) => Number(m[1]));
+    const numbers = before
+      .map((l) => /^買い物リスト(\d+)$/.exec(l.name))
+      .filter(Boolean)
+      .map((m) => Number(m[1]));
     expect(added[0].name).toBe(`買い物リスト${Math.max(0, ...numbers) + 1}`);
     await page.screenshot({ path: `${evidence}/create-done.png` });
     const garden = await call(page.request, `/gardens/${added[0].gardenId}`, 'GET', undefined, canvas).then((r) =>
@@ -248,7 +247,9 @@ test('a product saved from EC appears in the Canvas list and placing it does not
   }
 });
 
-test('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
+// #65 商品一覧の「買い物リストに追加」ボタンを画面から外したため、ダイアログを画面から開けない。
+// ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
+test.skip('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
   expect((await request.get(`${ec}/api/shopping-lists`)).status()).toBe(401);
   await login(page, 'test.user@example.com');
   await page.goto(ec);
@@ -288,8 +289,16 @@ test('EC-B24/B25 cart counts, stock with the cart, select-all reasons and retry 
     await login(page, 'test.user@example.com');
     const cart = await call(page.request, '/cart').then((r) => r.json());
     if (cart.storeId !== 1)
-      expect((await call(page.request, '/cart/store', 'PUT', { storeId: 1, revision: cart.revision })).status()).toBe(200);
-    const created = await call(page.request, '/gardens', 'POST', { name: `在庫判定 ${randomUUID().slice(0, 8)}` }, canvas);
+      expect((await call(page.request, '/cart/store', 'PUT', { storeId: 1, revision: cart.revision })).status()).toBe(
+        200,
+      );
+    const created = await call(
+      page.request,
+      '/gardens',
+      'POST',
+      { name: `在庫判定 ${randomUUID().slice(0, 8)}` },
+      canvas,
+    );
     expect(created.status()).toBe(201);
     garden = await created.json();
     for (const product of products)

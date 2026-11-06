@@ -2,15 +2,18 @@ import { catalogText } from '../catalogText';
 import { useState } from 'react';
 import { Leaf, Search, X } from 'lucide-react';
 import { CatalogProducts } from './CatalogProducts';
-import { AddToShoppingList } from './AddToShoppingList';
-import { login } from '../auth';
+// #65 商品カードの「買い物リストに追加」ボタンはカート追加ボタンと区別しにくいため画面から外した。
+// 別の形で機能を戻す可能性があるため、ダイアログ（AddToShoppingList）とログイン誘導の呼び出しはコメントで残して無効化している。
+// import { AddToShoppingList } from './AddToShoppingList';
+// import { login } from '../auth';
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onDetail:(id:string)=>void}} props */
 export function Catalog({ shop, onDetail }) {
   const categories = ['すべて', ...new Set(shop.products.map((product) => product.category))];
   const [category, setCategory] = useState('すべて');
   const [search, setSearch] = useState('');
-  const [listProduct, setListProduct] = useState(/** @type {import('../types').Product|null} */ (null));
+  // #65 買い物リスト追加ダイアログの対象商品。ボタンを戻すときに有効化する。
+  // const [listProduct, setListProduct] = useState(/** @type {import('../types').Product|null} */ (null));
   const [sort, setSort] = useState('recommended');
   const [inStockOnly, setInStockOnly] = useState(false);
   const keyword = search.trim().toLowerCase();
@@ -191,10 +194,11 @@ export function Catalog({ shop, onDetail }) {
               products={products}
               onDetail={onDetail}
               onAdd={shop.add}
-              onAddToList={(product) => {
-                if (!shop.cart || shop.isGuest) login();
-                else setListProduct(product);
-              }}
+              // #65 未ログインならログインへ、ログイン中ならダイアログを開く処理。ボタンを戻すときに有効化する。
+              // onAddToList={(product) => {
+              //   if (!shop.cart || shop.isGuest) login();
+              //   else setListProduct(product);
+              // }}
               disabled={shop.busy || !shop.cart}
             />
           )}
@@ -209,7 +213,8 @@ export function Catalog({ shop, onDetail }) {
           )}
         </div>
       </div>
-      {listProduct && <AddToShoppingList product={listProduct} onClose={() => setListProduct(null)} />}
+      {/* #65 買い物リスト追加ダイアログ。ボタンを戻すときに有効化する。
+      {listProduct && <AddToShoppingList product={listProduct} onClose={() => setListProduct(null)} />} */}
     </section>
   );
 }

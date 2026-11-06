@@ -6,6 +6,9 @@ import { useShoppingData } from './useShoppingData';
 
 const NEW_LIST = '__new__';
 
+// #65 商品一覧の「買い物リストに追加」ボタンを画面から外したため、現在このダイアログはどこからも開かれない（無効化中）。
+// 別の形で庭の買い物リストへ追加する機能を戻す可能性があるため、ダイアログと保存処理は削除せずに残している。
+// 戻すときは Catalog.jsx・CatalogProducts.jsx・ProductCard.jsx の #65 のコメントアウトを有効化する。
 /** @param {{product:import('../types').Product,onClose:()=>void}} props */
 export function AddToShoppingList({ product, onClose }) {
   const data = useShoppingData('');
