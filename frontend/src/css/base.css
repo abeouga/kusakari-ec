@@ -1,14 +1,25 @@
 :root {
   font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
   color: #293a31;
-  background: #fcfbf7;
+  background: var(--surface-page-store);
   font-synthesis: none;
   --green: #294c3e;
   --ink: #293a31;
-  --muted: #737b71;
+  --muted: #666e64;
   --line: #e1e4da;
   --cream: #f5f4ed;
   --serif: 'Noto Serif JP', Georgia, serif;
+  /* Form colors in three tiers (issue #47): page background, the card that groups a form, and each field. */
+  --surface-page: #f1f0e7;
+  /* Storefront pages (cart and checkout included) keep their existing off-white page background. */
+  --surface-page-store: #fcfbf7;
+  --surface-card: #ffffff;
+  --surface-field: #f8faf5;
+  --card-border: #d3d9cb;
+  --field-border: #75826f;
+  --field-text: #263d32;
+  --field-placeholder: #636b61;
+  --field-focus: #3d6b52;
 }
 * {
   box-sizing: border-box;
@@ -51,8 +62,13 @@ a:focus-visible {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid #8ba18d;
+  outline: 2px solid var(--field-focus);
   outline-offset: 2px;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
 }
 button {
   transition:

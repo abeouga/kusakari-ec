@@ -16,9 +16,10 @@
   width: 100%;
   min-width: 0;
   padding: 10px;
-  border: 1px solid #cad6cd;
+  border: 1px solid var(--field-border);
   border-radius: 6px;
-  background: white;
+  background: var(--surface-field);
+  color: var(--field-text);
 }
 .seller-bulk,
 .seller-pagination {

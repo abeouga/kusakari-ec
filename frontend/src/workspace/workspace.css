@@ -1,6 +1,6 @@
 .workspace-shell {
   min-height: 100vh;
-  background: #f6f7f2;
+  background: var(--surface-page);
   color: #263d32;
   font:
     14px/1.7 'Yu Gothic',
@@ -75,18 +75,32 @@
   background: #42634f;
   color: white;
 }
+/* Issue #43: the fold button shares a header row with the menu name instead of floating on its own. */
+.workspace-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 6px;
+  padding-left: 13px;
+}
+.workspace-sidebar-head p {
+  margin: 0;
+}
 .workspace-shell .workspace-sidebar-toggle {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  margin: 0 0 12px auto;
+  margin: 0;
   padding: 0;
-  border: 1px solid #668372;
-  border-radius: 6px;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
-  color: #e7eee5;
+  color: #c0d0c3;
   cursor: pointer;
 }
 .workspace-shell .workspace-sidebar-toggle:hover {
@@ -100,11 +114,46 @@
 .workspace-layout.is-sidebar-closed {
   grid-template-columns: 60px minmax(0, 1fr);
 }
+.workspace-sidebar-head + .workspace-sidebar-menu > a + nav {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #668372;
+}
 .is-sidebar-closed .workspace-sidebar {
   padding-inline: 12px;
 }
-.workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
-  margin-inline: auto;
+.is-sidebar-closed .workspace-sidebar-head {
+  justify-content: center;
+  padding-left: 0;
+}
+.is-sidebar-closed .workspace-sidebar a {
+  justify-content: center;
+  gap: 0;
+  padding: 9px;
+}
+.is-sidebar-closed .workspace-sidebar-label {
+  display: none;
+}
+/* A keyboard user cannot hover for the title, so the focused icon shows its name beside the folded column. */
+@media (min-width: 601px) {
+  .is-sidebar-closed .workspace-sidebar a {
+    position: relative;
+  }
+  .is-sidebar-closed .workspace-sidebar a:focus-visible .workspace-sidebar-label {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 10px);
+    z-index: 2;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: #244c3c;
+    color: white;
+    font-size: 12px;
+    white-space: nowrap;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
 }
 .workspace-main {
   padding: 34px 4%;
@@ -120,8 +169,8 @@
   margin: 5px 0;
 }
 .workspace-card {
-  background: #fff;
-  border: 1px solid #dce2d8;
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
   border-radius: 12px;
   padding: 26px;
   margin-bottom: 20px;
@@ -164,11 +213,11 @@
   width: 100%;
   font: inherit;
   padding: 10px 12px;
-  border: 1px solid #cdd8cb;
+  border: 1px solid var(--field-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface-field);
   margin-top: 6px;
-  color: #263d32;
+  color: var(--field-text);
 }
 .workspace-shell input[type='checkbox'] {
   width: auto;
@@ -180,7 +229,7 @@
 .workspace-shell input:focus,
 .workspace-shell select:focus,
 .workspace-shell textarea:focus {
-  outline: 2px solid #6d8c6c;
+  outline: 2px solid var(--field-focus);
   outline-offset: 2px;
 }
 .workspace-form {
@@ -242,9 +291,9 @@
   margin-bottom: 24px;
 }
 .workspace-metrics section {
-  background: #fff;
+  background: var(--surface-card);
   padding: 25px;
-  border: 1px solid #dce2d8;
+  border: 1px solid var(--card-border);
   border-radius: 12px;
 }
 .workspace-metrics small {
@@ -329,9 +378,23 @@
   .workspace-layout {
     display: block;
   }
-  .workspace-shell .workspace-sidebar-toggle,
-  .workspace-shell .is-sidebar-closed .workspace-sidebar-toggle {
-    margin: 0 0 8px;
+  .workspace-sidebar-head {
+    margin-bottom: 4px;
+  }
+  .is-sidebar-closed .workspace-sidebar-head {
+    justify-content: flex-start;
+  }
+  .is-sidebar-closed .workspace-sidebar-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .is-sidebar-closed .workspace-sidebar-head + .workspace-sidebar-menu > a + nav {
+    margin: 0;
+    padding: 0 0 0 4px;
+    border-top: 0;
+    border-left: 1px solid #668372;
   }
   .workspace-sidebar {
     padding: 12px;
