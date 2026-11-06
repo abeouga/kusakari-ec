@@ -89,8 +89,29 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
     });
     expect(stale.status()).toBe(409);
     expect((await stale.json()).code).toBe('SHOPPING_LIST_CHANGED');
+    // Issue #76: the line is a cart card, the summary panel totals the selection, and the notes are gone.
+    await expect(line).toHaveClass(/cart-line/);
+    const summary = page.getByRole('complementary', { name: '選択した商品の小計' });
+    const add = summary.getByRole('button', { name: 'カートに追加', exact: true });
+    await expect(add).toBeDisabled();
+    await expect(page.locator('main')).not.toContainText('カートで店舗を変更');
+    await expect(page.locator('main')).not.toContainText('同じ商品がカートにある場合は数量を加算します');
+    await expect(page.locator('main')).not.toContainText('庭に配置した商品と、商品一覧から追加した商品を表示します');
+    for (const name of ['戻る', '庭の買い物リスト一覧へ'])
+      await expect(
+        page.getByRole(name === '戻る' ? 'link' : 'button', { name, exact: true }).locator('svg.lucide-arrow-left'),
+      ).toBeVisible();
     await line.getByRole('checkbox').check();
-    await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
+    await expect(summary).toContainText('1点');
+    await expect(summary.locator('.grand-total')).toContainText(
+      new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(product.priceYen),
+    );
+    await page.screenshot({ path: `${evidence}/list-selected.png` });
+    await page.setViewportSize({ width: 390, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `${evidence}/list-selected-390.png`, fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await add.click();
     await expect(page).toHaveURL(`${ec}/cart`);
     const afterCart = await call(page.request, '/cart').then((r) => r.json());
     expect(afterCart.items.find((i) => i.product.id === product.id).quantity).toBe(
@@ -329,7 +350,7 @@ test('EC-B24/B25 cart counts, stock with the cart, select-all reasons and retry 
 
     // 4a (fault injection): a lost request keeps the selection and can be retried.
     await page.route('**/api/cart/shopping-lists/**', (route) => route.abort());
-    await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
+    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'カートに追加されていません' })).toBeVisible();
     await expect(plentyLine.getByRole('checkbox')).toBeChecked();
     const unchanged = await call(page.request, '/cart').then((r) => r.json());

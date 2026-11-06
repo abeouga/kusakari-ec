@@ -48,17 +48,20 @@
   .shopping-list-option button > .shopping-option-action { padding: 8px; }
   .shopping-picker-description { font-size: 12px; }
 }
-.garden-shopping-actions { display: flex; gap: 12px; margin: 24px 0; }
-.garden-shopping-actions button { padding: 10px 16px; border: 1px solid #cad6c7; border-radius: 6px; background: #fff; }
-.garden-shopping-line { display: flex; align-items: flex-start; gap: 18px; padding: 22px 0; border-bottom: 1px solid #e5eade; }
-.garden-shopping-line > input { width: 20px; height: 20px; margin-top: 8px; accent-color: #285746; }
-.garden-shopping-line > img { width: 94px; height: 115px; object-fit: cover; border-radius: 8px; }
-.garden-shopping-line h3 { margin: 0; }
-.garden-shopping-line > div { min-width: 0; flex: 1; }
-.garden-shopping-line select { max-width: 100%; padding: 10px 16px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--surface-field); color: var(--field-text); }
-.garden-shopping-line > input, .garden-shopping-line > img { flex-shrink: 0; }
-.garden-shopping-line p { margin: 8px 0; }
-.garden-shopping-line label { display: grid; gap: 8px; }
+/* Issue #76: the garden list uses the cart's card (.cart-line) and summary panel; only the checkbox,
+   the no-image placeholder and the selected state are its own. */
+.garden-shopping-actions { display: flex; gap: 6px; margin: 4px 0 0; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.garden-shopping-line > input { flex-shrink: 0; width: 18px; height: 18px; margin-top: 40px; accent-color: #285746; }
+.garden-shopping-line > img, .garden-shopping-noimage { flex-shrink: 0; border-radius: 6px; }
+.garden-shopping-noimage { width: 90px; height: 112px; background: #edf1e7; }
+.garden-shopping-line .cart-line-main { min-width: 0; overflow-wrap: anywhere; }
+.garden-shopping-line label { display: grid; gap: 6px; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
+.garden-shopping-line select { max-width: 100%; padding: 8px 12px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--surface-field); color: var(--field-text); font-size: 12px; }
+.garden-shopping-section .checkout-summary .primary-button { gap: 8px; }
+/* Issue #76: back controls carry an ArrowLeft icon next to their text. */
+.shopping-page-intro .back-link { gap: 6px; }
+.garden-list-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding-left: 0; }
+.checkout-summary .back-button { display: flex; align-items: center; gap: 6px; width: fit-content; }
 .garden-transfer-result { margin: 20px 0; padding: 20px; background: #edf3e7; border: 1px solid #c9d9bf; border-radius: 10px; }
 /* The cart and garden list share one page surface; only the total is emphasized. */
 .standalone-cart-main { padding-top: 38px; }
@@ -89,8 +92,8 @@
   .garden-shopping-section { padding: 0; }
   .garden-shopping-grid article { grid-template-columns: 100px 1fr; gap: 12px; }
   .garden-list-thumbnail { width: 100px; height: 80px; }
-  .garden-shopping-line { gap: 10px; }
-  .garden-shopping-line > img { width: 60px; height: 80px; }
+  .garden-shopping-line > input { margin-top: 30px; }
+  .garden-shopping-noimage { width: 64px; height: 84px; }
   .garden-shopping-grid article button { grid-column: 2; grid-row: auto; justify-self: start; margin-top: 10px; }
   .standalone-cart-main .cart-line > img { width: 64px; height: 84px; }
   .standalone-cart-main .checkout-layout { gap: 24px; }

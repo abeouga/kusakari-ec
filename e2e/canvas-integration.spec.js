@@ -22,7 +22,7 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await expect(page).toHaveURL('http://127.0.0.1:15286/cart/gardens/' + id);
     await expect(page.getByRole('checkbox')).not.toBeChecked();
     await page.getByRole('button', { name: '全選択', exact: true }).click();
-    await page.getByRole('button', { name: '選択した商品をカートに追加', exact: true }).click();
+    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
     await expect(page).toHaveURL('http://127.0.0.1:15286/cart');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.goto('http://127.0.0.1:15286/cart#garden-shopping-lists');

@@ -48,7 +48,7 @@ test('seeded products render, drag, persist and transfer from the garden list to
     await expect(page.locator('.kusakari-site-header')).toHaveCount(1);
     await expect(page.getByRole('checkbox')).toHaveCount(6);
     await page.getByRole('button',{name:'全選択',exact:true}).click();
-    await page.getByRole('button',{name:'選択した商品をカートに追加',exact:true}).click();
+    await page.getByRole('button',{name:'カートに追加',exact:true}).click();
     await expect(page).toHaveURL(/\/cart$/);
     await expect(page.getByRole('tablist')).toHaveCount(0);
     await expect(page.locator('.cart-line')).toHaveCount(6);
