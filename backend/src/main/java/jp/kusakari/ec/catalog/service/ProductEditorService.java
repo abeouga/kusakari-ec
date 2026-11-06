@@ -38,6 +38,8 @@ public class ProductEditorService {
     auth.requireSeller(input.getStoreId());
     catalog.requireStore(input.getStoreId());
     categories.require(input.getCategory());
+    // A new product is listed with at least one in stock; only an edit may set 0 to mark it sold out (issue #72).
+    if (input.getStock() < 1) throw new ApiException(400, "STOCK_REQUIRED", "在庫は1以上にしてください。");
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
     if (auth.enabled()) product.setOwnerMemberId(auth.current().getId());

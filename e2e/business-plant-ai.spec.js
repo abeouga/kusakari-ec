@@ -49,6 +49,8 @@ test('plant AI validates input and preserves form on missing credentials or disc
   const form = page.locator('.product-form');
   await form.getByLabel('商品名', { exact: true }).fill(input.name);
   await form.getByLabel('商品説明', { exact: true }).fill(input.description);
+  // A new product needs at least one in stock (issue #72).
+  await form.getByLabel('選択店舗の在庫', { exact: true }).fill('1');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await expect(form.locator('.wizard-heading')).toHaveText('画像');
   await addImages(form);
@@ -131,6 +133,8 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   await form.getByLabel('商品名', { exact: true }).fill('モンステラ');
   await chooseCategory(page, form, '観葉植物');
   await form.getByLabel('商品説明', { exact: true }).fill('モンステラ。緑の切れ込み葉がある鉢植えです。');
+  // A new product needs at least one in stock (issue #72).
+  await form.getByLabel('選択店舗の在庫', { exact: true }).fill('1');
   await form.getByRole('button', { name: '次へ', exact: true }).click();
   await addImages(form);
   await form.getByRole('button', { name: '次へ', exact: true }).click();

@@ -19,6 +19,8 @@ test('product images persist after editing and removed guidance is unavailable',
   const name = `商品画像検証用植物 ${Date.now()}`;
   await form.getByLabel('商品名', { exact: true }).fill(name);
   await form.getByLabel('商品説明', { exact: true }).fill('画像選択と商品編集の検証。');
+  // A new product needs at least one in stock (issue #72).
+  await form.getByLabel('選択店舗の在庫', { exact: true }).fill('1');
   await expect(form.locator('[name="imageUrl"],[name="images"],[name="care"],[name="minTemperatureC"]')).toHaveCount(0);
   await form.locator('summary').getByText('詳しい情報', { exact: true }).click();
   await expect(

@@ -34,7 +34,7 @@
 
 | メソッド | パス | 内容 |
 |---|---|---|
-| POST | `/products` | 商品を登録。選択店舗に指定在庫、他店舗に在庫0を設定 |
+| POST | `/products` | 商品を登録。選択店舗に指定在庫、他店舗に在庫0を設定。選択店舗の在庫が1未満なら400 `STOCK_REQUIRED` で何も保存しない（編集の`PUT`は売り切れとして0を許可） |
 | PUT | `/products/{id}` | 商品属性・画像と選択店舗の在庫を更新。`expectedStock`（省略時は`stock`）が現在の在庫と異なれば409 `STOCK_CHANGED` で何も保存しない |
 | PUT | `/seller/products/{id}/stock` | `{storeId, expectedStock, stock}`。選択店舗の在庫だけを更新。在庫行をロックして`expectedStock`と照合し、異なれば409 `STOCK_CHANGED` |
 | DELETE | `/products/{id}` | 販売終了。カート・注文記録は保持 |

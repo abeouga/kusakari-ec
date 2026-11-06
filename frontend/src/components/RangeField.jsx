@@ -71,7 +71,9 @@ export function RangeField({
   return (
     <div className="range-field" data-invalid={error ? 'true' : undefined}>
       <div className="range-field-head">
-        <label htmlFor={id}>{label}</label>
+        <label htmlFor={id} className={required ? 'required-label' : undefined}>
+          {label}
+        </label>
         {aside}
       </div>
       <div className="range-field-controls">
