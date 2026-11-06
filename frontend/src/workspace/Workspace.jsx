@@ -3,18 +3,7 @@ import { ProfilePage } from './PartnerForms';
 import { ApplicationPage, ApplicationStatusPage, applicationPaths, applicationsChanged } from './StoreApplication';
 import { useResource } from './useResource';
 import { useEffect, useState } from 'react';
-import {
-  Bell,
-  ChartColumn,
-  ClipboardCheck,
-  LayoutDashboard,
-  Package,
-  ReceiptText,
-  Store,
-  Tags,
-  UserRound,
-  Users,
-} from 'lucide-react';
+import { Bell, ChartColumn, ClipboardCheck, Package, ReceiptText, Store, Tags, UserRound, Users } from 'lucide-react';
 import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -30,7 +19,6 @@ import { AuthPanel } from '../components/AuthPanel';
 /** @typedef {import('./WorkspaceSidebar').MenuItem} MenuItem */
 /** @type {MenuItem[]} */
 const sellerMenu = [
-  ['/seller', 'ダッシュボード', LayoutDashboard],
   ['/seller/products', '商品管理', Package],
   ['/seller/orders', '店舗受け取り', Store],
   ['/seller/sales', '注文実績', ChartColumn],
@@ -141,14 +129,14 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/purchases') content = <BuyerOrders />;
   else if (path.endsWith('/notifications')) content = <Notices />;
   else if (path === '/seller/products')
-    content = <ProductManager shop={shop} onClose={() => navigate('/seller')} embedded />;
+    content = <ProductManager shop={shop} onClose={() => navigate('/seller/products')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
   else if (path === '/seller/profile') content = <ProfilePage storeId={storeId} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage role={session.role} />;
   else if (application) content = <ApplicationPage role={session.role} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
     content = <OrderPage storeId={storeId} operator={operator} />;
-  else if (path === '/seller/sales' || path === '/seller') content = <SalesPage storeId={storeId} />;
+  else if (path === '/seller/sales') content = <SalesPage storeId={storeId} />;
   else if (path === '/operator/applications') content = <ReviewPage />;
   else if (path === '/operator/products') content = <ReviewPage products />;
   else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')

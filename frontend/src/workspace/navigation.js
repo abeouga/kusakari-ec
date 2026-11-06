@@ -26,8 +26,9 @@ function currentPath() {
   if (new URLSearchParams(window.location.search).get('panel') === 'orders') {
     window.history.replaceState(window.history.state, '', '/purchases');
   }
-  if (window.location.pathname === '/seller/messages') {
-    window.history.replaceState(window.history.state, '', '/seller');
+  // Issue #75: 出店者ダッシュボードは注文実績と重複していたため削除し、出店者画面の入口は商品管理です。
+  if (window.location.pathname === '/seller' || window.location.pathname === '/seller/messages') {
+    window.history.replaceState(window.history.state, '', '/seller/products');
   }
   return window.location.pathname + window.location.hash;
 }

@@ -121,7 +121,8 @@ export default function App() {
       )}
     </>
   );
-  if (path === '/account/login' || panel === 'login') return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
+  if (path === '/account/login' || panel === 'login')
+    return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
   if (workspace) {
     return <Workspace shop={shop} path={path} header={header} />;
   }
@@ -244,7 +245,7 @@ export default function App() {
           <p>植物と、暮らす。</p>
         </div>
         <div className="footer-links">
-          <PageLink href="/seller">出店者ポータル</PageLink>
+          <PageLink href="/seller/products">出店者ポータル</PageLink>
           <button onClick={() => open('manage')}>商品管理</button>
           <button onClick={() => open('guide')}>ご利用ガイド</button>
           <button onClick={() => open('stores')}>店舗一覧</button>
