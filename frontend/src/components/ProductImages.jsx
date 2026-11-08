@@ -53,6 +53,10 @@ export function ProductImages({ main, extra, onChange, onBusy }) {
   }
   return (
     <div className="product-image-picker" data-testid="product-images">
+      <p className="product-image-label required-label">
+        商品画像
+        <span className="required-mark-text">必須</span>
+      </p>
       <p className="product-image-intro">
         商品一覧と商品詳細に表示する写真です。1枚目がメイン画像になり、庭オブジェクトのAI推定にも使います。
       </p>

@@ -60,6 +60,8 @@ test('garden step previews automatically, guides required input and saves groupe
     const form = page.locator('.product-form');
     await form.getByLabel('商品名', { exact: true }).fill(`庭オブジェクト確認 ${width}px ${Date.now()}`);
     await form.getByLabel('商品説明', { exact: true }).fill('庭オブジェクトの自動プレビューを確認します。');
+    // A new product needs at least one in stock (issue #72).
+    await form.getByLabel('選択店舗の在庫', { exact: true }).fill('1');
     await form.getByRole('button', { name: '次へ', exact: true }).click();
     await addImages(form);
     await form.getByRole('button', { name: '次へ', exact: true }).click();
@@ -319,6 +321,8 @@ test('non-plant category keeps only the product height and saves no plant model'
     const form = page.locator('.product-form');
     await form.getByLabel('商品名', { exact: true }).fill(`庭材の確認 ${width}px ${Date.now()}`);
     await form.getByLabel('商品説明', { exact: true }).fill('植物以外のカテゴリーの出品を確認します。');
+    // A new product needs at least one in stock (issue #72).
+    await form.getByLabel('選択店舗の在庫', { exact: true }).fill('1');
     await form.getByRole('button', { name: 'カテゴリーを選ぶ', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'カテゴリーを選ぶ', exact: true });
     await dialog.getByLabel('カテゴリー名で絞り込み').fill(category);
