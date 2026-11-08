@@ -102,6 +102,8 @@ test('guest cart requires checkout login, merges only after authentication and r
     const expected = (saved.items.find((line) => line.product.id === product.id)?.quantity ?? 0) + 1;
     await expect.poll(async () => (await call(page.request, '/cart').then((r) => r.json())).items.find((line) => line.product.id === product.id)?.quantity).toBe(expected);
     await page.unroute('**/api/cart/guest-items');
+    // Issue #63: the handoff screen's "カートに戻る" link carries the same arrow as the other back links.
+    await expect(page.getByRole('link', { name: 'カートに戻る', exact: true }).locator('svg.lucide-arrow-left')).toBeVisible();
     await page.getByRole('button', { name: 'カートを引き継いで続ける', exact: true }).click();
     await expect(page).toHaveURL(ec + '/cart');
     await page.reload();

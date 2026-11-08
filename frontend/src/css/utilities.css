@@ -77,6 +77,13 @@
 .workspace-shell .page-back-button:hover {
   background: #edf2e9;
 }
+/* Issue #63: links that leave the page keep the arrow next to the text, like .page-back-button. */
+.back-link,
+.outline-button.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .icon-button {
   border: 0;
   background: none;
