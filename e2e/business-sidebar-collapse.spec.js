@@ -4,19 +4,21 @@ import { ec, capture, login, prepareMember } from './business-helpers.js';
 
 test.use({ trace: 'off' });
 
-const sellerMenu = ['ダッシュボード', '商品管理', '店舗受け取り', '注文実績', '店舗プロフィール', '出店者通知'];
+const sellerMenu = ['商品管理', '店舗受け取り', '注文実績', '店舗プロフィール', '出店者通知'];
 const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出店審査', '店舗管理', '全注文管理'];
 
 // Issue #27: seller and operator sidebars can be folded so wide tables get the full width.
 // Issue #43: every item carries an icon, and the folded sidebar keeps the icons as a working menu.
-for (const [role, email, group, labels, start, startTitle, next, title] of [
+// Issue #75: the seller dashboard is gone; /seller opens product management, the first seller page.
+for (const [role, email, group, labels, entry, start, startTitle, next, title] of [
   [
     'SELLER',
     'test.seller@example.com',
     '出店者メニュー',
     sellerMenu,
     '/seller',
-    'ダッシュボード',
+    '/seller/products',
+    '商品管理',
     '/seller/orders',
     '店舗受け取り',
   ],
@@ -25,6 +27,7 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
     'test.admin@example.com',
     '運営者メニュー',
     operatorMenu,
+    '/operator',
     '/operator/members',
     '会員管理',
     '/operator/categories',
@@ -39,7 +42,8 @@ for (const [role, email, group, labels, start, startTitle, next, title] of [
     prepareMember(await login(page, email), role);
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`${ec}${start}`);
+      await page.goto(`${ec}${entry}`);
+      await expect(page).toHaveURL(`${ec}${start}`);
       const sidebar = page.locator('.workspace-sidebar');
       const main = page.locator('.workspace-main');
       const nav = sidebar.getByRole('navigation', { name: group, exact: true });

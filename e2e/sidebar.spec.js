@@ -49,14 +49,16 @@ test('direct account entry falls back to the shop and sidebars have icons on des
     for (const role of ['seller', 'operator']) {
       await page.goto(`/${role}`);
       const menu = sidebar.locator('nav > a');
-      const count = role === 'seller' ? 8 : 6;
+      const count = role === 'seller' ? 7 : 6;
       await expect(menu).toHaveCount(count);
       await expect(menu.locator('svg')).toHaveCount(count);
       await expect(sidebar.locator(':scope > a svg')).toHaveCount(0);
       await expect(sidebar.getByRole('link', { name: 'アカウント管理', exact: true })).toHaveCount(0);
       await expect(sidebar.getByRole('button', { name: '戻る', exact: true })).toHaveCount(1);
       if (role === 'seller') {
-        await expect(menu.nth(0)).toHaveText('ダッシュボード');
+        await expect(page).toHaveURL(/\/seller\/products$/);
+        await expect(menu.nth(0)).toHaveText('商品管理');
+        await expect(sidebar.getByRole('link', { name: 'ダッシュボード', exact: true })).toHaveCount(0);
         await expect(menu.nth(1)).toHaveText('出店申請');
         await expect(sidebar.getByRole('link', { name: 'お問い合わせ', exact: true })).toHaveCount(0);
         await expect(sidebar.getByRole('link', { name: '購入者サイトへ戻る', exact: true })).toHaveCount(0);
@@ -65,7 +67,7 @@ test('direct account entry falls back to the shop and sidebars have icons on des
         await expect(page).toHaveURL(/\/$/);
         await expect(page.locator('.hero')).toBeVisible();
         await page.goto('/seller/messages');
-        await expect(page).toHaveURL(/\/seller$/);
+        await expect(page).toHaveURL(/\/seller\/products$/);
       }
       if (role === 'operator') {
         await expect(page).toHaveURL(/\/operator\/members$/);
