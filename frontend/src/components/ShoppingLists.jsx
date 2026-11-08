@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Plus } from 'lucide-react';
 import { yen } from '../api';
 import { navigate } from '../workspace/navigation';
+import { PageLink } from '../workspace/Common';
 import { useShoppingData } from './useShoppingData';
 import { chosenProduct as productFor, lineReason, quantityInCart } from '../shoppingSelection';
 
@@ -20,12 +21,15 @@ export function ShoppingListOverview() {
     {data.error && <p role="alert">{data.error}<button type="button" onClick={data.reload}>再取得</button></p>}
     {!data.loading && !data.error && data.lists.length === 0 && <p>庭はまだありません。</p>}
     <div className="garden-shopping-grid">{data.lists.map(list => <article key={list.gardenId} data-testid={'garden-list-' + list.gardenId}>
-      <img className="garden-list-thumbnail" loading="lazy" src={'/api/shopping-lists/' + encodeURIComponent(list.gardenId) + '/thumbnail?v=' + encodeURIComponent(list.thumbnailVersion)} alt={list.name + 'の庭のイメージ'}/>
-      <div className="garden-list-description"><h3>{list.name}</h3><p>{list.productCount}種類・必要数 {list.itemCount}点</p>
-      <p className="fine-print">更新 {new Date(list.updatedAt).toLocaleString('ja-JP')}</p>
-      {list.itemCount === 0 && <p>買い物リストは空です。</p>}
-      <small className="fine-print">{thumbnailLabel(list.thumbnailVersion)}</small></div>
-      <button type="button" className="secondary-button" onClick={() => navigate('/cart/gardens/' + list.gardenId)}>買い物リストを開く</button>
+      {/* Issue #62: the whole card is the link, so the thumbnail and description open the list too. */}
+      <PageLink className="garden-list-card" href={'/cart/gardens/' + encodeURIComponent(list.gardenId)} label={list.name + 'の買い物リストを開く'}>
+        <img className="garden-list-thumbnail" loading="lazy" src={'/api/shopping-lists/' + encodeURIComponent(list.gardenId) + '/thumbnail?v=' + encodeURIComponent(list.thumbnailVersion)} alt={list.name + 'の庭のイメージ'}/>
+        <div className="garden-list-description"><h3>{list.name}</h3><p>{list.productCount}種類・必要数 {list.itemCount}点</p>
+        <p className="fine-print">更新 {new Date(list.updatedAt).toLocaleString('ja-JP')}</p>
+        {list.itemCount === 0 && <p>買い物リストは空です。</p>}
+        <small className="fine-print">{thumbnailLabel(list.thumbnailVersion)}</small></div>
+        <ChevronRight className="garden-list-chevron" size={20} aria-hidden="true"/>
+      </PageLink>
     </article>)}</div>
   </section>;
 }
