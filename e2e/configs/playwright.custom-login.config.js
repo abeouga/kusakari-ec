@@ -1,9 +1,10 @@
 import { defineConfig } from '@playwright/test';
+import { fromRoot } from './paths.js';
 import { readFileSync } from 'node:fs';
 import base from './playwright.auth.config.js';
 
 const local = Object.fromEntries(
-  readFileSync(new URL('./.env', import.meta.url), 'utf8')
+  readFileSync(fromRoot('.env'), 'utf8')
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .filter((line) => line && !line.startsWith('#') && line.includes('='))
@@ -21,8 +22,8 @@ export default defineConfig({
   ...base,
   testMatch: ['custom-login.spec.js', 'signup-card.spec.js'],
   timeout: 90000,
-  reporter: [['list'], ['json', { outputFile: 'artifacts/custom-login/report.json' }]],
-  outputDir: 'artifacts/custom-login/results',
+  reporter: [['list'], ['json', { outputFile: fromRoot('artifacts/custom-login/report.json') }]],
+  outputDir: fromRoot('artifacts/custom-login/results'),
   // Requests contain real credentials: never record browser traces or HARs.
   use: { ...base.use, trace: 'off' },
   webServer: servers.map((server, index) =>

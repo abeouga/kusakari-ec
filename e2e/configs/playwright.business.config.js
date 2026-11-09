@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { fromRoot } from './paths.js';
 import base from './playwright.custom-login.config.js';
 
 export default defineConfig({
@@ -7,8 +8,8 @@ export default defineConfig({
   timeout: 180000,
   expect: { timeout: 20000 },
   workers: 1,
-  reporter: [['list'], ['json', { outputFile: 'artifacts/business/report.json' }]],
-  outputDir: 'artifacts/business/results',
+  reporter: [['list'], ['json', { outputFile: fromRoot('artifacts/business/report.json') }]],
+  outputDir: fromRoot('artifacts/business/results'),
   use: { ...base.use, trace: 'off', viewport: { width: 1440, height: 1000 } },
   webServer: base.webServer.map((server, index) =>
     index === 0
