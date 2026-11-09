@@ -4,8 +4,8 @@ import { Cart } from './Cart';
 import { ShoppingTransferNotice } from './GardenItemsDialog';
 import { PageLink } from '../workspace/Common';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,header:import('react').ReactNode}} props */
-export function CartPage({ shop, onStores, header }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,header:import('react').ReactNode}} props */
+export function CartPage({ shop, header }) {
   return <>
     {header}
     <main className="standalone-cart-main">
@@ -13,7 +13,7 @@ export function CartPage({ shop, onStores, header }) {
         <PageLink className="text-link back-link" href="/#plants"><ArrowLeft size={16} aria-hidden />戻る</PageLink>
       </div>
       <div>
-        <ShoppingTransferNotice shop={shop}/><Cart shop={shop} onStores={onStores}/>
+        <ShoppingTransferNotice shop={shop}/><Cart shop={shop}/>
       </div>
     </main>
     <footer className="site-footer cart-page-footer">

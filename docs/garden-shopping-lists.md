@@ -52,7 +52,7 @@ Canvasで `npm run test:shopping`。ECの既存購入・出品の回帰は `npm 
 
 ### Verification
 
-`npx playwright test --config playwright.shopping-picker.config.js` で実Cognito・実API・専用MySQLを使う。左右の配置、庭名・画像、390px表示、保存後の再読み込み、庭別・所有者別の分離、並行再送の冪等性、配置とカートの不変、古いEC版の拒否、購入カート移送、通信障害時の再取得を確認する。画面とAPI JSONは `artifacts/shopping-picker/` に保存する。
+`npx playwright test --config e2e/configs/playwright.shopping-picker.config.js` で実Cognito・実API・専用MySQLを使う。左右の配置、庭名・画像、390px表示、保存後の再読み込み、庭別・所有者別の分離、並行再送の冪等性、配置とカートの不変、古いEC版の拒否、購入カート移送、通信障害時の再取得を確認する。画面とAPI JSONは `artifacts/shopping-picker/` に保存する。
 
 2026-10-20の実行結果：2件成功。型チェック・lint・フロントビルド・Javaビルド成功。PC（1440px）とスマートフォン（390px）の実画面を確認。開発APIを8086で再起動し、healthの `status=ok` を確認した。
 
@@ -116,4 +116,4 @@ APIとDBスキーマは変更しない。ポップアップではカートにあ
 
 ### Verification
 
-`npx playwright test --config playwright.business.config.js business-canvas-cart-popup business-cart-add-from-garden`（実Cognito・実API・専用MySQL）。Canvasの「リストを確認」→ ポップアップで庭が選ばれている → 追加 → 再読み込み後もカートに残る、古いURLの転送、ゲストのログイン案内を確認する。画面とJSONは `artifacts/business/canvas-cart-popup/` に保存する。
+`npx playwright test --config e2e/configs/playwright.business.config.js business-canvas-cart-popup business-cart-add-from-garden`（実Cognito・実API・専用MySQL）。Canvasの「リストを確認」→ ポップアップで庭が選ばれている → 追加 → 再読み込み後もカートに残る、古いURLの転送、ゲストのログイン案内を確認する。画面とJSONは `artifacts/business/canvas-cart-popup/` に保存する。

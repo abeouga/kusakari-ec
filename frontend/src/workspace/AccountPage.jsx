@@ -2,7 +2,6 @@ import { AuthPanel } from '../components/AuthPanel';
 import { DeliveryForm } from '../components/DeliveryForm';
 import { useResource, write } from './useResource';
 import { ResourceStatus } from './ResourceView';
-import { login } from '../auth';
 import { PasswordForm, WithdrawalForm } from './AccountSecurity';
 export const accountActions = [
   ['/account/login', 'ログイン'],
@@ -16,7 +15,7 @@ export const accountActions = [
 export function AccountPage({ tab }) {
   // Issue #11: purchases are picked up at the store, so the account keeps no postal address.
   const resource = useResource(tab === '受取連絡先' ? '/account/pickup-contact' : '/auth/me');
-  if (tab === '新規登録') return <button onClick={() => login(true)}>Cognitoで新規登録</button>;
+  if (tab === '新規登録') return <AuthPanel initialMode="signup" />;
   if (tab === 'パスワードリセット')
     return <a href="/api/auth/login?managed=true&returnTo=%2Faccount">Cognitoでパスワードを再設定</a>;
   if (tab === 'ログイン' || tab === 'アカウント情報') return <AuthPanel />;

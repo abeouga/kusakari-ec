@@ -34,6 +34,6 @@
 - サムネイルの生成履歴テストは専用DBの画像保存フィクスチャ。外部の有料画像生成は実行していない。
 - 通常DBは変更前後の行数・ハッシュで既存業務データの維持を確認。通常環境には「6種類の植物を比べる庭」を作成し、6モデルを配置して保存した。
 
-実行: `npx playwright test --config playwright.cart-ux.config.js`。画像・API JSONは `artifacts/e2e/cart-ux/`、通常環境の展示庭は `artifacts/cart-ux/normal-garden.json`。
+実行: `npx playwright test --config e2e/configs/playwright.cart-ux.config.js`。画像・API JSONは `artifacts/e2e/cart-ux/`、通常環境の展示庭は `artifacts/cart-ux/normal-garden.json`。
 
 通常DBと専用E2E DBで6商品のID・名前・価格・画像パス・特徴・3D構成が一致することを確認した。既存7庭のキャプチャも作成し、計8庭のサムネイルを取得できる。撮影前後のGardenDocumentは一致した。証跡は `artifacts/cart-ux/cross-database-products.json` と `thumbnail-backfill.json`。

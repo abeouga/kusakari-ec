@@ -48,7 +48,7 @@ ECルート:
 ```powershell
 npm run check
 npm run test:e2e
-npx playwright test --config playwright.integration.config.js
+npx playwright test --config e2e/configs/playwright.integration.config.js
 ```
 
 Canvasルート:

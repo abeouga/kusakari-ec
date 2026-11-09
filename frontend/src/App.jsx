@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, X, ListTree } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, X } from 'lucide-react';
 import { useShop } from './useShop';
 import { BrandIcon } from './components/BrandIcon';
 import { usePath, navigate } from './workspace/navigation';
@@ -14,7 +14,6 @@ import { HeroProductCarousel } from './components/HeroProductCarousel';
 import { Dialog } from './components/Dialog';
 import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
-import { Materials } from './components/Materials';
 import { LoginPage } from './components/LoginPage';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { StickyHeader } from './components/StickyHeader';
@@ -70,7 +69,7 @@ export default function App() {
   function close() {
     setPanel('');
     setDetailId('');
-    shop.setLastOrder(null);
+    shop.setLastOrders(null);
   }
   /** @param {string} next */
   function open(next) {
@@ -128,10 +127,7 @@ export default function App() {
 
   if (path === '/cart') {
     return (
-      <>
-        <CartPage shop={shop} header={header} onStores={() => open('stores')} />
-        {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-      </>
+      <CartPage shop={shop} header={header} />
     );
   }
 
@@ -185,26 +181,6 @@ export default function App() {
         </section>
 
         <Catalog shop={shop} onDetail={openDetail} />
-
-        <section className="material-banner section-container">
-          <div className="material-illustration">
-            <ListTree size={44} strokeWidth={1} />
-            <span>PLAN → PLANT</span>
-          </div>
-          <div>
-            <p className="eyebrow">FROM YOUR GARDEN PLAN</p>
-            <h2>庭の計画を、ひと鉢ずつ。</h2>
-            <p>
-              材料リストから、必要な植物と購入個数を確認。
-              <br />
-              理想の庭へ、次の一歩を。
-            </p>
-          </div>
-          <button className="outline-button" onClick={() => open('materials')} disabled={!shop.cart}>
-            材料リストから探す
-            <ArrowUpRight size={19} />
-          </button>
-        </section>
 
         <section className="editorial section-container">
           <div>
@@ -277,7 +253,6 @@ export default function App() {
         />
       )}
       {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-      {panel === 'materials' && <Materials shop={shop} onClose={close} />}
       {panel === 'manage' && <ProductManager shop={shop} onClose={close} />}
       {panel === 'guide' && (
         <Dialog title="Kusakariについて" onClose={close}>
@@ -294,11 +269,6 @@ export default function App() {
             <h4>お買い物について</h4>
             <p>価格はすべて税込です。店舗受け取りは無料です。</p>
             <p>カートと注文履歴はログイン中のアカウントに保存されます。再ログイン後も確認できます。</p>
-            <h4>材料リストについて</h4>
-            <p>
-              材料コードから商品候補を検索できます。Kusakari
-              Canvasの配置一覧から商品候補を確認し、選んだ商品をカートに追加できます。
-            </p>
           </div>
         </Dialog>
       )}

@@ -5,6 +5,7 @@ import static jp.kusakari.ec.commerce.dto.CommerceDtos.CartView;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,16 +47,24 @@ public class CartService {
   public CartView updateItem(String id, String productId, ItemRequest request) {
     CartEntity cart = requireLockedCart(id);
     checkRevision(cart, request.revision());
-    ProductView product = catalog.product(productId, cart.getStoreId());
+    CartItemId itemId = new CartItemId(id, productId);
+    var existing = items.findById(itemId);
+    // Issue #70: a line keeps the pickup store recorded when it was added; new lines use the sale store.
+    ProductView product = existing.isPresent()
+      ? catalog.product(productId, existing.get().pickupStoreId(cart))
+      : catalog
+        .productsAtSaleStores(cart.getStoreId(), List.of(productId))
+        .stream()
+        .findFirst()
+        .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
 
     if (request.quantity() > 0 && !product.active()) {
       throw new ApiException(409, "PRODUCT_ARCHIVED", "この商品は販売を終了しています。カートから削除してください。");
     }
     if (request.quantity() > product.stock()) {
-      throw new ApiException(409, "OUT_OF_STOCK", "選択した店舗の在庫が不足しています。");
+      throw new ApiException(409, "OUT_OF_STOCK", "受取店舗の在庫が不足しています。");
     }
 
-    CartItemId itemId = new CartItemId(id, productId);
     List<CartItemEntity> currentItems = items.findAllForCart(id);
     boolean isNewProduct = currentItems.stream().noneMatch(item -> item.getId().getProductId().equals(productId));
     if (request.quantity() > 0 && isNewProduct && currentItems.size() >= 50) {
@@ -63,9 +72,9 @@ public class CartService {
     }
 
     if (request.quantity() == 0) {
-      items.findById(itemId).ifPresent(items::delete);
+      existing.ifPresent(items::delete);
     } else {
-      CartItemEntity item = items.findById(itemId).orElseGet(() -> new CartItemEntity(itemId, 0));
+      CartItemEntity item = existing.orElseGet(() -> new CartItemEntity(itemId, 0, product.sellerStoreId()));
       item.setQuantity(request.quantity());
       items.save(item);
     }
@@ -81,9 +90,14 @@ public class CartService {
       throw new ApiException(409, "CART_CHANGED", "受取店舗が変更されました。最新の内容を確認してください。");
     }
     var requestedIds = additions.stream().map(Addition::productId).distinct().toList();
-    var products = catalog.productsByIds(storeId, requestedIds).stream().collect(Collectors.toMap(ProductView::id, p -> p));
     Map<String, CartItemEntity> current = new LinkedHashMap<>();
     for (var item : items.findAllForCart(id)) current.put(item.getId().getProductId(), item);
+    Map<String, Long> recordedStores = new HashMap<>();
+    requestedIds.stream().filter(current::containsKey)
+      .forEach(productId -> recordedStores.put(productId, current.get(productId).pickupStoreId(cart)));
+    Map<String, ProductView> products = new HashMap<>(catalog.productsAt(recordedStores));
+    var newIds = requestedIds.stream().filter(productId -> !current.containsKey(productId)).toList();
+    catalog.productsAtSaleStores(storeId, newIds).forEach(product -> products.put(product.id(), product));
     List<Outcome> added = new ArrayList<>();
     List<Outcome> skipped = new ArrayList<>();
     for (var addition : additions) {
@@ -94,11 +108,13 @@ public class CartService {
       String message = "";
       if (product == null || !product.active()) { code = "PRODUCT_ARCHIVED"; message = "販売終了または商品が見つかりません。"; }
       else if (next > 99) { code = "QUANTITY_LIMIT"; message = "追加すると商品数量の上限99点を超えます。"; }
-      else if (next > product.stock()) { code = "OUT_OF_STOCK"; message = "選択店舗の在庫が不足しています。"; }
+      else if (next > product.stock()) { code = "OUT_OF_STOCK"; message = "受取店舗の在庫が不足しています。"; }
       else if (existing == null && current.size() >= 50) { code = "CART_LIMIT"; message = "カートの商品種類の上限50種類を超えます。"; }
       var outcome = new Outcome(addition.productId(), addition.name(), addition.quantity(), code, message);
       if (!code.isEmpty()) { skipped.add(outcome); continue; }
-      var item = existing == null ? new CartItemEntity(new CartItemId(id, addition.productId()), 0) : existing;
+      var item = existing == null
+        ? new CartItemEntity(new CartItemId(id, addition.productId()), 0, product.sellerStoreId())
+        : existing;
       item.setQuantity(next);
       items.save(item);
       current.put(addition.productId(), item);
@@ -143,7 +159,7 @@ public class CartService {
     // Validate every line before changing the authenticated cart; failures roll back the entire import.
     if (cart.getStoreId() != request.storeId()) cart.selectStore(request.storeId());
     for (var input : request.items()) {
-      var item = current.getOrDefault(input.productId(), new CartItemEntity(new CartItemId(id, input.productId()), 0));
+      var item = current.getOrDefault(input.productId(), new CartItemEntity(new CartItemId(id, input.productId()), 0, request.storeId()));
       item.setQuantity(input.quantity());
       items.save(item);
     }
@@ -153,22 +169,25 @@ public class CartService {
 
   public CartView view(CartEntity cart) {
     List<CartItemEntity> cartItems = items.findAllForCart(cart.getId());
-    var productIds = cartItems.stream().map(item -> item.getId().getProductId()).toList();
-    Map<String, ProductView> products = catalog
-      .productsByIds(cart.getStoreId(), productIds)
+    Map<String, Long> storeByProduct = cartItems
       .stream()
-      .collect(Collectors.toMap(ProductView::id, product -> product));
+      .collect(Collectors.toMap(item -> item.getId().getProductId(), item -> item.pickupStoreId(cart)));
+    Map<String, ProductView> products = catalog.productsAt(storeByProduct);
+    Map<Long, String> storeNames = new HashMap<>();
     List<CartLine> lines = cartItems
       .stream()
       .map(item -> {
         ProductView product = products.get(item.getId().getProductId());
         if (product == null) throw new IllegalStateException("Cart contains an unknown product.");
         int lineTotal = Math.multiplyExact(product.priceYen(), item.getQuantity());
+        long storeId = item.pickupStoreId(cart);
         return new CartLine(
           product,
           item.getQuantity(),
           lineTotal,
-          product.active() && product.stock() >= item.getQuantity()
+          product.active() && product.stock() >= item.getQuantity(),
+          storeId,
+          storeNames.computeIfAbsent(storeId, catalog::storeName)
         );
       })
       .toList();

@@ -187,36 +187,6 @@
     font-size: 8px;
     line-height: 1.8;
   }
-  .material-banner {
-    flex-wrap: wrap;
-    padding-block: 27px;
-    gap: 18px;
-  }
-  .material-illustration {
-    width: 66px;
-    height: 104px;
-  }
-  .material-illustration svg {
-    width: 33px;
-  }
-  .material-illustration span {
-    font-size: 6px;
-  }
-  .material-banner h2 {
-    font-size: 18px;
-    letter-spacing: 0.5px;
-  }
-  .material-banner .eyebrow {
-    font-size: 7px;
-    letter-spacing: 1px;
-  }
-  .material-banner p:not(.eyebrow) {
-    font-size: 10px;
-  }
-  .material-banner > button {
-    margin: 0 0 0 84px;
-    font-size: 10px;
-  }
   .editorial {
     padding-block: 45px;
     grid-template-columns: 1fr;

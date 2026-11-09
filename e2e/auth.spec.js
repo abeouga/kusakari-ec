@@ -38,7 +38,7 @@ test('anonymous catalog remains usable; personal EC and Canvas data is denied', 
 });
 
 test('authorization start uses code and S256 PKCE; invalid callback cannot authenticate', async ({ request }) => {
-  const first = await request.get('/api/auth/login?signup=true&returnTo=https%3A%2F%2Funtrusted.example%2F', {
+  const first = await request.get('/api/auth/login?managed=true&returnTo=https%3A%2F%2Funtrusted.example%2F', {
     maxRedirects: 0,
   });
   expect(first.status()).toBe(302);
@@ -51,7 +51,8 @@ test('authorization start uses code and S256 PKCE; invalid callback cannot authe
   expect(provider.searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);
   expect(provider.searchParams.get('state')).toBeTruthy();
   expect(provider.searchParams.get('nonce')).toBeTruthy();
-  expect(provider.searchParams.get('screen_hint')).toBe('signup');
+  // Issue #87: sign-up happens in the custom login card, so the Hosted UI is never asked for its sign-up screen.
+  expect(provider.searchParams.get('screen_hint')).toBeNull();
   expect(provider.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:15286/api/auth/callback/cognito');
   const cookie = (await request.storageState()).cookies.find((value) => value.name === 'KUSAKARI_SESSION');
   expect(cookie?.httpOnly).toBe(true);

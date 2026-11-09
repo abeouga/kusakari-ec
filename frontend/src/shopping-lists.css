@@ -61,8 +61,6 @@
 .standalone-cart-main .cart-content { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .cart-content h2 { margin: 0 0 12px; font-size: 24px; font-weight: 500; }
 .standalone-cart-main .cart-empty-state { padding-top: 26px; }
-.standalone-cart-main .cart-store { background: transparent; padding: 0 0 18px; border-bottom: 1px solid var(--line); }
-.standalone-cart-main .cart-store strong { font-size: 14px; }
 .standalone-cart-main .cart-line > img { width: 90px; height: 112px; border-radius: 6px; }
 .standalone-cart-main .cart-line-main { min-width: 0; }
 .standalone-cart-main .cart-line h3 { font-size: 15px; }

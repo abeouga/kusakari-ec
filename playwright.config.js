@@ -1,7 +1,12 @@
 import { defineConfig } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+// Absolute paths keep this base valid when e2e/configs/* extends it.
+const repoRoot = fileURLToPath(new URL('./', import.meta.url));
+const fromRoot = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: fromRoot('e2e'),
   testIgnore: [
     'business*.spec.js',
     'acceptance.spec.js',
@@ -13,8 +18,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
-  reporter: [['list'], ['html', { outputFolder: 'artifacts/playwright-report', open: 'never' }]],
-  outputDir: 'artifacts/playwright-results',
+  reporter: [['list'], ['html', { outputFolder: fromRoot('artifacts/playwright-report'), open: 'never' }]],
+  outputDir: fromRoot('artifacts/playwright-results'),
   use: {
     baseURL: 'http://127.0.0.1:15186',
     browserName: 'chromium',
@@ -24,6 +29,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'node scripts/api.mjs e2e',
+      cwd: repoRoot,
       url: 'http://127.0.0.1:18086/api/health',
       timeout: 90000,
       reuseExistingServer: false,
@@ -31,6 +37,7 @@ export default defineConfig({
     },
     {
       command: 'npm --workspace frontend run dev -- --port 15186',
+      cwd: repoRoot,
       env: { KUSAKARI_EC_API_TARGET: 'http://127.0.0.1:18086' },
       url: 'http://127.0.0.1:15186',
       reuseExistingServer: false,

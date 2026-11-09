@@ -122,7 +122,9 @@ def collect(cursor, issuer, email):
                          product_ids)
 
     for label, sql in (("orders", "SELECT COUNT(*) FROM orders WHERE store_id=%s"),
-                       ("carts", "SELECT COUNT(*) FROM carts WHERE store_id=%s")):
+                       ("carts", "SELECT COUNT(*) FROM carts WHERE store_id=%s"),
+                       # Issue #70: each cart line records its pickup store.
+                       ("cart items", "SELECT COUNT(*) FROM cart_items WHERE store_id=%s")):
         used = count(cursor, sql, (store_id,))
         if used:
             blockers.append(f"{label} use the store: {used}")

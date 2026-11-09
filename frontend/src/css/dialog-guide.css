@@ -1,0 +1,31 @@
+.guide h3 {
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.8;
+}
+.guide h4 {
+  margin: 25px 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.guide p,
+.guide li {
+  font-size: 12px;
+  line-height: 2;
+  color: #68715f;
+}
+.guide ol {
+  padding-left: 22px;
+}
+.dialog textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 14px;
+  font:
+    12px/1.7 Consolas,
+    monospace;
+  color: #42533a;
+  background: #f5f5ed;
+  resize: vertical;
+}

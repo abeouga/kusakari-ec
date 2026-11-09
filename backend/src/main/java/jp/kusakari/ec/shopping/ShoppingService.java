@@ -183,8 +183,9 @@ public class ShoppingService {
       .filter(Objects::nonNull)
       .collect(Collectors.toSet());
     byCode.values().forEach(requestedIds::addAll);
+    // Issue #70: show each product's stock at its sale store, where it is added to the cart and picked up.
     Map<String, ProductView> products = catalog
-      .productsByIds(storeId, requestedIds)
+      .productsAtSaleStores(storeId, requestedIds)
       .stream()
       .collect(Collectors.toMap(ProductView::id, p -> p));
     List<Line> lines = new ArrayList<>();

@@ -26,7 +26,7 @@
 
 | No. | 要件 | 画面・操作 | 実現範囲 |
 |---:|---|---|---|
-| 1 | 一般アカウント新規作成 | /account/register → Cognito | 実Cognito登録画面。新規登録メール受信は今回の試験対象外 |
+| 1 | 一般アカウント新規作成 | /account/login のカード内（/account/register も同じフォーム） | ECのカード内でCognito SignUp/ConfirmSignUpを呼ぶ。新規登録メール受信は今回の試験対象外 |
 | 2 | 事業者アカウント新規作成 | 一般会員から出店申請 → 運営者承認 | 承認トランザクションで店舗作成・SELLER権限・通知を保存 |
 | 3 | アカウント削除 | /account/delete | 利用終了日時と無効化を保存。注文・庭を保持 |
 | 4 | ログイン | /account/login → Cognito API → 共有セッション | EC専用ページ・CanvasはECへ自動転送 |
@@ -99,9 +99,9 @@
 
 数量は配置個数であり、敷き詰め面積から必要資材数を計算するBOMではありません。モデル表示寸法と架空の商品規格を明示しています。異なる植物を自動的に同じ商品とみなしません。
 
-`/materials#canvas-items=...` にJSONをURLエンコードして渡します。送る項目は `materialCode / quantity / unit` のみです。EC側で1〜50種類、数量1〜99、unit=piece、コード形式、重複、未知項目、データ長を検証します。非対応コードは既存APIのUNMAPPEDとして表示します。99個を超える配置は購入候補への移動前にエラーを表示します。
+ECの画面で材料JSONを受け取る `/materials#canvas-items=...` と、トップページの「材料リストから探す」は2026-11-09に削除しました（Issue #86）。外部の商品管理APIからオンライン注文する旧仕様の名残で、現在の購入導線では使いません。
 
-価格・在庫は店舗選択後にECの `/api/materials/quote` で照合します。カート追加には選択されたproductIdを使います。受け渡しだけではカート追加や注文は発生しません。
+Canvasのバックエンドは `materialCode / quantity / unit` をECの `/api/materials/quote` へ送り、価格・在庫を照合します。このAPIは残します。Canvasの庭から購入する導線は庭の買い物リスト（[garden-shopping-lists.md](garden-shopping-lists.md)）です。カート追加には選択されたproductIdを使います。
 
 環境変数はECの `VITE_KUSAKARI_CANVAS_URL`、Canvasの `VITE_KUSAKARI_EC_URL` です。各ルートの.envをViteのenvDirで読みます。変更後はフロントを再起動してください。
 
@@ -109,7 +109,7 @@
 
 - EC: `npm run check` / `npm run test:e2e`
 - Canvas: `npm run lint` / `npm run build:web` / `npm run test:e2e -- --grep "A\.|B\.|D\.|F\."`
-- 往復: ECから `npx playwright test --config playwright.integration.config.js`
+- 往復: ECから `npx playwright test --config e2e/configs/playwright.integration.config.js`
 
 統合確認は専用のMySQL E2E DB、EC 15186/API 18086、Canvas 15173/API 18080を使います。作成した庭だけを後片付けします。実開発データの全消去は行いません。
 

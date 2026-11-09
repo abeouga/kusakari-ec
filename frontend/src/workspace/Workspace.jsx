@@ -11,7 +11,6 @@ import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
-import { Materials } from '../components/Materials';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
@@ -45,7 +44,6 @@ const accountSettings = accountActions
   .map(([url, label]) => /** @type {MenuItem} */ ([url, label]));
 /** @type {Record<string,string>} Pages whose sidebar link may be absent or labelled differently. */
 const pageTitles = {
-  '/materials': '配置素材の商品候補',
   [applicationPaths.form]: '出店申請',
   [applicationPaths.status]: '出店申請状況',
   // Issue #44: the new-product page has no sidebar link; show what the page is for.
@@ -142,7 +140,6 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')
     content = <MembersPage sellers={path.endsWith('/sellers')} />;
   else if (path === '/operator/categories') content = <CategoriesPage />;
-  else if (path === '/materials') content = <Materials shop={shop} onClose={() => navigate('/')} embedded />;
   else if (publicStore) content = <ProfilePage storeId={Number(path.split('/')[2])} readOnly />;
   else content = <p>URLを確認するか、メニューからページを選んでください。</p>;
   // Issue #44: every page gets a heading that describes it instead of the generic "Kusakari".

@@ -13,7 +13,8 @@ CognitoとSpring Securityで本人確認し、ECとCanvasを同一利用者と�
 
 - 通常起動はcognito profileを使用し、認証を必須とします。画面モックによるログイン・登録を認証成功として扱いません。
 - 通常ログインはECの`/account/login`でメール/パスワードを入力し、CSRF保護された`POST /api/auth/login`からCognitoの`USER_PASSWORD_AUTH`を呼びます。ID tokenの署名/issuer/audience/token_use/期限/必須claimを検証して既存のSpring Securityセッションを発行し、セッションIDとCSRFを更新します。パスワードは保存せず、OAuthトークンはブラウザーへ返しません。
-- 新規登録、再設定、追加の本人確認は従来のCognito Managed Loginを維持します。`GET /api/auth/login?managed=true`（登録は`signup=true`）から認証コード+S256 PKCE、state、nonceを使い、Spring Securityが検証します。追加確認を通常のログイン成功として扱いません。
+- 新規登録は`/account/login`の同じカード内で行います（Issue #87、[決定記録](decisions/2026-11-09-signup-in-login-card.md)）。CSRF保護された`POST /api/auth/signup`・`/signup/confirm`・`/signup/resend`がCognitoの`SignUp`・`ConfirmSignUp`・`ResendConfirmationCode`を呼び、確認後は通常ログインと同じ`POST /api/auth/login`でセッションを発行します。
+- 再設定、追加の本人確認は従来のCognito Managed Loginを維持します。`GET /api/auth/login?managed=true`から認証コード+S256 PKCE、state、nonceを使い、Spring Securityが検証します。追加確認を通常のログイン成功として扱いません。
 - ブラウザーにはHttpOnly・SameSite=Lax・Path=/の`KUSAKARI_SESSION`だけを渡します。公開用HTTPS設定ではSecure属性を付けます。OAuthトークンをlocalStorage等に保存しません。
 - セッションはECプロセス内に保持し、アイドル30日で終了します。ID tokenの期限切れはCognitoのrefresh tokenで自動更新し、refresh tokenは30日で失効します。詳細は[認証の更新トークン方式](auth-token-renewal.md)を参照してください。再起動すると再ログインが必要です。複数ECタスクへの拡張・永続セッションは今回の対象外です。
 - `GET /api/auth/me`はmode/authenticated/id/email/name/role/storeIdsを返します。`GET /api/auth/csrf`で得た確認情報を更新系要求のヘッダーへ付け、`POST /api/auth/logout`でローカルセッションとCognitoのブラウザーセッションを終了します。
@@ -39,10 +40,10 @@ Canvasの未ログイン時はECの`/account/login?returnTo=...`へ自動転送�
 
 ## 検証
 
-`npx playwright test --config playwright.custom-login.config.js`はGit対象外のEC `.env`とTerraform `.env.test-accounts`を読み、実Cognito・専用MySQL・EC/Canvas・Chromiumで成功系を確認します。資格情報を記録しないようtrace/HARは無効です。誤パスワード、CSRF欠落、ログイン前後のセッションID更新、ECからCanvasへの復帰、再読込、実庭保存、ログアウト後の編集中401、外部returnTo拒否、モバイル表示を検証します。
+`npx playwright test --config e2e/configs/playwright.custom-login.config.js`はGit対象外のEC `.env`とTerraform `.env.test-accounts`を読み、実Cognito・専用MySQL・EC/Canvas・Chromiumで成功系を確認します。資格情報を記録しないようtrace/HARは無効です。誤パスワード、CSRF欠落、ログイン前後のセッションID更新、ECからCanvasへの復帰、再読込、実庭保存、ログアウト後の編集中401、外部returnTo拒否、モバイル表示を検証します。
 メールはTerraformの登録スクリプトと実User Poolで`test.user@example.com`/`test.seller@example.com`を確認済みです。既存パスワードはCognitoから取得できず、ローカル設定との比較と実認証で確認します。
 
-`npx playwright test --config playwright.auth.config.js`は実EC/FastAPI/専用MySQL/Chromiumを使用します。
+`npx playwright test --config e2e/configs/playwright.auth.config.js`は実EC/FastAPI/専用MySQL/Chromiumを使用します。
 未ログイン拒否・偽造セッション拒否・CSRF欠落・認証URLのPKCE/state/nonce・不正コールバック・再読み込み後の画面を確認します。
 登録先には接続しないため、認証成功を模倣するAPIや仮のJWTは使用しません。
 実Cognitoが作成された後、指定のテスト2利用者によるログイン・ログアウト、他人のカート/注文/庭/写真/履歴/買い物リスト拒否、担当外店舗拒否、本人商品編集、権限変更と無効化を追加確認します。
@@ -77,8 +78,8 @@ Canvasの未ログイン時はECの`/account/login?returnTo=...`へ自動転送�
 ## 2026-10-20 EC専用ログインページの確認
 
 - Terraformは既存クライアント1件だけを更新しました。作成・削除は0件、適用後のplanは差分なしでした。既存アカウントのメール/パスワード/権限は変更していません。
-- 実Cognito・専用MySQL・Chromiumの`playwright.custom-login.config.js`は2件成功しました。EC独自フォーム、誤パスワード、ログインCSRF、セッションID更新、Canvas復帰、画面からの庭作成、再読込、実庭JSON、ログアウト後の401転送、外部returnTo拒否を確認しました。`artifacts/custom-login/report.json`、`garden.json`、再読込後の画面を証跡とし、trace/HARは作成していません。
-- `playwright.auth.config.js`は5件成功しました。公開カタログ、個人データ拒否、偽造Cookie/CSRF、従来のPKCEと不正callback拒否、ECログインのレスポンシブ表示、Canvas一覧/庭の直接URL/モデルプレビューからECへの自動転送を確認しました。
+- 実Cognito・専用MySQL・Chromiumの`e2e/configs/playwright.custom-login.config.js`は2件成功しました。EC独自フォーム、誤パスワード、ログインCSRF、セッションID更新、Canvas復帰、画面からの庭作成、再読込、実庭JSON、ログアウト後の401転送、外部returnTo拒否を確認しました。`artifacts/custom-login/report.json`、`garden.json`、再読込後の画面を証跡とし、trace/HARは作成していません。
+- `e2e/configs/playwright.auth.config.js`は5件成功しました。公開カタログ、個人データ拒否、偽造Cookie/CSRF、従来のPKCEと不正callback拒否、ECログインのレスポンシブ表示、Canvas一覧/庭の直接URL/モデルプレビューからECへの自動転送を確認しました。
 - 通常の5186/5173環境でも、USERとSELLER/店舗1で独自ログインAPI・共有セッション・Canvas庭一覧・ログアウトの実応答を確認しました。EC APIは更新後の実行可能JARで再起動しています。
 - ECのtypecheck/lint/フロントbuild、Javaのclean package、Canvasのlint/フロントbuild/API lint/APIコンパイルは成功しました。Canvasの既存`e2e/tsconfig.json`による全体型確認は、既存テストのNodeNext import拡張子と宣言不足等で失敗しており、成功として扱いません。
 - Windowsの設定読込でCognito profile/issuer/client/domainを受け付けるようにしました。今回の起動確認はAPI/HTTPと実認証で、SysOverRay全操作の再検証とは区別します。
