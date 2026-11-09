@@ -11,8 +11,7 @@
   scroll-margin-top: 20px;
   margin: 0 auto;
 }
-.editorial h2,
-.material-banner h2 {
+.editorial h2 {
   font-family: var(--serif);
   font-weight: 500;
   font-size: 27px;
