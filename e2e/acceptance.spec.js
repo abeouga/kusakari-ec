@@ -64,7 +64,7 @@ test('existing olive: seller publication, buyer placement and one retained picku
       await buyer.getByRole('button', { name: '注文を確定する', exact: true }).click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
-      const order = await response.json();
+      const [order] = (await response.json()).orders;
       saved = { orderId: order.id, gardenId, productId: product.id, before: 20, after: 19, order };
       await writeFile(evidence, JSON.stringify(saved, null, 2));
     }

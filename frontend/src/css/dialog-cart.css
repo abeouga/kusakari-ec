@@ -1,22 +1,9 @@
-.cart-store {
+.cart-line-store,
+.order-store {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: #eef2e7;
-}
-.cart-store small {
-  display: block;
-  font-size: 9px;
+  gap: 4px;
   color: var(--muted);
-  margin-bottom: 4px;
-}
-.cart-store strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-.cart-store button {
-  margin-left: auto;
 }
 .cart-line {
   display: flex;

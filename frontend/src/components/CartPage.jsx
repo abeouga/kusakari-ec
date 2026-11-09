@@ -5,8 +5,8 @@ import { ShoppingListDetail, ShoppingListOverview, ShoppingTransferNotice } from
 import { PageLink } from '../workspace/Common';
 import { login } from '../auth';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,gardenId?:string,showGardens:boolean,header:import('react').ReactNode}} props */
-export function CartPage({ shop, onStores, gardenId = '', showGardens, header }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,gardenId?:string,showGardens:boolean,header:import('react').ReactNode}} props */
+export function CartPage({ shop, gardenId = '', showGardens, header }) {
   const gardens = showGardens || !!gardenId;
   return <>
     {header}
@@ -19,7 +19,7 @@ export function CartPage({ shop, onStores, gardenId = '', showGardens, header })
           <h2>庭の買い物リスト</h2><p>保存した庭の買い物リストはログイン後に利用できます。</p>
           <button type="button" className="primary-button" onClick={() => login()}>ログイン</button>
         </section> : gardens ? (gardenId ? <ShoppingListDetail key={gardenId + ':' + shop.cart?.storeId} shop={shop} gardenId={gardenId}/> : <ShoppingListOverview/>) : <>
-          <ShoppingTransferNotice shop={shop}/><Cart shop={shop} onStores={onStores}/>
+          <ShoppingTransferNotice shop={shop}/><Cart shop={shop}/>
         </>}
       </div>
     </main>

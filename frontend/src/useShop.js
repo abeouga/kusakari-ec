@@ -11,7 +11,8 @@ export function useShop() {
   const [products, setProducts] = useState(/** @type {import('./types').Product[]} */ ([]));
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
-  const [lastOrder, setLastOrder] = useState(/** @type {import('./types').Order|null} */ (null));
+  // One checkout saves one order per pickup store (issue #70).
+  const [lastOrders, setLastOrders] = useState(/** @type {import('./types').Order[]|null} */ (null));
   const [shoppingTransfer, setShoppingTransfer] = useState(
     /** @type {import('./types').ShoppingTransfer|null} */ (null),
   );
@@ -174,7 +175,8 @@ export function useShop() {
       setCart(next);
       checkoutRequest.current = null;
       setProducts(await api.products(id));
-      setNotice('受取店舗を変更しました。在庫を確認してください。');
+      // Issue #70: lines already in the cart keep the store they were added from.
+      setNotice('店舗を変更しました。これから追加する商品はこの店舗で受け取ります。');
     });
   }
 
@@ -206,8 +208,8 @@ export function useShop() {
           paymentMethod,
         };
       }
-      const order = await api.checkout(checkoutRequest.current);
-      setLastOrder(order);
+      const result = await api.checkout(checkoutRequest.current);
+      setLastOrders(result.orders);
       checkoutRequest.current = null;
       await refresh();
     });
@@ -312,8 +314,8 @@ export function useShop() {
     products,
     stores,
     orders,
-    lastOrder,
-    setLastOrder,
+    lastOrders,
+    setLastOrders,
     busy,
     error,
     setError,

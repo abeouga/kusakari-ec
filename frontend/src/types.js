@@ -38,11 +38,14 @@
  * @property {number|null} [sellerStoreId] Store that introduces this product (EC-B05).
  *
  * @typedef {{id:number, name:string, address:string, hours:string, latitude:number, longitude:number, distanceKm:number|null}} Store
- * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean}} CartLine
+ * storeId/storeName: the line's pickup store from the API (issue #70). The in-memory guest cart omits them and
+ * uses the cart's store.
+ * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean, storeId?:number, storeName?:string}} CartLine
  * @typedef {{guest?:boolean,revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
  * @typedef {{revision:number,storeId:number,items:{productId:string,quantity:number}[]}} GuestCartPlan
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number, imageUrl:string|null}} OrderLine
  * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Order
+ * @typedef {{orders:Order[]}} CheckoutResult One order per pickup store (issue #70).
  * @typedef {{recipientName:string,recipientPhone:string,contactEmail:string}} PickupInput
  * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
  * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'> & {storeId:number}} ProductInput
