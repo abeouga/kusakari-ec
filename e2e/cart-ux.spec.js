@@ -44,15 +44,17 @@ test('seeded products render, drag, persist and transfer from the garden list to
     await expect.poll(async () => (await request.get(api+'/gardens/'+garden.id+'/thumbnail')).headers()['x-thumbnail-source']).toBe('scene');
     await page.getByRole('tab',{name:/買い物リスト/}).click();
     await page.getByRole('button',{name:'ECで買い物リストを確認',exact:true}).click();
-    await expect(page).toHaveURL(/\/cart\/gardens\//);
+    // Issue #88: Canvas opens the cart's "add from garden" dialog instead of a garden-only list screen.
+    await expect(page).toHaveURL(/\/cart\?garden=/);
     await expect(page.locator('.kusakari-site-header')).toHaveCount(1);
-    await expect(page.getByRole('checkbox')).toHaveCount(6);
-    await page.getByRole('button',{name:'全選択',exact:true}).click();
-    await page.getByRole('button',{name:'カートに追加',exact:true}).click();
+    const dialog = page.getByRole('dialog',{name:'庭に設置したものから追加',exact:true});
+    await expect(dialog.getByRole('checkbox')).toHaveCount(6);
+    await dialog.getByRole('button',{name:'すべて選択',exact:true}).click();
+    await dialog.getByRole('button',{name:/点をカートに追加$/}).click();
     await expect(page).toHaveURL(/\/cart$/);
     await expect(page.getByRole('tablist')).toHaveCount(0);
     await expect(page.locator('.cart-line')).toHaveCount(6);
-    await expect(page.getByTestId('garden-list-'+garden.id)).toHaveCount(0);
+    await expect(dialog).toHaveCount(0);
     await page.reload({waitUntil:'domcontentloaded'});
     await expect(page.locator('.cart-line')).toHaveCount(6);
     await expect(page.getByRole('button',{name:'注文内容を確認する',exact:true})).toBeEnabled();
@@ -60,14 +62,13 @@ test('seeded products render, drag, persist and transfer from the garden list to
     await page.getByRole('button',{name:'ログイン',exact:true}).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.getByRole('button',{name:'閉じる',exact:true}).click();
-    await page.goto('/cart#garden-shopping-lists');
-    await expect(page.getByTestId('garden-list-'+garden.id)).toContainText('必要数 6点');
-    await expect(page.locator('.cart-line')).toHaveCount(0);
+    await page.goto('/cart?garden='+garden.id);
+    await expect(dialog.getByRole('button',{name:new RegExp(garden.name)})).toHaveAttribute('aria-pressed','true');
     await page.reload({waitUntil:'domcontentloaded'});
-    await expect(page.getByTestId('garden-list-'+garden.id)).toBeVisible();
+    await expect(dialog).toBeVisible();
     await page.screenshot({path:evidence+'/lists-desktop.png',fullPage:true});
     await page.setViewportSize({width:390,height:844});
-    for (const [path,shot] of [['/cart','/cart-mobile.png'],['/cart#garden-shopping-lists','/lists-mobile.png']]) {
+    for (const [path,shot] of [['/cart','/cart-mobile.png'],['/cart?garden='+garden.id,'/lists-mobile.png']]) {
       await page.goto(path);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
       await page.screenshot({path:evidence+shot,fullPage:true});

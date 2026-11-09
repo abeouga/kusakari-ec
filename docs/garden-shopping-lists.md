@@ -90,3 +90,30 @@ EC追加分を配置数に1点加算していたため、ECで追加した商品
 ### Consequences
 
 DBスキーマは変更しない。既存の保存行は、配置済みの商品では配置数のみ、未配置の商品では1点として表示される。経緯と検証はCanvas側の `docs/garden-shopping-lists.md` に記録する。
+
+## 2026-11-09: 庭専用の買い物リスト画面を削除し、カートのポップアップに統一（issue #88）
+
+### Context
+
+庭の商品をカートへ入れる入口が、Canvasから開く `/cart/gardens/{gardenId}`（一覧は `/cart#garden-shopping-lists`）と、カート下部の「庭に設置したものから追加」ポップアップ（#64）の2つあった。
+
+### Decision
+
+- 庭専用の一覧・詳細画面（`ShoppingListOverview`・`ShoppingListDetail`）を削除し、ポップアップに統一する。
+- `/cart?garden={gardenId}` でカート画面を開くと、ポップアップを自動で開き、その庭を選ぶ。`?garden=` は先頭の庭を選ぶ。ポップアップを閉じるとクエリを外し、再読み込みで再表示しない。CanvasのCommercePanelの「リストを確認」はこのURLを開く。
+- 古いURL `/cart/gardens/{gardenId}` と `/cart#garden-shopping-lists` は、履歴を増やさずに上記のURLへ置き換える。
+- ゲストがこのURLを開いた場合は、ポップアップの代わりにログインの案内を表示する。ログイン後は同じURLへ戻る。
+- 見送りがあった移送結果の「庭から選び直す」は、同じ庭のポップアップを開く。
+
+### Alternatives
+
+- Canvasから配置商品をカートへ自動追加する方式（#80）は、購入する商品を選ぶ手順がなくなるため採用しない。
+- 詳細画面をカード化する方式（#61）は、入口が2つのまま残るため採用しない。
+
+### Consequences
+
+APIとDBスキーマは変更しない。ポップアップではカートにある商品を選べないため、詳細画面にあった「カートの数量に加算する」操作と、全選択時に見送った商品の一覧表示はなくなる（見送り理由は各行に表示される）。
+
+### Verification
+
+`npx playwright test --config e2e/configs/playwright.business.config.js business-canvas-cart-popup business-cart-add-from-garden`（実Cognito・実API・専用MySQL）。Canvasの「リストを確認」→ ポップアップで庭が選ばれている → 追加 → 再読み込み後もカートに残る、古いURLの転送、ゲストのログイン案内を確認する。画面とJSONは `artifacts/business/canvas-cart-popup/` に保存する。

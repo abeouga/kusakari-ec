@@ -13,9 +13,8 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
   await login(page, 'test.user@example.com');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
-  const product = products.find(
-    (p) => p.active && p.stock > (beforeCart.items.find((i) => i.product.id === p.id)?.quantity ?? 0) + 1,
-  );
+  // The garden dialog cannot choose a product that is already in the cart, so the product starts outside it.
+  const product = products.find((p) => p.active && p.stock > 1 && !beforeCart.items.some((i) => i.product.id === p.id));
   expect(product).toBeTruthy();
   const gardens = [];
   const other = await browser.newContext();
@@ -75,9 +74,12 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
     expect((await call(otherPage.request, `/shopping-lists/${a.id}/items/${product.id}`, 'PUT')).status()).toBe(404);
     const foreignLists = await call(otherPage.request, '/shopping-lists').then((r) => r.json());
     expect(foreignLists.some((list) => list.gardenId === a.id)).toBeFalsy();
-    await page.goto(`${ec}/cart/gardens/${a.id}`);
+    // Issue #88: the list is chosen in the cart's "add from garden" dialog; the garden-only screen is gone.
+    await page.goto(`${ec}/cart?garden=${a.id}`);
     await page.reload();
-    const line = page.getByTestId(`ec-shopping-line-product:${product.id}`);
+    const dialog = page.getByRole('dialog', { name: '庭に設置したものから追加', exact: true });
+    await expect(dialog.getByRole('button', { name: new RegExp(a.name) })).toHaveAttribute('aria-pressed', 'true');
+    const line = dialog.getByTestId(`garden-item-product:${product.id}`);
     await expect(line).toContainText(product.name);
     await expect(line).toContainText('必要数 1点');
     await page.screenshot({ path: `${evidence}/list-reloaded.png` });
@@ -89,29 +91,16 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
     });
     expect(stale.status()).toBe(409);
     expect((await stale.json()).code).toBe('SHOPPING_LIST_CHANGED');
-    // Issue #76: the line is a cart card, the summary panel totals the selection, and the notes are gone.
-    await expect(line).toHaveClass(/cart-line/);
-    const summary = page.getByRole('complementary', { name: '選択した商品の小計' });
-    const add = summary.getByRole('button', { name: 'カートに追加', exact: true });
-    await expect(add).toBeDisabled();
-    await expect(page.locator('main')).not.toContainText('カートで店舗を変更');
-    await expect(page.locator('main')).not.toContainText('同じ商品がカートにある場合は数量を加算します');
-    await expect(page.locator('main')).not.toContainText('庭に配置した商品と、商品一覧から追加した商品を表示します');
-    for (const name of ['戻る', '庭の買い物リスト一覧へ'])
-      await expect(
-        page.getByRole(name === '戻る' ? 'link' : 'button', { name, exact: true }).locator('svg.lucide-arrow-left'),
-      ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'カートに追加', exact: true })).toBeDisabled();
     await line.getByRole('checkbox').check();
-    await expect(summary).toContainText('1点');
-    await expect(summary.locator('.grand-total')).toContainText(
-      new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(product.priceYen),
-    );
+    const add = dialog.getByRole('button', { name: '1点をカートに追加', exact: true });
     await page.screenshot({ path: `${evidence}/list-selected.png` });
     await page.setViewportSize({ width: 390, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `${evidence}/list-selected-390.png`, fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
     await add.click();
+    await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(`${ec}/cart`);
     const afterCart = await call(page.request, '/cart').then((r) => r.json());
     expect(afterCart.items.find((i) => i.product.id === product.id).quantity).toBe(
@@ -171,8 +160,8 @@ test.skip('picker creates a numbered garden project and saves the product into i
     expect(detail.items[0].products[0].id).toBe(product.id);
     expect(detail.items[0].quantity).toBe(1);
     expect(await call(page.request, '/cart').then((r) => r.json())).toEqual(beforeCart);
-    await page.goto(`${ec}/cart/gardens/${added[0].gardenId}`);
-    await expect(page.getByTestId(`ec-shopping-line-product:${product.id}`)).toContainText(product.name);
+    await page.goto(`${ec}/cart?garden=${added[0].gardenId}`);
+    await expect(page.getByTestId(`garden-item-product:${product.id}`)).toContainText(product.name);
     const otherPage = await other.newPage();
     await login(otherPage, 'test.seller@example.com');
     expect((await call(otherPage.request, `/shopping-lists/${added[0].gardenId}`)).status()).toBe(404);
@@ -290,7 +279,7 @@ test.skip('unavailable list shows an error with retry; signed-out users must log
   await expect(dialog).toHaveCount(0);
 });
 
-test('EC-B24/B25 cart counts, stock with the cart, select-all reasons and retry after a lost transfer', async ({
+test('EC-B24/B25 garden dialog shows cart items, selects what can be added and retries after a lost transfer', async ({
   page,
   browser,
 }) => {
@@ -326,44 +315,43 @@ test('EC-B24/B25 cart counts, stock with the cart, select-all reasons and retry 
       expect((await call(page.request, `/shopping-lists/${garden.id}/items/${product.id}`, 'PUT')).status()).toBe(200);
     await add(page.request, scarce.id, 1);
 
-    // EC-B24: "カートにn点" only for products in the cart; stock is short when stock < cart + list quantity.
-    await page.goto(`${ec}/cart/gardens/${garden.id}`);
-    const scarceLine = page.getByTestId(`ec-shopping-line-product:${scarce.id}`);
-    const plentyLine = page.getByTestId(`ec-shopping-line-product:${plenty.id}`);
-    await expect(scarceLine).toContainText('店舗在庫 2点・カートに1点');
-    await expect(scarceLine).not.toContainText('在庫不足');
+    // EC-B24 (issue #88): the cart's garden dialog shows what is already in the cart and cannot choose it again.
+    await page.goto(`${ec}/cart?garden=${garden.id}`);
+    const dialog = page.getByRole('dialog', { name: '庭に設置したものから追加', exact: true });
+    const scarceLine = dialog.getByTestId(`garden-item-product:${scarce.id}`);
+    const plentyLine = dialog.getByTestId(`garden-item-product:${plenty.id}`);
+    await expect(scarceLine).toContainText('店舗在庫 2点');
+    await expect(scarceLine).toContainText('カートに入っています');
+    await expect(scarceLine.getByRole('checkbox')).toBeDisabled();
     await expect(plentyLine).toContainText('店舗在庫 5点');
-    await expect(plentyLine).not.toContainText('カートに');
+    await expect(plentyLine).not.toContainText('カートに入っています');
     await add(page.request, scarce.id, 2);
     await page.reload();
-    await expect(scarceLine).toContainText('カートに2点');
-    await expect(scarceLine).toContainText('在庫不足');
+    await expect(scarceLine).toContainText('カートに入っています');
     await expect(scarceLine.getByRole('checkbox')).toBeDisabled();
 
-    // EC-B25: select-all says which products it left out and why.
-    await page.getByRole('button', { name: '全選択', exact: true }).click();
-    await expect(page.getByRole('status').filter({ hasText: '追加できないため選択していません' })).toContainText(
-      `${scarce.name}（在庫不足）`,
-    );
+    // EC-B25: select-all chooses only the products that can be added.
+    await dialog.getByRole('button', { name: 'すべて選択', exact: true }).click();
     await expect(plentyLine.getByRole('checkbox')).toBeChecked();
     await expect(scarceLine.getByRole('checkbox')).not.toBeChecked();
 
     // 4a (fault injection): a lost request keeps the selection and can be retried.
     await page.route('**/api/cart/shopping-lists/**', (route) => route.abort());
-    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'カートに追加されていません' })).toBeVisible();
+    await dialog.getByRole('button', { name: '1点をカートに追加', exact: true }).click();
+    await expect(dialog.getByRole('alert').first()).toBeVisible();
     await expect(plentyLine.getByRole('checkbox')).toBeChecked();
     const unchanged = await call(page.request, '/cart').then((r) => r.json());
     expect(unchanged.items.some((item) => item.product.id === plenty.id)).toBe(false);
     await page.unroute('**/api/cart/shopping-lists/**');
-    await page.getByRole('button', { name: '再実行', exact: true }).click();
+    await dialog.getByRole('button', { name: '1点をカートに追加', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(`${ec}/cart`);
     const after = await call(page.request, '/cart').then((r) => r.json());
     expect(after.items.find((item) => item.product.id === plenty.id)?.quantity).toBe(1);
     expect(after.items.find((item) => item.product.id === scarce.id)?.quantity).toBe(2);
-    await page.goto(`${ec}/cart/gardens/${garden.id}`);
+    await page.goto(`${ec}/cart?garden=${garden.id}`);
     await page.reload();
-    await expect(plentyLine).toContainText('カートに1点');
+    await expect(plentyLine).toContainText('カートに入っています');
     await page.screenshot({ path: `${evidence}/stock-and-retry-reloaded.png` });
     await writeFile(
       `${evidence}/stock-and-retry.json`,

@@ -82,8 +82,7 @@ export default function App() {
     setPanel(next);
   }
 
-  const gardenCart = path.match(/^\/cart\/gardens\/([^/]+)\/?$/);
-  const workspace = path !== '/' && path !== '/cart' && !gardenCart;
+  const workspace = path !== '/' && path !== '/cart';
   // Issue #10: carts belong to signed-in members, so signed-out visitors go to the login page and return here afterwards.
   const cartLoginRequired = Boolean(path === '/cart' && session && !session.authenticated);
   useEffect(() => {
@@ -140,14 +139,9 @@ export default function App() {
       </>
     );
   }
-  if (path === '/cart' || gardenCart) {
+  if (path === '/cart') {
     return (
-      <CartPage
-        shop={shop}
-        gardenId={gardenCart?.[1]}
-        showGardens={location.includes('#garden-shopping-lists')}
-        header={header}
-      />
+      <CartPage shop={shop} header={header} />
     );
   }
 
