@@ -36,14 +36,9 @@ test('cart lines keep their own pickup store and checkout splits orders per stor
 
     await buyer.goto(ec);
     await buyer.getByRole('button', { name: '店舗を探す', exact: true }).click();
-    await buyer
-      .locator('.store-card')
-      .filter({ hasText: '横浜グリーンハウス' })
-      .getByRole('button', { name: 'この店舗で受け取る' })
-      .click();
-    await expect(buyer.getByRole('dialog').getByRole('status')).toContainText(
-      'これから追加する商品はこの店舗で受け取ります',
-    );
+    const yokohama = buyer.locator('.store-card').filter({ hasText: '横浜グリーンハウス' });
+    await yokohama.getByRole('button', { name: 'この店舗で受け取る' }).click();
+    await expect(yokohama.getByRole('button', { name: '選択中' })).toBeVisible();
     await buyer.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true }).click();
     await buyer
       .getByTestId('product-lavender')

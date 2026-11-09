@@ -11,6 +11,49 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
   const contact = cart.details;
   return (
     <div className="checkout-confirm">
+      <section className="checkout-block" aria-labelledby="checkout-items-title">
+        <h3 id="checkout-items-title">
+          <MapPin size={18} aria-hidden="true" />
+          受け取り店舗とご注文商品（{cart.itemCount}点）
+        </h3>
+        <p className="fine-print">
+          商品は在庫のある店舗でお受け取りください。受取店舗ごとに注文を分けて保存し、準備ができたら通知でお知らせします。受取料金は無料です。
+        </p>
+        {pickupGroups(cart).map(({ storeId, storeName, lines }) => {
+          const store = shop.stores.find((candidate) => candidate.id === storeId);
+          return (
+            <div className="checkout-store-group" key={storeId}>
+              <div className="checkout-store-card" data-testid="checkout-store">
+                <strong>{storeName}</strong>
+                {store?.address && <p>{store.address}</p>}
+                {store?.hours && (
+                  <p>
+                    <Clock size={14} aria-hidden="true" />
+                    営業時間 {store.hours}
+                  </p>
+                )}
+              </div>
+              <ul className="checkout-items" aria-label={storeName + 'で受け取る商品'}>
+                {lines.map((line) => (
+                  <li key={line.product.id}>
+                    <img src={line.product.imageUrl} alt="" />
+                    <span>
+                      {line.product.name}
+                      <small>
+                        {yen(line.product.priceYen)} × {line.quantity}
+                      </small>
+                      {!line.available && (
+                        <small className="error-text">在庫不足（現在 {line.product.stock} 点）</small>
+                      )}
+                    </span>
+                    <strong>{yen(line.lineTotalYen)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </section>
       <section className="checkout-block" aria-labelledby="checkout-contact-title">
         <h3 id="checkout-contact-title">
           <UserRound size={18} aria-hidden="true" />
@@ -70,50 +113,6 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
           デモ決済です。カード番号などの支払い情報は入力・送信せず、実際の請求も発生しません。
         </p>
       </fieldset>
-
-      <section className="checkout-block" aria-labelledby="checkout-items-title">
-        <h3 id="checkout-items-title">
-          <MapPin size={18} aria-hidden="true" />
-          受け取り店舗とご注文商品（{cart.itemCount}点）
-        </h3>
-        <p className="fine-print">
-          商品は在庫のある店舗でお受け取りください。受取店舗ごとに注文を分けて保存し、準備ができたら通知でお知らせします。受取料金は無料です。
-        </p>
-        {pickupGroups(cart).map(({ storeId, storeName, lines }) => {
-          const store = shop.stores.find((candidate) => candidate.id === storeId);
-          return (
-            <div className="checkout-store-group" key={storeId}>
-              <div className="checkout-store-card" data-testid="checkout-store">
-                <strong>{storeName}</strong>
-                {store?.address && <p>{store.address}</p>}
-                {store?.hours && (
-                  <p>
-                    <Clock size={14} aria-hidden="true" />
-                    営業時間 {store.hours}
-                  </p>
-                )}
-              </div>
-              <ul className="checkout-items" aria-label={storeName + 'で受け取る商品'}>
-                {lines.map((line) => (
-                  <li key={line.product.id}>
-                    <img src={line.product.imageUrl} alt="" />
-                    <span>
-                      {line.product.name}
-                      <small>
-                        {yen(line.product.priceYen)} × {line.quantity}
-                      </small>
-                      {!line.available && (
-                        <small className="error-text">在庫不足（現在 {line.product.stock} 点）</small>
-                      )}
-                    </span>
-                    <strong>{yen(line.lineTotalYen)}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </section>
     </div>
   );
 }
