@@ -30,6 +30,13 @@ function currentPath() {
   if (window.location.pathname === '/seller' || window.location.pathname === '/seller/messages') {
     window.history.replaceState(window.history.state, '', '/seller/products');
   }
+  // Issue #88: 庭専用の買い物リスト画面は削除し、カート画面の「庭に設置したものから追加」ポップアップに統一しました。
+  const gardenList = window.location.pathname.match(/^\/cart\/gardens\/([^/]+)\/?$/);
+  if (gardenList) {
+    window.history.replaceState(window.history.state, '', `/cart?garden=${gardenList[1]}`);
+  } else if (window.location.pathname === '/cart' && window.location.hash === '#garden-shopping-lists') {
+    window.history.replaceState(window.history.state, '', '/cart?garden=');
+  }
   return window.location.pathname + window.location.hash;
 }
 

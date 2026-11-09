@@ -19,14 +19,14 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await expect(page.getByTestId('save-status')).toHaveText('保存済み');
     await page.getByRole('tab', { name: /買い物リスト/ }).click();
     await page.getByRole('button', { name: 'ECで買い物リストを確認', exact: true }).click();
-    await expect(page).toHaveURL('http://127.0.0.1:15286/cart/gardens/' + id);
-    await expect(page.getByRole('checkbox')).not.toBeChecked();
-    await page.getByRole('button', { name: '全選択', exact: true }).click();
-    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
+    // Issue #88: Canvas opens the cart's "add from garden" dialog for this garden.
+    await expect(page).toHaveURL('http://127.0.0.1:15286/cart?garden=' + id);
+    const dialog = page.getByRole('dialog', { name: '庭に設置したものから追加', exact: true });
+    await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+    await dialog.getByRole('button', { name: 'すべて選択', exact: true }).click();
+    await dialog.getByRole('button', { name: '1点をカートに追加', exact: true }).click();
     await expect(page).toHaveURL('http://127.0.0.1:15286/cart');
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.goto('http://127.0.0.1:15286/cart#garden-shopping-lists');
-    await expect(page.getByTestId('garden-list-' + id)).toContainText('必要数 1点');
     const cart = await page.request.get('/api/cart').then(r => r.json());
     expect(cart.items[0].product.id).toBe('canvas-bench');
     expect(cart.items[0].quantity).toBe(1);

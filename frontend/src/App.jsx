@@ -83,8 +83,7 @@ export default function App() {
     setPanel(next);
   }
 
-  const gardenCart = path.match(/^\/cart\/gardens\/([^/]+)\/?$/);
-  const workspace = path !== '/' && path !== '/cart' && !gardenCart;
+  const workspace = path !== '/' && path !== '/cart';
   /** @param {string} next */
   function openHeaderPanel(next) {
     if (next === 'login') {
@@ -127,16 +126,10 @@ export default function App() {
     return <Workspace shop={shop} path={path} header={header} />;
   }
 
-  if (path === '/cart' || gardenCart) {
+  if (path === '/cart') {
     return (
       <>
-        <CartPage
-          shop={shop}
-          gardenId={gardenCart?.[1]}
-          showGardens={location.includes('#garden-shopping-lists')}
-          header={header}
-          onStores={() => open('stores')}
-        />
+        <CartPage shop={shop} header={header} onStores={() => open('stores')} />
         {panel === 'stores' && <Stores shop={shop} onClose={close} />}
       </>
     );

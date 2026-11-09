@@ -1,11 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { yen } from '../api';
+import { login } from '../auth';
+import { navigate } from '../workspace/navigation';
 import { Dialog } from './Dialog';
 import { useShoppingData } from './useShoppingData';
 import { chosenProduct, lineReason, quantityInCart } from '../shoppingSelection';
 
 const TITLE = '庭に設置したものから追加';
+
+/** Issue #88: `/cart?garden={gardenId}` opens the dialog with that garden chosen (`?garden=` opens it with the first
+ * garden). Canvas links here instead of the removed garden-only list screen. Returns null when the dialog is not asked for. */
+function requestedGarden() {
+  return new URLSearchParams(window.location.search).get('garden');
+}
+
+function useRequestedGarden() {
+  const [garden, setGarden] = useState(requestedGarden);
+  useEffect(() => {
+    const changed = () => setGarden(requestedGarden());
+    window.addEventListener('popstate', changed);
+    return () => window.removeEventListener('popstate', changed);
+  }, []);
+  function clear() {
+    if (requestedGarden() === null) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('garden');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    setGarden(null);
+  }
+  return { garden, clear };
+}
 
 /** Dashed card under the cart lines (issue #64). Guests have no saved gardens, so it is shown to members only.
  * PR #66 review: the card is as tall as the cart line right above it. A line's height depends on how its product
@@ -14,6 +39,7 @@ const TITLE = '庭に設置したものから追加';
 export function AddFromGardenCard({ shop, matchHeight = null }) {
   const [open, setOpen] = useState(false);
   const [height, setHeight] = useState(0);
+  const requested = useRequestedGarden();
   useEffect(() => {
     if (!matchHeight) {
       setHeight(0);
@@ -23,7 +49,21 @@ export function AddFromGardenCard({ shop, matchHeight = null }) {
     observer.observe(matchHeight);
     return () => observer.disconnect();
   }, [matchHeight]);
-  if (shop.isGuest) return null;
+  if (shop.isGuest) {
+    if (requested.garden === null) return null;
+    return (
+      <section className="garden-login-notice" role="status">
+        <p>庭に設置したものをカートに追加するには、ログインしてください。</p>
+        <button type="button" className="primary-button" onClick={() => login()}>
+          ログイン
+        </button>
+      </section>
+    );
+  }
+  function close() {
+    setOpen(false);
+    requested.clear();
+  }
   return (
     <>
       <button
@@ -38,15 +78,17 @@ export function AddFromGardenCard({ shop, matchHeight = null }) {
         </span>
         <strong>{TITLE}</strong>
       </button>
-      {open && <GardenItemsDialog shop={shop} onClose={() => setOpen(false)} />}
+      {(open || requested.garden !== null) && (
+        <GardenItemsDialog shop={shop} initialGarden={requested.garden ?? ''} onClose={close} />
+      )}
     </>
   );
 }
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void}} props */
-function GardenItemsDialog({ shop, onClose }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,initialGarden:string,onClose:()=>void}} props */
+function GardenItemsDialog({ shop, initialGarden, onClose }) {
   const data = useShoppingData('');
-  const [chosen, setChosen] = useState('');
+  const [chosen, setChosen] = useState(initialGarden);
   const gardenId = data.lists.some((list) => list.gardenId === chosen) ? chosen : (data.lists[0]?.gardenId ?? '');
   return (
     <Dialog title={TITLE} onClose={onClose} className="shopping-picker-dialog garden-items-dialog">
@@ -226,5 +268,37 @@ function GardenItems({ shop, gardenId, onAdded, onCancel }) {
         </button>
       </div>
     </>
+  );
+}
+
+/** Result of the last transfer, shown above the cart. Skipped products can be chosen again in the dialog.
+ * @param {{shop:ReturnType<import('../useShop').useShop>}} props */
+export function ShoppingTransferNotice({ shop }) {
+  const result = shop.shoppingTransfer;
+  if (!result) return null;
+  return (
+    <section className="garden-transfer-result" role="status">
+      <p>
+        {result.gardenName}から{result.added.length}種類を追加しました。
+      </p>
+      {result.skipped.length > 0 && (
+        <>
+          <p>{result.skipped.length}種類は追加できませんでした。</p>
+          <ul>
+            {result.skipped.map((item) => (
+              <li key={item.productId}>
+                {item.name}：{item.message}
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={() => navigate(`/cart?garden=${encodeURIComponent(result.gardenId)}`)}>
+            庭から選び直す
+          </button>
+        </>
+      )}
+      <button type="button" className="text-button" onClick={() => shop.setShoppingTransfer(null)}>
+        結果を閉じる
+      </button>
+    </section>
   );
 }

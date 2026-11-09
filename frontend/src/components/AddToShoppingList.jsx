@@ -135,8 +135,8 @@ export function AddToShoppingList({ product, onClose }) {
                 {done && (
                   <p role="status">
                     {list.name}に保存しました。
-                    <a href={`/cart/gardens/${encodeURIComponent(list.gardenId)}`}>
-                      リストを開く
+                    <a href={`/cart?garden=${encodeURIComponent(list.gardenId)}`}>
+                      カートで選ぶ
                       <ArrowRight size={14} aria-hidden="true" />
                     </a>
                   </p>

@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-const canvasDirectory = fileURLToPath(new URL('../kusakari-canvas/', import.meta.url));
+const canvasDirectory = process.env.KUSAKARI_CANVAS_DIRECTORY || fileURLToPath(new URL('../kusakari-canvas/', import.meta.url));
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
 
 export default defineConfig({

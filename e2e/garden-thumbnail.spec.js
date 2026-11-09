@@ -20,9 +20,10 @@ test('thumbnail prefers newest saved image, falls back after deletion and reject
   // Controlled image-storage fixture; this test does not invoke a paid image-generation service.
   const payload={id:randomUUID(),document:saved,beforeDataUrl:dataUrl,afterDataUrl:dataUrl,model:'gpt-image-2.5-sunburst',quality:'medium',generationMethod:'full_frame_v1',inputImageCount:2,referenceSummary:[{assetId:'shrub_boxwood',productId:'thumbnail-fixture',productName:'Thumbnail storage fixture',source:'uploaded'}]};
   expect((await request.post(url+'/image-history',{data:payload})).status()).toBe(200);
-  await page.goto('/cart#garden-shopping-lists');
-  const row=page.getByTestId('garden-list-'+garden.id);
-  const image=row.getByRole('img');
+  // Issue #88: the garden thumbnails are shown in the cart's "add from garden" dialog.
+  await page.goto('/cart?garden='+garden.id);
+  const row=page.getByRole('dialog',{name:'庭に設置したものから追加',exact:true}).getByRole('button',{name:new RegExp(garden.name)});
+  const image=row.locator('img');
   await expect(image).toHaveAttribute('src',new RegExp('generated-'+payload.id));
   await expect.poll(()=>image.evaluate(i=>i.complete&&i.naturalWidth>0)).toBeTruthy();
   const second={...payload,id:randomUUID()};

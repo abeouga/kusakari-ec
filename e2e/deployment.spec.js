@@ -48,10 +48,11 @@ test('packaged single-origin EC and Canvas preserve routing, models, photos and 
     expect((await request.get('/canvas/api/assets', { headers: { Origin: 'https://untrusted.invalid' } })).status()).toBe(403);
     await page.getByRole('tab', { name: /買い物リスト/ }).click();
     await page.getByRole('button', { name: 'ECで買い物リストを確認', exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/cart/gardens/${garden.id}$`));
-    await page.getByRole('button', { name: '全選択', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/cart\\?garden=${garden.id}$`));
+    const dialog = page.getByRole('dialog', { name: '庭に設置したものから追加', exact: true });
+    await dialog.getByRole('button', { name: 'すべて選択', exact: true }).click();
     const transferResponse = page.waitForResponse((response) => response.url().endsWith(`/api/cart/shopping-lists/${garden.id}/items`));
-    await page.getByRole('button', { name: 'カートに追加', exact: true }).click();
+    await dialog.getByRole('button', { name: /点をカートに追加$/ }).click();
     const transferred = await transferResponse;
     expect(transferred.status(), await transferred.text()).toBe(200);
     await expect(page).toHaveURL(/\/cart$/);

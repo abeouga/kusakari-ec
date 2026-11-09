@@ -1,13 +1,11 @@
 import { ArrowLeft } from 'lucide-react';
 import { BrandIcon } from './BrandIcon';
 import { Cart } from './Cart';
-import { ShoppingListDetail, ShoppingListOverview, ShoppingTransferNotice } from './ShoppingLists';
+import { ShoppingTransferNotice } from './GardenItemsDialog';
 import { PageLink } from '../workspace/Common';
-import { login } from '../auth';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,gardenId?:string,showGardens:boolean,header:import('react').ReactNode}} props */
-export function CartPage({ shop, onStores, gardenId = '', showGardens, header }) {
-  const gardens = showGardens || !!gardenId;
+/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void,header:import('react').ReactNode}} props */
+export function CartPage({ shop, onStores, header }) {
   return <>
     {header}
     <main className="standalone-cart-main">
@@ -15,12 +13,7 @@ export function CartPage({ shop, onStores, gardenId = '', showGardens, header })
         <PageLink className="text-link back-link" href="/#plants"><ArrowLeft size={16} aria-hidden />戻る</PageLink>
       </div>
       <div>
-        {gardens && shop.isGuest ? <section className="cart-content">
-          <h2>庭の買い物リスト</h2><p>保存した庭の買い物リストはログイン後に利用できます。</p>
-          <button type="button" className="primary-button" onClick={() => login()}>ログイン</button>
-        </section> : gardens ? (gardenId ? <ShoppingListDetail key={gardenId + ':' + shop.cart?.storeId} shop={shop} gardenId={gardenId}/> : <ShoppingListOverview/>) : <>
-          <ShoppingTransferNotice shop={shop}/><Cart shop={shop} onStores={onStores}/>
-        </>}
+        <ShoppingTransferNotice shop={shop}/><Cart shop={shop} onStores={onStores}/>
       </div>
     </main>
     <footer className="site-footer cart-page-footer">

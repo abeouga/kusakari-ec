@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+// KUSAKARI_CANVAS_DIRECTORY runs the suite against a Canvas checkout other than ../kusakari-canvas (e.g. a worktree).
+const canvasDirectory = process.env.KUSAKARI_CANVAS_DIRECTORY || '../kusakari-canvas';
+
 // Real APIs/MySQL; the provider URL is inspected without contacting or impersonating Cognito.
 export default defineConfig({
   testDir: './e2e',
@@ -38,7 +41,7 @@ export default defineConfig({
     },
     {
       command: 'node scripts/api.mjs dev',
-      cwd: '../kusakari-canvas',
+      cwd: canvasDirectory,
       url: 'http://127.0.0.1:18280/health/ready',
       reuseExistingServer: false,
       timeout: 90000,
@@ -52,7 +55,7 @@ export default defineConfig({
     },
     {
       command: 'npm --workspace frontend run dev -- --port 15273',
-      cwd: '../kusakari-canvas',
+      cwd: canvasDirectory,
       url: 'http://127.0.0.1:15273',
       reuseExistingServer: false,
       env: { KUSAKARI_CANVAS_API_TARGET: 'http://127.0.0.1:18280', VITE_KUSAKARI_EC_URL: 'http://127.0.0.1:15286/' },
