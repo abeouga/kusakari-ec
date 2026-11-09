@@ -89,6 +89,6 @@ ECのV9で会員・店舗・注文を拡張し、住所・カテゴリ・出店�
 
 `npm run test:business` は専用MySQL、実Java/FastAPI、実Cognito、Chromiumを使用する。API正常系のモックは使用しない。テスト専用の商品の購入競合とキャンセル承認競合はUIクリックだけでは並列実行を保証できないため実HTTPを同時送信する。パスワード試験は共有3アカウントを変更しない。既存のAWS管理プロファイルで一時Cognitoアカウントを招待メールなしで作成し、変更・再ログイン後に削除する。専用DBの監査記録は無効化して保持する。資格情報を残さないようtrace/HARは無効。失敗スクリーンショットとレポート、成功画面とJSONを `artifacts/business` へ保存する。
 
-`npx playwright test -c playwright.acceptance.config.js` は通常起動の開発DBに対する明示的な最終確認。既存オリーブを1点だけ購入して注文・庭を保持する。購入記録がある再実行は再購入せず照合だけを行う。`artifacts/acceptance/purchase.json` と `verified.json` を保管する。
+`npx playwright test -c e2e/configs/playwright.acceptance.config.js` は通常起動の開発DBに対する明示的な最終確認。既存オリーブを1点だけ購入して注文・庭を保持する。購入記録がある再実行は再購入せず照合だけを行う。`artifacts/acceptance/purchase.json` と `verified.json` を保管する。
 
 通常起動スクリプトは同じcheckoutのサービスを置き換えるため、E2E実行中には実行しない。ECのJAR再作成もサービス停止後に行う。旧認証省略を前提とするE2Eは本フローの証拠に使用しない。各チェックの最終結果は実行レポートを参照する。

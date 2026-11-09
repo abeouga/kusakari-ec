@@ -109,7 +109,7 @@
 
 - EC: `npm run check` / `npm run test:e2e`
 - Canvas: `npm run lint` / `npm run build:web` / `npm run test:e2e -- --grep "A\.|B\.|D\.|F\."`
-- 往復: ECから `npx playwright test --config playwright.integration.config.js`
+- 往復: ECから `npx playwright test --config e2e/configs/playwright.integration.config.js`
 
 統合確認は専用のMySQL E2E DB、EC 15186/API 18086、Canvas 15173/API 18080を使います。作成した庭だけを後片付けします。実開発データの全消去は行いません。
 
