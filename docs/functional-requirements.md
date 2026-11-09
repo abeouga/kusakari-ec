@@ -99,9 +99,9 @@
 
 数量は配置個数であり、敷き詰め面積から必要資材数を計算するBOMではありません。モデル表示寸法と架空の商品規格を明示しています。異なる植物を自動的に同じ商品とみなしません。
 
-`/materials#canvas-items=...` にJSONをURLエンコードして渡します。送る項目は `materialCode / quantity / unit` のみです。EC側で1〜50種類、数量1〜99、unit=piece、コード形式、重複、未知項目、データ長を検証します。非対応コードは既存APIのUNMAPPEDとして表示します。99個を超える配置は購入候補への移動前にエラーを表示します。
+ECの画面で材料JSONを受け取る `/materials#canvas-items=...` と、トップページの「材料リストから探す」は2026-11-09に削除しました（Issue #86）。外部の商品管理APIからオンライン注文する旧仕様の名残で、現在の購入導線では使いません。
 
-価格・在庫は店舗選択後にECの `/api/materials/quote` で照合します。カート追加には選択されたproductIdを使います。受け渡しだけではカート追加や注文は発生しません。
+Canvasのバックエンドは `materialCode / quantity / unit` をECの `/api/materials/quote` へ送り、価格・在庫を照合します。このAPIは残します。Canvasの庭から購入する導線は庭の買い物リスト（[garden-shopping-lists.md](garden-shopping-lists.md)）です。カート追加には選択されたproductIdを使います。
 
 環境変数はECの `VITE_KUSAKARI_CANVAS_URL`、Canvasの `VITE_KUSAKARI_EC_URL` です。各ルートの.envをViteのenvDirで読みます。変更後はフロントを再起動してください。
 

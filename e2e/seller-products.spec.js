@@ -199,7 +199,7 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
       data: { requestId: randomUUID(), revision: cart.revision, expectedTotalYen: cart.totalYen },
     });
     expect(orderResponse.status()).toBe(200);
-    const order = await orderResponse.json();
+    const [order] = (await orderResponse.json()).orders;
     expect((await status(request, [ids[0]], 'DELETED')).status()).toBe(200);
     expect(
       (await request.get('/api/orders').then((r) => r.json())).find((o) => o.id === order.id).items[0].productId,

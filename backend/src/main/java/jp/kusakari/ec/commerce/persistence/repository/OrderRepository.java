@@ -18,7 +18,7 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
   @Query("select o from OrderEntity o where o.id=:id")
   Optional<OrderEntity> lockOrder(@Param("id") String id);
 
-  Optional<OrderEntity> findByCartIdAndRequestId(String cartId, String requestId);
+  List<OrderEntity> findByCartIdAndRequestIdOrderByStoreIdAsc(String cartId, String requestId);
 
   List<OrderEntity> findTop30ByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdAsc(String cartId);
 

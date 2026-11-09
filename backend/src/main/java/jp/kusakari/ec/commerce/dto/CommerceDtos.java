@@ -20,8 +20,23 @@ public final class CommerceDtos {
     @NotNull @Pattern(regexp = "CREDIT_CARD|PAYPAY|RAKUTEN_PAY|PAY_AT_STORE") String paymentMethod
   ) {}
 
-  public record CartLine(ProductView product, int quantity, int lineTotalYen, boolean available) {}
+  /** One checkout creates one order per pickup store (issue #70), ordered by store ID. */
+  public record CheckoutResult(List<OrderView> orders) {}
 
+  /** Issue #70: storeId/storeName are this line's pickup store, which sells and stocks the product. */
+  public record CartLine(
+    ProductView product,
+    int quantity,
+    int lineTotalYen,
+    boolean available,
+    long storeId,
+    String storeName
+  ) {}
+
+  /**
+   * storeId/storeName are the browsing store that sells Kusakari's shared products. Kept for API compatibility;
+   * the pickup store of each line is {@link CartLine#storeId()}.
+   */
   public record CartView(
     long revision,
     long storeId,

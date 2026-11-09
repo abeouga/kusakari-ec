@@ -22,8 +22,17 @@ public class CartItemEntity {
   @Column(nullable = false)
   private int quantity;
 
-  public CartItemEntity(CartItemId id, int quantity) {
+  /** Pickup store of this line (issue #70). NULL only for rows written before V15; see {@link #pickupStoreId}. */
+  @Column(name = "store_id")
+  private Long storeId;
+
+  public CartItemEntity(CartItemId id, int quantity, long storeId) {
     this.id = id;
     this.quantity = quantity;
+    this.storeId = storeId;
+  }
+
+  public long pickupStoreId(CartEntity cart) {
+    return storeId == null ? cart.getStoreId() : storeId;
   }
 }

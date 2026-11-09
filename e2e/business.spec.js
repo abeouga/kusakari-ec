@@ -122,7 +122,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     const response = await ordered;
     expect(response.status()).toBe(200);
     expect(response.request().postDataJSON().paymentMethod).toBe('PAYPAY');
-    const order = await response.json();
+    const [order] = (await response.json()).orders;
     expect(order.details.paymentMethod).toBe('PAYPAY');
     await expect(buyer.getByTestId('order-payment')).toContainText('PayPay');
     const changedPayment = { ...response.request().postDataJSON(), paymentMethod: 'CREDIT_CARD' };
@@ -133,7 +133,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
         .then((ps) => ps.find((p) => p.id === product.id).stock);
     expect(await stock()).toBe(4);
     const replay = await call(buyer.request, '/orders', 'POST', response.request().postDataJSON());
-    expect((await replay.json()).id).toBe(order.id);
+    expect((await replay.json()).orders[0].id).toBe(order.id);
     expect(await stock()).toBe(4);
     expect((await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(0);
     await login(buyer, 'test.user@example.com');
@@ -197,7 +197,7 @@ test('concurrent final stock, cancellation locking, access control and catalog m
     expect(results.map((r) => r.status()).sort()).toEqual([200, 409]);
     const winning = results[0].ok() ? buyer : seller;
     const losing = winning === buyer ? seller : buyer;
-    const order = await results.find((r) => r.ok()).json();
+    const [order] = (await results.find((r) => r.ok()).json()).orders;
     expect((await call(losing.request, `/orders/${order.id}`)).status()).toBe(404);
     expect((await call(buyer.request, '/operator/members')).status()).toBe(403);
     expect((await call(buyer.request, '/seller/orders?storeId=1')).status()).toBe(403);

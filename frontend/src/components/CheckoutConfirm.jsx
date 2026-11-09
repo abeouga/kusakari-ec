@@ -8,28 +8,52 @@ const paymentIcons = { PAY_AT_STORE: Store, CREDIT_CARD: CreditCard, PAYPAY: QrC
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,cart:import('../types').Cart,payment:string,onPayment:(id:string)=>void}} props */
 export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
-  const store = shop.stores.find((candidate) => candidate.id === cart.storeId);
   const contact = cart.details;
   return (
     <div className="checkout-confirm">
-      <section className="checkout-block" aria-labelledby="checkout-store-title">
-        <h3 id="checkout-store-title">
+      <section className="checkout-block" aria-labelledby="checkout-items-title">
+        <h3 id="checkout-items-title">
           <MapPin size={18} aria-hidden="true" />
-          受け取り店舗
+          受け取り店舗とご注文商品（{cart.itemCount}点）
         </h3>
-        <div className="checkout-store-card" data-testid="checkout-store">
-          <strong>{cart.storeName}</strong>
-          {store?.address && <p>{store.address}</p>}
-          {store?.hours && (
-            <p>
-              <Clock size={14} aria-hidden="true" />
-              営業時間 {store.hours}
-            </p>
-          )}
-          <p className="fine-print">受け取りの準備ができたら通知でお知らせします。受取料金は無料です。</p>
-        </div>
+        <p className="fine-print">
+          商品は在庫のある店舗でお受け取りください。受取店舗ごとに注文を分けて保存し、準備ができたら通知でお知らせします。受取料金は無料です。
+        </p>
+        {pickupGroups(cart).map(({ storeId, storeName, lines }) => {
+          const store = shop.stores.find((candidate) => candidate.id === storeId);
+          return (
+            <div className="checkout-store-group" key={storeId}>
+              <div className="checkout-store-card" data-testid="checkout-store">
+                <strong>{storeName}</strong>
+                {store?.address && <p>{store.address}</p>}
+                {store?.hours && (
+                  <p>
+                    <Clock size={14} aria-hidden="true" />
+                    営業時間 {store.hours}
+                  </p>
+                )}
+              </div>
+              <ul className="checkout-items" aria-label={storeName + 'で受け取る商品'}>
+                {lines.map((line) => (
+                  <li key={line.product.id}>
+                    <img src={line.product.imageUrl} alt="" />
+                    <span>
+                      {line.product.name}
+                      <small>
+                        {yen(line.product.priceYen)} × {line.quantity}
+                      </small>
+                      {!line.available && (
+                        <small className="error-text">在庫不足（現在 {line.product.stock} 点）</small>
+                      )}
+                    </span>
+                    <strong>{yen(line.lineTotalYen)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </section>
-
       <section className="checkout-block" aria-labelledby="checkout-contact-title">
         <h3 id="checkout-contact-title">
           <UserRound size={18} aria-hidden="true" />
@@ -89,25 +113,22 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
           デモ決済です。カード番号などの支払い情報は入力・送信せず、実際の請求も発生しません。
         </p>
       </fieldset>
-
-      <section className="checkout-block" aria-labelledby="checkout-items-title">
-        <h3 id="checkout-items-title">ご注文商品（{cart.itemCount}点）</h3>
-        <ul className="checkout-items">
-          {cart.items.map((line) => (
-            <li key={line.product.id}>
-              <img src={line.product.imageUrl} alt="" />
-              <span>
-                {line.product.name}
-                <small>
-                  {yen(line.product.priceYen)} × {line.quantity}
-                </small>
-                {!line.available && <small className="error-text">在庫不足（現在 {line.product.stock} 点）</small>}
-              </span>
-              <strong>{yen(line.lineTotalYen)}</strong>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
+}
+
+/**
+ * Cart lines grouped by pickup store, in the order the stores first appear (issue #70).
+ * @param {import('../types').Cart} cart
+ */
+function pickupGroups(cart) {
+  /** @type {Map<number,{storeId:number,storeName:string,lines:import('../types').CartLine[]}>} */
+  const groups = new Map();
+  for (const line of cart.items) {
+    const storeId = line.storeId ?? cart.storeId;
+    const group = groups.get(storeId) ?? { storeId, storeName: line.storeName ?? cart.storeName, lines: [] };
+    group.lines.push(line);
+    groups.set(storeId, group);
+  }
+  return [...groups.values()];
 }

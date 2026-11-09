@@ -9,10 +9,10 @@
 | GET | `/health` | アプリ名と状態 |
 | GET | `/products?storeId=1` | 商品、SKU、単価、単位、画像、選択店舗の在庫、出所/更新日時 |
 | GET | `/stores?latitude=35.6812&longitude=139.7671` | 指定地点から直線距離順の店舗。座標は両方省略可能。各店舗は`latitude`・`longitude`（店舗の緯度・経度）を含む |
-| GET | `/cart` | Cookieのカート。初回はサーバーが作成 |
-| PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除 |
-| PUT | `/cart/store` | `{ "storeId": 2, "revision": 1 }`。在庫不足の商品もカートには残す |
-| POST | `/orders` | 下記の確定要求。保存済みの同一要求は同じ注文を返す |
+| GET | `/cart` | Cookieのカート。初回はサーバーが作成。各明細の `storeId`・`storeName` はその商品の受取店舗。カート直下の `storeId`・`storeName` は商品を表示・追加する店舗 |
+| PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除。新しい明細は商品の販売店舗（出店者の商品は出店者の店舗、共通商品は表示中の店舗）を受取店舗として記録し、その店舗の在庫で検証 |
+| PUT | `/cart/store` | `{ "storeId": 2, "revision": 1 }`。商品を表示・追加する店舗を変更。カート内の明細の受取店舗は変えない |
+| POST | `/orders` | 下記の確定要求。受取店舗ごとに1件の注文を作り `{ "orders": [...] }`（店舗ID順）を返す。保存済みの同一要求は同じ注文群を返す |
 | GET | `/orders` | 同じCookieの最近30件。単価・商品名は注文時の記録 |
 | POST | `/materials/quote` | 材料コードごとの商品候補と必要金額 |
 
@@ -27,7 +27,7 @@
 ```
 
 `requestId` は操作ごとにUUIDを生成し、通信失敗後の再試行では同じ値を使います。
-レスポンスは注文ID、`DEMO_CONFIRMED`、保存日時、店舗名、合計金額、商品ID/SKU/商品名/数量/単価/小計の明細です。
+レスポンスは `orders` 配列で、各要素は注文ID、`DEMO_CONFIRMED`、保存日時、受取店舗のID・名前、合計金額、商品ID/SKU/商品名/数量/単価/小計の明細です。各注文の明細は、その受取店舗の在庫から減算されます。注文群の合計は `expectedTotalYen` と一致します。
 住所・氏名は受取情報APIで保存し、注文時に複製します。カード番号は受け取りません。
 
 ## 画面案に対応したCRUD

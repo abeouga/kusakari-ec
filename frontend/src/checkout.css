@@ -8,6 +8,7 @@
 .checkout-block { margin: 0; padding: 20px; border: 1px solid var(--card-border); border-radius: 10px; background: var(--surface-card); min-width: 0; }
 .checkout-block h3, .checkout-block legend { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 0; font-size: 15px; font-weight: 600; color: var(--green); }
 .checkout-block p { margin: 6px 0; }
+.checkout-store-group { display: grid; gap: 12px; margin-top: 14px; }
 .checkout-store-card { padding: 14px 16px; border-radius: 8px; background: #f3f6ef; }
 .checkout-store-card strong { font-size: 16px; }
 .checkout-store-card p { display: flex; align-items: center; gap: 6px; font-size: 13px; overflow-wrap: anywhere; }

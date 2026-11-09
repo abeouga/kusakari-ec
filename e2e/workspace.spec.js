@@ -113,30 +113,6 @@ test('operator category CRUD and responsive navigation', async ({ page }) => {
   await page.screenshot({ path: 'artifacts/e2e/workspace-mobile.png', fullPage: true });
 });
 
-test('incoming Canvas materials are validated and use the real product API', async ({ page }) => {
-  const items = [
-    { materialCode: 'plant.oak', quantity: 2, unit: 'piece' },
-    { materialCode: 'garden.bench', quantity: 1, unit: 'piece' },
-  ];
-  await page.goto(`/materials#${new URLSearchParams({ 'canvas-items': JSON.stringify(items) })}`);
-  await expect(page.locator('.material-candidate')).toHaveCount(2);
-  await expect(page.locator('.material-results')).toContainText('コナラ');
-  await page.locator('.material-candidate').first().getByRole('button', { name: 'カートに追加' }).click();
-  await expect(page.getByRole('status')).toContainText('カートを更新');
-  const cart = await (await page.request.get('/api/cart')).json();
-  expect(cart.items.find((item) => item.product.id === 'canvas-oak').quantity).toBe(2);
-  await page.goto(
-    `/materials#${new URLSearchParams({ 'canvas-items': JSON.stringify([{ materialCode: 'plant.oak', quantity: -1, unit: 'piece' }]) })}`,
-  );
-  await expect(page.getByRole('alert')).toContainText('1〜99');
-  await expect(page.locator('.material-candidate')).toHaveCount(0);
-  await page.goto(
-    `/materials#${new URLSearchParams({ 'canvas-items': JSON.stringify([{ materialCode: 'plant.unknown', quantity: 1, unit: 'piece' }]) })}`,
-  );
-  await expect(page.locator('.material-results')).toContainText('対応する商品はありません');
-  await expect(page.locator('.material-candidate')).toHaveCount(0);
-});
-
 test('buyer, seller and operator routes render without script errors', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
