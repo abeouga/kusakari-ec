@@ -193,7 +193,15 @@ public class CognitoPasswordLogin {
       if (type.endsWith("TooManyRequestsException")) {
         throw new ApiException(429, "AUTH_RATE_LIMITED", "試行回数が多すぎます。時間をおいて再試行してください。");
       }
-      if (type.endsWith("PasswordResetRequiredException") || type.endsWith("UserNotConfirmedException")) {
+      if (type.endsWith("UserNotConfirmedException")) {
+        // Issue #87: the login card switches to its confirmation-code step instead of the Hosted UI.
+        throw new ApiException(
+          409,
+          "EMAIL_NOT_CONFIRMED",
+          "メールアドレスの確認が完了していません。確認コードを入力してください。"
+        );
+      }
+      if (type.endsWith("PasswordResetRequiredException")) {
         throw new ApiException(
           409,
           "AUTH_CHALLENGE_REQUIRED",

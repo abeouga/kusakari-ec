@@ -29,27 +29,66 @@ export async function authFetch(url, init = {}) {
   return fetch(url, { ...init, headers, credentials: 'same-origin' });
 }
 
-/** @param {boolean} [signup] */
-export function login(signup = false) {
+export function login() {
   const returnTo =
     window.location.pathname === '/account/login'
       ? new URLSearchParams(window.location.search).get('returnTo') || '/'
       : window.location.href.split('#')[0];
-  if (signup) window.location.assign(`/api/auth/login?signup=true&returnTo=${encodeURIComponent(returnTo)}`);
-  else navigate(`/account/login?returnTo=${encodeURIComponent(returnTo)}`);
+  navigate(`/account/login?returnTo=${encodeURIComponent(returnTo)}`);
+}
+
+/** An API failure that keeps the server's error code so the login card can choose its next step. */
+export class AuthError extends Error {
+  /** @param {string} message @param {string} code */
+  constructor(message, code) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/** @param {string} url @param {Record<string,string>} body @param {string} fallback */
+async function postAuth(url, body, fallback) {
+  const response = await authFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new AuthError(result?.message || fallback, result?.code || '');
+  return result;
 }
 
 /** @param {string} email @param {string} password @param {string} returnTo */
 export async function passwordLogin(email, password, returnTo) {
-  const response = await authFetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, returnTo }),
-  });
-  const result = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(result?.message || 'ログインできませんでした。時間をおいて再試行してください。');
+  const result = await postAuth(
+    '/api/auth/login',
+    { email, password, returnTo },
+    'ログインできませんでした。時間をおいて再試行してください。',
+  );
   window.dispatchEvent(new Event('kusakari-auth-changed'));
   return String(result.returnTo);
+}
+
+/**
+ * Issue #87: Cognito sends a confirmation code to the address; the card then asks for it.
+ * @param {string} email @param {string} password @param {string} confirmPassword
+ */
+export async function signUp(email, password, confirmPassword) {
+  await postAuth(
+    '/api/auth/signup',
+    { email, password, confirmPassword },
+    '登録できませんでした。時間をおいて再試行してください。',
+  );
+}
+
+/** @param {string} email @param {string} code */
+export async function confirmSignUp(email, code) {
+  await postAuth('/api/auth/signup/confirm', { email, code }, '確認できませんでした。時間をおいて再試行してください。');
+}
+
+/** @param {string} email */
+export async function resendSignUpCode(email) {
+  await postAuth('/api/auth/signup/resend', { email }, '確認コードを再送できませんでした。');
 }
 
 export async function logout() {

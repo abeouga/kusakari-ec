@@ -34,7 +34,6 @@ public class AuthController {
   @GetMapping("/login")
   public void login(
     @RequestParam(required = false) String returnTo,
-    @RequestParam(defaultValue = "false") boolean signup,
     @RequestParam(defaultValue = "false") boolean managed,
     HttpServletRequest request,
     HttpServletResponse response
@@ -43,7 +42,7 @@ public class AuthController {
       response.sendError(503);
       return;
     }
-    if (!signup && !managed) {
+    if (!managed) {
       response.sendRedirect(
         urls.webOrigin() +
           "/account/login?returnTo=" +
@@ -52,7 +51,7 @@ public class AuthController {
       return;
     }
     request.getSession().setAttribute("AUTH_RETURN_TO", urls.safeReturn(returnTo));
-    response.sendRedirect("/api/auth/authorize/cognito" + (signup ? "?signup=true" : ""));
+    response.sendRedirect("/api/auth/authorize/cognito");
   }
 
   @GetMapping("/reset")

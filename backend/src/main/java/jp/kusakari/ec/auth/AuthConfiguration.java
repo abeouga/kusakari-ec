@@ -1,7 +1,6 @@
 package jp.kusakari.ec.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
@@ -10,7 +9,6 @@ import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClient
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.*;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -87,22 +85,6 @@ public class AuthConfiguration {
     var authorizedClients = new InMemoryOAuth2AuthorizedClientService(clients);
     var resolver = new DefaultOAuth2AuthorizationRequestResolver(clients, "/api/auth/authorize");
     resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
-    var requests = new OAuth2AuthorizationRequestResolver() {
-      private OAuth2AuthorizationRequest customize(OAuth2AuthorizationRequest value, HttpServletRequest request) {
-        if (value == null || !"true".equals(request.getParameter("signup"))) return value;
-        return OAuth2AuthorizationRequest.from(value)
-          .additionalParameters(params -> params.put("screen_hint", "signup"))
-          .build();
-      }
-
-      public OAuth2AuthorizationRequest resolve(HttpServletRequest request) {
-        return customize(resolver.resolve(request), request);
-      }
-
-      public OAuth2AuthorizationRequest resolve(HttpServletRequest request, String id) {
-        return customize(resolver.resolve(request, id), request);
-      }
-    };
     return http
       .csrf(csrf -> csrf.ignoringRequestMatchers("/api/products/references", "/api/materials/quote"))
       .addFilterBefore(
@@ -116,6 +98,8 @@ public class AuthConfiguration {
             "/api/auth/me",
             "/api/auth/csrf",
             "/api/auth/login",
+            "/api/auth/signup",
+            "/api/auth/signup/*",
             "/api/auth/reset",
             "/api/auth/authorize/**",
             "/api/auth/callback/**",
@@ -139,7 +123,7 @@ public class AuthConfiguration {
       )
       .oauth2Login(login ->
         login
-          .authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(requests))
+          .authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(resolver))
           .redirectionEndpoint(endpoint -> endpoint.baseUri("/api/auth/callback/*"))
           .authorizedClientService(authorizedClients)
           .successHandler((request, response, authentication) -> {
