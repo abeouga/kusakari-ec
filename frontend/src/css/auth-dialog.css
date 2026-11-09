@@ -30,6 +30,8 @@
 .auth-links a, .auth-links button, .login-home { color: var(--green); text-underline-offset: 4px; }
 .auth-links button { padding: 0; border: 0; background: transparent; text-decoration: underline; text-align: left; }
 .auth-submit:disabled { opacity: .6; cursor: wait; }
+.auth-note { margin: 0; color: #526056; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.login-card .auth-success { margin-bottom: 16px; }
 @media (max-width: 480px) {
   .login-page { padding: 32px 16px; }
   .login-card { padding: 28px 20px; }

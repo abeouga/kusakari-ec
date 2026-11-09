@@ -19,7 +19,7 @@ const servers =
 
 export default defineConfig({
   ...base,
-  testMatch: 'custom-login.spec.js',
+  testMatch: ['custom-login.spec.js', 'signup-card.spec.js'],
   timeout: 90000,
   reporter: [['list'], ['json', { outputFile: 'artifacts/custom-login/report.json' }]],
   outputDir: 'artifacts/custom-login/results',
