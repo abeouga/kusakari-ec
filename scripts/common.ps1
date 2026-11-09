@@ -124,13 +124,25 @@ function Stop-OwnedServices {
 }
 
 function Assert-PortsAvailable {
-    foreach ($port in $servicePorts) {
-        $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)
-        if ($listeners.Count -gt 0) {
-            $ids = ($listeners | Select-Object -ExpandProperty OwningProcess -Unique) -join ','
-            throw "固定ポート $port は別プロセスが使用中です (PID $ids)。対象を確認してください。代替ポートでは起動しません。"
+    $deadline = (Get-Date).AddSeconds(90)
+    do {
+        $conflict = $null
+        foreach ($port in $servicePorts) {
+            $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)
+            if ($listeners.Count -gt 0) {
+                $conflict = [pscustomobject]@{
+                    Port = $port
+                    Ids = (($listeners | Select-Object -ExpandProperty OwningProcess -Unique) -join ',')
+                }
+                break
+            }
         }
-    }
+        if (-not $conflict) { return }
+        # PID 0 は、持ち主が終了済みでWindowsが後片付け中のソケット。消えるまで待つ。
+        if ($conflict.Ids -ne '0') { break }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+    throw "固定ポート $($conflict.Port) は別プロセスが使用中です (PID $($conflict.Ids))。対象を確認してください。代替ポートでは起動しません。"
 }
 
 function Wait-Endpoint([string]$url, [int]$seconds = 60) {
