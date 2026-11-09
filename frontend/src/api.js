@@ -109,8 +109,6 @@ export const api = {
   updateOrder: (id, details) => request(`/orders/${encodeURIComponent(id)}`, 'PUT', JSON.stringify(details)),
   /** @param {string} id */
   deleteOrder: (id) => request(`/orders/${encodeURIComponent(id)}`, 'DELETE'),
-  /** @param {number} storeId @param {import('./types').MaterialItem[]} items @returns {Promise<import('./types').MaterialMatch[]>} */
-  materials: (storeId, items) => request('/materials/quote', 'POST', JSON.stringify({ storeId, items })),
 };
 
 /** @param {number} value */

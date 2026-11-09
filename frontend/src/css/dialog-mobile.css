@@ -62,19 +62,4 @@
   .order-label {
     font-size: 8px;
   }
-  .material-candidate {
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .material-candidate strong {
-    font-size: 12px;
-  }
-  .material-candidate button {
-    padding: 8px;
-    font-size: 9px;
-  }
-  .material-candidate img {
-    width: 43px;
-    height: 60px;
-  }
 }

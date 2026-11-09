@@ -52,8 +52,6 @@
  * @typedef {{name:string,latinName:string,category:string,description:string,heightCm:number|null,currentProfile:PlantModelProfile,imageUrl:string|null,imageDataUrl:string|null}} PlantSuggestionInput
  * @typedef {{profile:PlantModelProfile,estimatedFields:string[],warnings:string[]}} PlantSuggestion
  * @typedef {{requestId:string, revision:number, expectedTotalYen:number, paymentMethod:string}} Checkout
- * @typedef {{materialCode:string, quantity:number, unit:string}} MaterialItem
- * @typedef {{materialCode:string, status:string, candidates:{product:Product, purchaseQuantity:number, lineTotalYen:number, available:boolean}[]}} MaterialMatch
  * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,productCount:number,itemCount:number,thumbnailVersion:string}} ShoppingSummary
  * @typedef {{id:string,name:string,imageUrl:string,priceYen:number,stock:number,active:boolean}} ShoppingProduct
  * @typedef {{key:string,name:string,quantity:number,unit:string,products:ShoppingProduct[]}} ShoppingLine

@@ -28,21 +28,6 @@
   .categories button {
     padding: 9px 12px;
   }
-  .material-banner {
-    margin-inline: 5%;
-    gap: 24px;
-  }
-  .material-banner h2 {
-    font-size: 21px;
-  }
-  .material-illustration {
-    width: 85px;
-    height: 115px;
-  }
-  .material-banner > button {
-    padding: 13px;
-    font-size: 10px;
-  }
   .product-name {
     font-size: 14px;
   }
