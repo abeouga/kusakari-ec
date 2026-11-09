@@ -96,7 +96,7 @@ DBとS3のバックアップ/バージョニング/削除方針は一体で管�
 
 ```powershell
 $env:KUSAKARI_DEPLOY_SITE='配布成果物のsiteフォルダーの絶対パス'
-npx playwright test --config playwright.deployment.config.js
+npx playwright test --config e2e/configs/playwright.deployment.config.js
 ```
 
 専用MySQLのE2E DBで2 APIを起動し、同一オリジンの静的成果物で検証します。APIモックは使いません。

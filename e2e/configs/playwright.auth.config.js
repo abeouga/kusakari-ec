@@ -1,13 +1,14 @@
 import { defineConfig } from '@playwright/test';
+import { canvasRoot, fromRoot, repoRoot } from './paths.js';
 
 // Real APIs/MySQL; the provider URL is inspected without contacting or impersonating Cognito.
 export default defineConfig({
-  testDir: './e2e',
+  testDir: fromRoot('e2e'),
   testMatch: ['auth.spec.js', 'auth-dialog.spec.js'],
   workers: 1,
   timeout: 45000,
-  reporter: [['list'], ['json', { outputFile: 'artifacts/auth/report.json' }]],
-  outputDir: 'artifacts/auth/results',
+  reporter: [['list'], ['json', { outputFile: fromRoot('artifacts/auth/report.json') }]],
+  outputDir: fromRoot('artifacts/auth/results'),
   use: {
     baseURL: 'http://127.0.0.1:15286',
     browserName: 'chromium',
@@ -17,6 +18,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'node scripts/api.mjs e2e',
+      cwd: repoRoot,
       url: 'http://127.0.0.1:18286/api/health',
       reuseExistingServer: false,
       timeout: 90000,
@@ -32,13 +34,14 @@ export default defineConfig({
     },
     {
       command: 'npm --workspace frontend run dev -- --port 15286',
+      cwd: repoRoot,
       url: 'http://127.0.0.1:15286',
       reuseExistingServer: false,
       env: { KUSAKARI_EC_API_TARGET: 'http://127.0.0.1:18286', VITE_KUSAKARI_CANVAS_URL: 'http://127.0.0.1:15273/' },
     },
     {
       command: 'node scripts/api.mjs dev',
-      cwd: '../kusakari-canvas',
+      cwd: canvasRoot,
       url: 'http://127.0.0.1:18280/health/ready',
       reuseExistingServer: false,
       timeout: 90000,
@@ -52,7 +55,7 @@ export default defineConfig({
     },
     {
       command: 'npm --workspace frontend run dev -- --port 15273',
-      cwd: '../kusakari-canvas',
+      cwd: canvasRoot,
       url: 'http://127.0.0.1:15273',
       reuseExistingServer: false,
       env: { KUSAKARI_CANVAS_API_TARGET: 'http://127.0.0.1:18280', VITE_KUSAKARI_EC_URL: 'http://127.0.0.1:15286/' },
