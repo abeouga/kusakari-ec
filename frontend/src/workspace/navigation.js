@@ -8,6 +8,16 @@ export function navigate(path) {
   window.scrollTo(0, 0);
 }
 
+/**
+ * Replaces the current history entry, for a page that only forwards elsewhere: Back must not land on it again.
+ * @param {string} path
+ */
+export function redirect(path) {
+  window.history.replaceState(window.history.state, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  window.scrollTo(0, 0);
+}
+
 export function goBack() {
   const previousPath = window.history.state?.kusakariPreviousPath;
   if (typeof previousPath === 'string' && previousPath.startsWith('/') && !previousPath.startsWith('//')) {

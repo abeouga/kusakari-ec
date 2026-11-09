@@ -7,7 +7,7 @@ import { sql } from './database.js';
 test.use({ trace: 'off' });
 const evidence = 'artifacts/login-required-cart';
 const cartCounts = () => sql("SELECT CONCAT((SELECT COUNT(*) FROM carts), ':', (SELECT COUNT(*) FROM cart_items));");
-const prompt = 'カートを利用するにはログインしてください。';
+const loginUrl = (returnTo) => `${ec}/account/login?returnTo=${encodeURIComponent(returnTo)}`;
 
 async function addFromCatalog(page, product) {
   await page.getByLabel('植物を検索', { exact: true }).fill(product.sku);
@@ -38,15 +38,21 @@ test('signed-out visitors are sent to login instead of using a cart', async ({ p
   const product = products.find((item) => item.active && item.stock >= 2);
   expect(product).toBeTruthy();
   await addFromCatalog(page, product);
-  await expect(page).toHaveURL(`${ec}/account/login?returnTo=${encodeURIComponent(`${ec}/`)}`);
+  await expect(page).toHaveURL(loginUrl(`${ec}/`));
   await expect(page.getByLabel('メールアドレス', { exact: true })).toBeVisible();
 
-  for (const path of ['/cart', '/cart/gardens/any-garden']) {
-    await page.goto(ec + path);
-    await expect(page.getByRole('heading', { name: prompt, exact: true })).toBeVisible();
-    await expect(page.getByLabel('メールアドレス', { exact: true })).toBeVisible();
-    await expect(page.locator('.cart-content')).toHaveCount(0);
-  }
+  // The header cart button leads to the login page, and Back returns to the shop rather than bouncing to login again.
+  await page.goto(ec);
+  await page.getByRole('link', { name: /^カートを開く/ }).click();
+  await expect(page).toHaveURL(loginUrl(`${ec}/cart`));
+  await expect(page.getByRole('heading', { name: 'ログイン', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(`${ec}/`);
+
+  await page.goto(`${ec}/cart`);
+  await expect(page).toHaveURL(loginUrl(`${ec}/cart`));
+  await expect(page.getByLabel('メールアドレス', { exact: true })).toBeVisible();
+  await expect(page.locator('.cart-content')).toHaveCount(0);
   await page.screenshot({ path: `${evidence}/signed-out-cart.png`, fullPage: true });
   expect(writes).toEqual([]);
   const signedOutWrites = [...writes];
@@ -66,8 +72,9 @@ test('signed-out visitors are sent to login instead of using a cart', async ({ p
   expect(signedOut.write).toBe(401);
   expect([401, 404, 405]).toContain(signedOut.removedImport);
 
-  // Logging in from the cart prompt returns to the cart page.
+  // Logging in after opening the cart returns to the cart page.
   await page.goto(`${ec}/cart`);
+  await expect(page).toHaveURL(loginUrl(`${ec}/cart`));
   await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('main').getByRole('button', { name: 'ログイン', exact: true }).click();

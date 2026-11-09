@@ -1,4 +1,4 @@
-import { navigate } from './workspace/navigation';
+import { navigate, redirect } from './workspace/navigation';
 
 /** @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,role:string|null,storeIds:number[]}} AuthSession */
 
@@ -29,12 +29,21 @@ export async function authFetch(url, init = {}) {
   return fetch(url, { ...init, headers, credentials: 'same-origin' });
 }
 
-export function login() {
+function loginPath() {
   const returnTo =
     window.location.pathname === '/account/login'
       ? new URLSearchParams(window.location.search).get('returnTo') || '/'
       : window.location.href.split('#')[0];
-  navigate(`/account/login?returnTo=${encodeURIComponent(returnTo)}`);
+  return `/account/login?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+export function login() {
+  navigate(loginPath());
+}
+
+/** For pages that cannot be shown signed out: the login page takes their place in the browser history. */
+export function redirectToLogin() {
+  redirect(loginPath());
 }
 
 /** An API failure that keeps the server's error code so the login card can choose its next step. */
