@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../useAuth';
 import { AuthError, logout, passwordLogin } from '../auth';
 import { SignupForm } from './SignupForm';
-import { PageLink } from '../workspace/Common';
 import '../css/auth-dialog.css';
 
 /** @typedef {'login'|'signup'|'confirm'} AuthMode */
 
 /**
- * @param {{onAuthenticated?:()=>Promise<unknown>, initialMode?:AuthMode, onModeChange?:(mode:AuthMode)=>void}} [props]
+ * @param {{initialMode?:AuthMode, onModeChange?:(mode:AuthMode)=>void}} [props]
  */
-export function AuthPanel({ onAuthenticated, initialMode = 'login', onModeChange } = {}) {
+export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
   const { session, error } = useAuth();
   const [mode, setMode] = useState(initialMode);
   const [pending, setPending] = useState({ email: '', password: '' });
@@ -28,13 +26,7 @@ export function AuthPanel({ onAuthenticated, initialMode = 'login', onModeChange
     setDestination(target);
     setSubmitting(true);
     setFailure('');
-    try {
-      if (onAuthenticated) await onAuthenticated();
-      window.location.replace(target);
-    } catch (reason) {
-      setFailure(reason instanceof Error ? reason.message : 'カートを引き継げませんでした。再試行してください。');
-      setSubmitting(false);
-    }
+    window.location.replace(target);
   }
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   async function submit(event) {
@@ -78,10 +70,7 @@ export function AuthPanel({ onAuthenticated, initialMode = 'login', onModeChange
           {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
         </p>
       )}
-      {destination ? <>
-        <button onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
-        <PageLink className="back-link" href="/cart"><ArrowLeft size={16} aria-hidden />カートに戻る</PageLink>
-      </> : session.authenticated ? (
+      {session.authenticated ? (
         <>
           <p>{session.name || session.email}</p>
           <p>{session.role === 'ADMIN' ? '管理者' : session.role === 'SELLER' ? '出店者' : '利用者'}</p>

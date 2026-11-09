@@ -52,8 +52,6 @@
 .checkout-summary .back-button { display: flex; align-items: center; gap: 6px; width: fit-content; }
 .garden-transfer-result { margin: 20px 0; padding: 20px; background: #edf3e7; border: 1px solid #c9d9bf; border-radius: 10px; }
 /* Issue #88: a guest who opens the dialog link (`/cart?garden=`) is asked to log in instead. */
-.garden-login-notice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 18px; padding: 18px 20px; border: 2px dashed #b9c4b0; border-radius: 12px; }
-.garden-login-notice p { margin: 0; }
 /* The cart and garden list share one page surface; only the total is emphasized. */
 .standalone-cart-main { padding-top: 38px; }
 .shopping-page-intro { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 32px; }

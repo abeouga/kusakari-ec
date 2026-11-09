@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import { login, readSession } from './auth';
-import { repriceGuestCart, setGuestQuantity } from './guestCart';
+import { repriceGuestCart } from './guestCart';
 import { useAuth } from './useAuth';
 
 export function useShop() {
@@ -16,6 +16,8 @@ export function useShop() {
   const [shoppingTransfer, setShoppingTransfer] = useState(
     /** @type {import('./types').ShoppingTransfer|null} */ (null),
   );
+  // Issue #10: the cart is for signed-in members only. Signed-out visitors browse the public catalog.
+  const [signedOut, setSignedOut] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -30,56 +32,25 @@ export function useShop() {
     setCart(next);
   }, []);
 
-  const promoteGuestCart = useCallback(async () => {
-    let saved = await api.cart();
-    const draft = guestCart.current;
-    if (draft?.items.length) {
-      try {
-        if (saved.items.length && saved.storeId !== draft.storeId) throw new ApiError(`保存済みカートの受取店舗は「${saved.storeName}」です。カートに戻ってこの店舗を選び直してください。`, 409);
-        if (!guestPlan.current) {
-          guestPlan.current = {
-            revision: saved.revision,
-            storeId: draft.storeId,
-            items: draft.items.map((line) => ({ productId: line.product.id,
-              quantity: line.quantity + (saved.items.find((item) => item.product.id === line.product.id)?.quantity ?? 0) })),
-          };
-        }
-        const plan = guestPlan.current;
-        if (plan.items.some((line) => line.quantity > 99)) throw new ApiError('保存済みの数量との合計が99点を超えます。カートの数量を減らしてください。', 400);
-        const alreadyApplied = saved.storeId === plan.storeId && plan.items.every((line) =>
-          saved.items.some((item) => item.product.id === line.productId && item.quantity === line.quantity));
-        if (!alreadyApplied) saved = await api.mergeGuestCart(plan);
-      } catch (reason) {
-        // Retain absolute targets after an uncertain network response so retry cannot add the same items twice.
-        if (reason instanceof ApiError && reason.status > 0) guestPlan.current = null;
-        throw reason;
-      }
-    }
-    guestPlan.current = null;
-    guestCart.current = null;
-    setCart(saved);
-    return saved;
-  }, []);
-
   const refresh = useCallback(async () => {
     let nextCart;
     try {
-      nextCart = guestCart.current?.items.length ? await promoteGuestCart() : await api.cart();
+      nextCart = await api.cart();
     } catch (reason) {
       if (!(reason instanceof ApiError) || reason.status !== 401) throw reason;
+      setSignedOut(true);
+      setCart(null);
       setOrders([]);
-      const storeId = guestCart.current?.storeId ?? 1;
-      const [nextProducts, store] = await Promise.all([api.products(storeId), api.store(storeId)]);
-      setProducts(nextProducts);
-      rememberGuest(repriceGuestCart(guestCart.current, store, nextProducts));
+      setProducts(await api.products(1));
       return;
     }
+    setSignedOut(false);
     setCart(nextCart);
     const nextProducts = await api.products(nextCart.storeId);
     const nextOrders = await api.orders();
     setProducts(nextProducts);
     setOrders(nextOrders);
-  }, [promoteGuestCart, rememberGuest]);
+  }, []);
 
   const run = useCallback(
     /** @param {() => Promise<void>} action @param {boolean} [refreshOnFailure] */
@@ -132,23 +103,22 @@ export function useShop() {
   function setQuantity(id, quantity) {
     return run(async () => {
       if (!cart) return;
-      if (cart.guest) {
-        if (guestPlan.current) throw new Error('引き継ぎ結果を確認中です。注文手続きを再試行してください。');
-        const product = products.find((item) => item.id === id) ?? cart.items.find((item) => item.product.id === id)?.product;
-        if (!product) throw new Error('商品が見つかりません。商品一覧を再読み込みしてください。');
-        rememberGuest(setGuestQuantity(cart, product, quantity));
-      } else setCart(await api.setItem(id, quantity, cart.revision));
+      setCart(await api.setItem(id, quantity, cart.revision));
       checkoutRequest.current = null;
       if (quantity === 0) {
         setNotice('カートから削除しました。');
       } else {
         setNotice('カートを更新しました。');
       }
-    }, !!cart && !cart.guest);
+    }, true);
   }
 
   /** @param {string} id @param {number} [quantity] */
   function add(id, quantity = 1) {
+    if (signedOut) {
+      login();
+      return;
+    }
     if (!cart) {
       setError('商品と店舗を読み込んでいます。しばらくしてから再試行してください。');
       return;
@@ -183,7 +153,7 @@ export function useShop() {
   async function checkoutCart() {
     const session = await readSession();
     if (!session.authenticated) { login(); return null; }
-    const current = cart?.guest ? await promoteGuestCart() : await api.cart();
+    const current = await api.cart();
     setCart(current);
     return current;
   }
@@ -295,8 +265,9 @@ export function useShop() {
     : (sellerStores[0]?.id ?? 0);
 
   return {
+    // Always false now that guest carts are gone; Cart/CartPage still read it; remove with the selectStore guest branch.
     isGuest: !!cart?.guest,
-    promoteGuestCart,
+    signedOut,
     beginCheckout,
     sellerStoreId,
     sellerStores,

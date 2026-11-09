@@ -109,13 +109,9 @@ test('Canvas list button opens the cart dialog for that garden and the added ite
   }
 });
 
-test('a guest who opens the dialog link is asked to log in and returns to the dialog', async ({ page }) => {
-  await mkdir(evidence, { recursive: true });
+test('a guest who opens the dialog link is sent to the login page and returns to the dialog', async ({ page }) => {
+  // Issue #10 (PR #90): the cart page is member-only, so the dialog link sends guests to the login page with the same URL as returnTo.
   await page.goto(`${ec}/cart?garden=`);
-  const notice = page.locator('.garden-login-notice');
-  await expect(notice).toContainText('ログインしてください');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.screenshot({ path: `${evidence}/guest-login-notice.png` });
-  await notice.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(`${ec}/account/login?returnTo=${encodeURIComponent(`${ec}/cart?garden=`)}`);
+  await expect(page.getByRole('dialog', { name: '庭に設置したものから追加' })).toHaveCount(0);
 });

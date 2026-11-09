@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUpRight, Check, PencilRuler, X } from 'lucide-react';
 import { useShop } from './useShop';
 import { BrandIcon } from './components/BrandIcon';
@@ -17,7 +17,7 @@ import { Stores } from './components/Stores';
 import { LoginPage } from './components/LoginPage';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { StickyHeader } from './components/StickyHeader';
-import { login } from './auth';
+import { login, redirectToLogin } from './auth';
 import { useAuth } from './useAuth';
 
 const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin)
@@ -46,7 +46,7 @@ function requestedPanel() {
 
 export default function App() {
   const shop = useShop();
-  const { session } = useAuth();
+  const { session, error: authError } = useAuth();
   const location = usePath();
   const path = location.split('#')[0];
   const [panel, setPanel] = useState(requestedPanel);
@@ -83,6 +83,11 @@ export default function App() {
   }
 
   const workspace = path !== '/' && path !== '/cart';
+  // Issue #10: carts belong to signed-in members, so signed-out visitors go to the login page and return here afterwards.
+  const cartLoginRequired = Boolean(path === '/cart' && session && !session.authenticated);
+  useEffect(() => {
+    if (cartLoginRequired) redirectToLogin();
+  }, [cartLoginRequired]);
   /** @param {string} next */
   function openHeaderPanel(next) {
     if (next === 'login') {
@@ -119,12 +124,21 @@ export default function App() {
       )}
     </>
   );
-  if (path === '/account/login' || panel === 'login')
-    return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
+  if (path === '/account/login' || panel === 'login') return <LoginPage />;
   if (workspace) {
     return <Workspace shop={shop} path={path} header={header} />;
   }
 
+  if (path === '/cart' && !session?.authenticated) {
+    return (
+      <>
+        {header}
+        <main className="standalone-cart-main">
+          {authError ? <p role="alert">{authError}</p> : <p role="status">ログイン状態を確認しています。</p>}
+        </main>
+      </>
+    );
+  }
   if (path === '/cart') {
     return (
       <CartPage shop={shop} header={header} />
