@@ -7,7 +7,7 @@ import { chosenProduct, lineReason, quantityInCart } from '../shoppingSelection'
 
 const TITLE = '庭に設置したものから追加';
 
-/** Dashed card under the cart lines (issue #64). Guests have no saved gardens, so it is shown to members only.
+/** Dashed card under the cart lines (issue #64). The cart page is member-only (issue #10).
  * PR #66 review: the card is as tall as the cart line right above it. A line's height depends on how its product
  * name wraps, so the card follows the measured height of `matchHeight` instead of a fixed value.
  * @param {{shop:ReturnType<import('../useShop').useShop>,matchHeight?:HTMLElement|null}} props */
@@ -23,7 +23,6 @@ export function AddFromGardenCard({ shop, matchHeight = null }) {
     observer.observe(matchHeight);
     return () => observer.disconnect();
   }, [matchHeight]);
-  if (shop.isGuest) return null;
   return (
     <>
       <button

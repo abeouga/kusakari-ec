@@ -84,20 +84,3 @@ test('signed-in panel shows a logout failure above the account details', async (
     JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2),
   );
 });
-
-test('cart handoff panel shows the handoff failure above the retry message', async ({ page }) => {
-  await page.goto('/account/login');
-  const guestCart = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/cart');
-  await page.reload();
-  // A 401 here makes the shop build the browser-side guest cart that login hands off.
-  expect((await guestCart).status()).toBe(401);
-  // Fail only the cart read that promoteGuestCart makes after Cognito accepts the login.
-  await page.route('**/api/cart', (route) => route.abort());
-  await submitLogin(page, password());
-  await expect(page.getByRole('button', { name: 'カートを引き継いで続ける', exact: true })).toBeEnabled();
-  const layout = await expectErrorAtTop(page, 'cart-handoff');
-  await writeFile(
-    `${dir}/cart-handoff.json`,
-    JSON.stringify({ layout, session: await (await page.request.get('/api/auth/me')).json() }, null, 2),
-  );
-});

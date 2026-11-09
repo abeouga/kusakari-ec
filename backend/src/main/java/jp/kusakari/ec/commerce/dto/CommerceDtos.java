@@ -1,6 +1,5 @@
 package jp.kusakari.ec.commerce.dto;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
 import java.util.UUID;
@@ -13,14 +12,6 @@ public final class CommerceDtos {
   public record ItemRequest(@Min(0) @Max(99) int quantity, @PositiveOrZero long revision) {}
 
   public record StoreRequest(@Positive long storeId, @PositiveOrZero long revision) {}
-
-  public record GuestItem(@NotBlank @Size(max = 100) String productId, @Min(1) @Max(99) int quantity) {}
-
-  public record GuestCartRequest(
-    @PositiveOrZero long revision,
-    @Positive long storeId,
-    @NotEmpty @Size(max = 50) List<@NotNull @Valid GuestItem> items
-  ) {}
 
   public record CheckoutRequest(
     @NotNull UUID requestId,

@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../useAuth';
 import { login, logout, passwordLogin } from '../auth';
-import { PageLink } from '../workspace/Common';
 import '../css/auth-dialog.css';
 
-/** @param {{onAuthenticated?:()=>Promise<unknown>}} [props] */
-export function AuthPanel({ onAuthenticated } = {}) {
+export function AuthPanel() {
   const { session, error } = useAuth();
   const [failure, setFailure] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -16,19 +13,6 @@ export function AuthPanel({ onAuthenticated } = {}) {
   const returnTo =
     params.get('returnTo') ||
     (window.location.pathname === '/account/login' ? '/' : window.location.href.split('#')[0]);
-  /** @param {string} target */
-  async function complete(target) {
-    setDestination(target);
-    setSubmitting(true);
-    setFailure('');
-    try {
-      if (onAuthenticated) await onAuthenticated();
-      window.location.replace(target);
-    } catch (reason) {
-      setFailure(reason instanceof Error ? reason.message : 'カートを引き継げませんでした。再試行してください。');
-      setSubmitting(false);
-    }
-  }
   /** @param {import('react').FormEvent<HTMLFormElement>} event */
   async function submit(event) {
     event.preventDefault();
@@ -38,7 +22,8 @@ export function AuthPanel({ onAuthenticated } = {}) {
     setSubmitting(true);
     try {
       const target = await passwordLogin(String(data.get('email') || ''), String(data.get('password') || ''), returnTo);
-      await complete(target);
+      setDestination(target);
+      window.location.replace(target);
     } catch (reason) {
       setFailure(reason instanceof Error ? reason.message : 'ログインできませんでした。');
       setSubmitting(false);
@@ -57,10 +42,7 @@ export function AuthPanel({ onAuthenticated } = {}) {
           {failure || '認証が完了しませんでした。もう一度ログインしてください。'}
         </p>
       )}
-      {destination ? <>
-        <button onClick={() => void complete(destination)}>カートを引き継いで続ける</button>
-        <PageLink className="back-link" href="/cart"><ArrowLeft size={16} aria-hidden />カートに戻る</PageLink>
-      </> : session.authenticated ? (
+      {session.authenticated ? (
         <>
           <p>{session.name || session.email}</p>
           <p>{session.role === 'ADMIN' ? '管理者' : session.role === 'SELLER' ? '出店者' : '利用者'}</p>

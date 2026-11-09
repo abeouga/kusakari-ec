@@ -4,7 +4,7 @@ import { navigate } from './workspace/navigation';
 
 let signedIn = false;
 
-/** A later 401 means the login expired only if this page had a signed-in session; guests just are not logged in. */
+/** A later 401 means the login expired only if this page had a signed-in session; signed-out visitors just are not logged in. */
 export const wasSignedIn = () => signedIn;
 
 /** @returns {Promise<AuthSession>} */

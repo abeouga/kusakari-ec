@@ -199,10 +199,11 @@ export function Catalog({ shop, onDetail }) {
               //   if (!shop.cart || shop.isGuest) login();
               //   else setListProduct(product);
               // }}
-              disabled={shop.busy || !shop.cart}
+              // Issue #10: signed-out visitors may press + and are sent to login instead of a cart.
+              disabled={shop.busy || (!shop.cart && !shop.signedOut)}
             />
           )}
-          {shop.cart && !products.length && (
+          {(shop.cart || shop.signedOut) && !products.length && (
             <div className="empty">
               <Leaf size={30} />
               <h3>条件に合う植物が見つかりません。</h3>

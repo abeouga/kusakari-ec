@@ -2,8 +2,7 @@ import { AuthPanel } from './AuthPanel';
 import { useAuth } from '../useAuth';
 import { flashNotice } from './SessionNotice';
 
-/** @param {{onAuthenticated?:()=>Promise<unknown>}} props */
-export function LoginPage({ onAuthenticated }) {
+export function LoginPage() {
   const { session } = useAuth();
   return (
     <div className="login-page">
@@ -23,7 +22,7 @@ export function LoginPage({ onAuthenticated }) {
             {flashNotice}
           </p>
         )}
-        <AuthPanel onAuthenticated={onAuthenticated} />
+        <AuthPanel />
         {session?.authenticated && (
           <a className="login-home" href="/">
             トップページへ

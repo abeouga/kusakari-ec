@@ -16,6 +16,7 @@ import { CartPage } from './components/CartPage';
 import { Stores } from './components/Stores';
 import { Materials } from './components/Materials';
 import { LoginPage } from './components/LoginPage';
+import { AuthPanel } from './components/AuthPanel';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { StickyHeader } from './components/StickyHeader';
 import { login } from './auth';
@@ -121,12 +122,23 @@ export default function App() {
       )}
     </>
   );
-  if (path === '/account/login' || panel === 'login')
-    return <LoginPage onAuthenticated={shop.isGuest ? shop.promoteGuestCart : undefined} />;
+  if (path === '/account/login' || panel === 'login') return <LoginPage />;
   if (workspace) {
     return <Workspace shop={shop} path={path} header={header} />;
   }
 
+  // Issue #10: carts belong to signed-in members. Ask for login here; AuthPanel returns to this page afterwards.
+  if ((path === '/cart' || gardenCart) && !session?.authenticated) {
+    return (
+      <>
+        {header}
+        <main className="standalone-cart-main">
+          {session && <h1>カートを利用するにはログインしてください。</h1>}
+          <AuthPanel />
+        </main>
+      </>
+    );
+  }
   if (path === '/cart' || gardenCart) {
     return (
       <>
