@@ -120,7 +120,9 @@ export async function checkout(request) {
   };
   const response = await call(request, '/orders', 'POST', payload);
   expect(response.status(), await response.text()).toBe(200);
-  return { order: await response.json(), payload };
+  // One order per pickup store (issue #70); callers that buy from a single store use `order`.
+  const { orders } = await response.json();
+  return { order: orders[0], orders, payload };
 }
 
 // Isolate password changes from the shared buyer/seller/administrator accounts.

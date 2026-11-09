@@ -58,7 +58,11 @@ public class SavedShoppingItems {
   @Transactional
   public void add(String cartId, String gardenId, String productId) {
     var cart = lock(cartId);
-    var product = catalog.product(productId, cart.getStoreId());
+    var product = catalog
+      .productsAtSaleStores(cart.getStoreId(), List.of(productId))
+      .stream()
+      .findFirst()
+      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
     if (!product.active()) throw new ApiException(409, "PRODUCT_ARCHIVED", "この商品は販売を終了しています。");
     var existing = read(cartId, gardenId);
     if (

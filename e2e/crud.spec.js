@@ -47,7 +47,7 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     const response = await saved;
     expect(response.status()).toBe(200);
     checkoutBody = response.request().postDataJSON();
-    order = await response.json();
+    [order] = (await response.json()).orders;
     expect(order.totalYen).toBe(2280);
     expect(order.subtotalYen).toBe(1480);
     expect(order.shippingFeeYen).toBe(800);
@@ -94,7 +94,7 @@ test('delivery CRUD, order snapshot edit and history deletion are persisted and 
     expect(await page.request.get('/api/orders').then((r) => r.json())).toHaveLength(0);
     const replay = await page.request.post('/api/orders', { data: checkoutBody });
     expect(replay.status()).toBe(200);
-    expect((await replay.json()).id).toBe(order.id);
+    expect((await replay.json()).orders[0].id).toBe(order.id);
     expect(sql(`SELECT COUNT(*) FROM orders WHERE id='${order.id}';`)).toBe('1');
   } finally {
     if (order) replenishOrder(order, 1);

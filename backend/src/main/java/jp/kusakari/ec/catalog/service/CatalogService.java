@@ -2,10 +2,12 @@ package jp.kusakari.ec.catalog.service;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,9 +43,57 @@ public class CatalogService {
   private final ProductMapper mapper;
   private final jp.kusakari.ec.auth.AuthMemberRepository members;
 
+  private static final Comparator<ProductView> VIEW_ORDER = Comparator.comparingInt((ProductView view) ->
+    displayOrder(view.id())
+  ).thenComparing(ProductView::id);
+
   public List<ProductView> products(long storeId) {
     requireStore(storeId);
     return views(products.findByActiveTrue(), storeId).stream().filter(ProductView::active).toList();
+  }
+
+  /**
+   * Issue #70: products evaluated at their sale stores, where they are picked up; {@link ProductView#sellerStoreId()}
+   * is that store. Used when a product is added to the cart from outside the browsed store's listing.
+   */
+  public List<ProductView> productsAtSaleStores(long browseStoreId, Collection<String> ids) {
+    requireStore(browseStoreId);
+    return ids.isEmpty() ? List.of() : atSaleStores(browseStoreId, products.findByIdIn(ids));
+  }
+
+  /** Products evaluated at an explicitly recorded store per product, such as a cart line's pickup store. */
+  public Map<String, ProductView> productsAt(Map<String, Long> storeByProduct) {
+    Map<String, ProductView> result = new HashMap<>();
+    storeByProduct
+      .entrySet()
+      .stream()
+      .collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, toList())))
+      .forEach((storeId, ids) -> productsByIds(storeId, ids).forEach(view -> result.put(view.id(), view)));
+    return result;
+  }
+
+  // A seller's product is sold by the seller's own store; Kusakari's shared products (no owner) by the
+  // store being browsed, which keeps its own stock of them (EC-B05).
+  private List<ProductView> atSaleStores(long browseStoreId, List<ProductEntity> selected) {
+    Map<String, Long> owners = ownerStores();
+    return selected
+      .stream()
+      .collect(
+        groupingBy(product -> owners.getOrDefault(Objects.toString(product.getOwnerMemberId(), ""), browseStoreId))
+      )
+      .entrySet()
+      .stream()
+      .flatMap(group -> views(group.getValue(), group.getKey()).stream())
+      .sorted(VIEW_ORDER)
+      .toList();
+  }
+
+  private Map<String, Long> ownerStores() {
+    return members
+      .findAll()
+      .stream()
+      .filter(m -> m.getStoreId() != null)
+      .collect(java.util.stream.Collectors.toMap(m -> m.getId(), m -> m.getStoreId()));
   }
 
   public List<ProductImageReference> imageReferences(List<String> ids) {
@@ -85,10 +135,7 @@ public class CatalogService {
       .collect(toSet());
     // EC-B05: a seller's product is introduced by the seller's own store; Kusakari's shared products
     // (no owner) are sold by whichever store lists them, i.e. the store being viewed.
-    Map<String, Long> ownerStores = allMembers
-      .stream()
-      .filter(m -> m.getStoreId() != null)
-      .collect(java.util.stream.Collectors.toMap(m -> m.getId(), m -> m.getStoreId()));
+    Map<String, Long> ownerStores = ownerStores();
     return selected
       // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
       // The comparator below already provides the complete, deterministic display order.

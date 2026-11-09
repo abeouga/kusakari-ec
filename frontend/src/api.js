@@ -95,7 +95,7 @@ export const api = {
     request(`/cart/items/${encodeURIComponent(id)}`, 'PUT', JSON.stringify({ quantity, revision })),
   /** @param {number} storeId @param {number} revision @returns {Promise<import('./types').Cart>} */
   setStore: (storeId, revision) => request('/cart/store', 'PUT', JSON.stringify({ storeId, revision })),
-  /** @param {import('./types').Checkout} payload @returns {Promise<import('./types').Order>} */
+  /** @param {import('./types').Checkout} payload @returns {Promise<import('./types').CheckoutResult>} */
   checkout: (payload) => request('/orders', 'POST', JSON.stringify(payload)),
   /** @returns {Promise<import('./types').Order[]>} */
   orders: () => request('/orders'),

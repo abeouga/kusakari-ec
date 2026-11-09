@@ -48,7 +48,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await page.getByRole('button', { name: '注文を確定する' }).click();
     const response = await saved;
     expect(response.status()).toBe(200);
-    order = await response.json();
+    [order] = (await response.json()).orders;
     expect(order.totalYen).toBe(13600);
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
@@ -162,7 +162,7 @@ test('checkout retry after an explicitly lost response keeps the same order', as
       if (payloads.length === 1) {
         // 実APIで注文を保存した後、ブラウザーへの応答だけを遮断します。
         const saved = await route.fetch();
-        order = await saved.json();
+        [order] = (await saved.json()).orders;
         await route.abort();
         return;
       }

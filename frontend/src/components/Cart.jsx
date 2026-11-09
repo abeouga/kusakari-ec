@@ -8,13 +8,13 @@ import { paymentLabel, paymentStatus } from '../payment';
 import { PageLink } from '../workspace/Common';
 import { AddFromGardenCard } from './GardenItemsDialog';
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,onStores:()=>void}} props */
-export function Cart({ shop, onStores }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>}} props */
+export function Cart({ shop }) {
   const [confirming, setConfirming] = useState(false);
   const [payment, setPayment] = useState('PAY_AT_STORE');
   const [lastLine, setLastLine] = useState(/** @type {HTMLElement|null} */ (null));
   const cart = shop.cart;
-  if (shop.lastOrder) {
+  if (shop.lastOrders) {
     return (
       <section className="cart-content cart-complete">
         <h2>注文を保存しました</h2>
@@ -22,7 +22,12 @@ export function Cart({ shop, onStores }) {
           <CheckCircle2 size={42} />
           <h3>植物を迎える準備ができました。</h3>
         </div>
-        <OrderSummary order={shop.lastOrder} />
+        {shop.lastOrders.length > 1 && (
+          <p className="fine-print">受取店舗ごとに{shop.lastOrders.length}件の注文に分けて保存しました。</p>
+        )}
+        {shop.lastOrders.map((order) => (
+          <OrderSummary key={order.id} order={order} />
+        ))}
         <a className="primary-button full" href="/#plants">
           お買い物を続ける
         </a>
@@ -94,16 +99,6 @@ export function Cart({ shop, onStores }) {
         {confirming && <CheckoutConfirm shop={shop} cart={cart} payment={payment} onPayment={setPayment} />}
         {!confirming && (
           <div>
-            <div className="cart-store">
-              <MapPin size={18} />
-              <div>
-                <small>店舗受け取り</small>
-                <strong>{cart.storeName}</strong>
-              </div>
-              <button className="text-button" disabled={shop.busy} onClick={onStores}>
-                変更
-              </button>
-            </div>
             <div className="cart-items">
               {cart.items.map((line, index) => (
                 <article
@@ -116,6 +111,10 @@ export function Cart({ shop, onStores }) {
                     <h3>{line.product.name}</h3>
                     <a href={productCanvasUrl(line.product.id)}>この商品を庭に配置</a>
                     <p>{yen(line.product.priceYen)} / 1鉢</p>
+                    <p className="cart-line-store">
+                      <MapPin size={14} aria-hidden="true" />
+                      受取店舗：{line.storeName ?? cart.storeName}
+                    </p>
                     {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
                     <div className="quantity-control">
                       <button
@@ -225,7 +224,10 @@ export function OrderSummary({ order }) {
         ORDER <span>{new Date(order.createdAt).toLocaleString('ja-JP')}</span>
       </div>
       <p className="order-id">注文番号：{order.id}</p>
-      <p>{order.storeName}</p>
+      <p className="order-store">
+        <MapPin size={16} aria-hidden="true" />
+        受取店舗：{order.storeName}
+      </p>
       {order.pickupAddress && <p className="fine-print">{order.pickupAddress}</p>}
       <DeliverySummary details={order.details} />
       {order.details?.paymentMethod && order.details.paymentMethod !== 'NONE' && (

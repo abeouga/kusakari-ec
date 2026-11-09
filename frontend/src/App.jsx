@@ -70,7 +70,7 @@ export default function App() {
   function close() {
     setPanel('');
     setDetailId('');
-    shop.setLastOrder(null);
+    shop.setLastOrders(null);
   }
   /** @param {string} next */
   function open(next) {
@@ -129,16 +129,12 @@ export default function App() {
 
   if (path === '/cart' || gardenCart) {
     return (
-      <>
-        <CartPage
-          shop={shop}
-          gardenId={gardenCart?.[1]}
-          showGardens={location.includes('#garden-shopping-lists')}
-          header={header}
-          onStores={() => open('stores')}
-        />
-        {panel === 'stores' && <Stores shop={shop} onClose={close} />}
-      </>
+      <CartPage
+        shop={shop}
+        gardenId={gardenCart?.[1]}
+        showGardens={location.includes('#garden-shopping-lists')}
+        header={header}
+      />
     );
   }
 

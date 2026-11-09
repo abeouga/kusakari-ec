@@ -75,7 +75,7 @@ test('same checkout key returns one persisted order and decrements stock once', 
       request.post('/api/orders', { data: body }),
     ]);
     expect(results.map((r) => r.status())).toEqual([200, 200]);
-    const [first, second] = await Promise.all(results.map((r) => r.json()));
+    const [first, second] = (await Promise.all(results.map((r) => r.json()))).map((result) => result.orders[0]);
     order = first;
     expect(first.id).toBe(second.id);
     const after = (await request.get('/api/products?storeId=1').then((r) => r.json())).find(

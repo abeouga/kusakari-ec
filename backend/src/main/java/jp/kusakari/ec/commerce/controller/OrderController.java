@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CheckoutRequest;
+import jp.kusakari.ec.commerce.dto.CommerceDtos.CheckoutResult;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsRequest;
 import jp.kusakari.ec.commerce.service.CheckoutService;
@@ -31,7 +32,7 @@ public class OrderController {
   private final CartSessionResolver sessions;
 
   @PostMapping
-  public OrderView checkout(
+  public CheckoutResult checkout(
     @Valid @RequestBody CheckoutRequest input,
     HttpServletRequest request,
     HttpServletResponse response
