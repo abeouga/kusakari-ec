@@ -5,6 +5,15 @@ import { replenishOrder, sql } from './database.js';
 
 test.use({ trace: 'off' });
 
+// PR evidence at desktop and phone widths (no email addresses are shown on these pages).
+async function shoot(page, name) {
+  await page.screenshot({ path: `artifacts/business/${name}-1440.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `artifacts/business/${name}-390.png`, fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+}
+
 // Issue #70: the cart has no pickup-store control. Each line is picked up at the store whose stock it was
 // added from, checkout creates one order per pickup store, and each store's stock is reduced.
 test('cart lines keep their own pickup store and checkout splits orders per store', async ({ browser }) => {
@@ -55,14 +64,14 @@ test('cart lines keep their own pickup store and checkout splits orders per stor
     await expect(line(input.name)).toHaveText('受取店舗：二子玉川ガーデン');
     await expect(line('ラベンダー')).toHaveText('受取店舗：横浜グリーンハウス');
     await mkdir('artifacts/business', { recursive: true });
-    await buyer.screenshot({ path: 'artifacts/business/pickup-store-cart.png', fullPage: true });
+    await shoot(buyer, 'pickup-store-cart');
 
     await buyer.getByRole('button', { name: '注文内容を確認する' }).click();
     await expect(buyer.getByRole('heading', { name: 'お支払い・受け取りの確認' })).toBeVisible();
     await expect(buyer.getByTestId('checkout-store')).toHaveText([/二子玉川ガーデン/, /横浜グリーンハウス/]);
     await expect(buyer.getByRole('list', { name: '二子玉川ガーデンで受け取る商品' })).toContainText(input.name);
     await expect(buyer.getByRole('list', { name: '横浜グリーンハウスで受け取る商品' })).toContainText('ラベンダー');
-    await buyer.screenshot({ path: 'artifacts/business/pickup-store-confirm.png', fullPage: true });
+    await shoot(buyer, 'pickup-store-confirm');
 
     const ordered = buyer.waitForResponse((r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
     await buyer.getByRole('button', { name: '注文を確定する', exact: true }).click();
