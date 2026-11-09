@@ -11,9 +11,8 @@ const headings = {
 
 /**
  * Issue #87: login, sign-up and code confirmation all stay inside this one card without a page transition.
- * @param {{onAuthenticated?:()=>Promise<unknown>}} props
  */
-export function LoginPage({ onAuthenticated }) {
+export function LoginPage() {
   const { session } = useAuth();
   const [mode, setMode] = useState(/** @type {import('./AuthPanel').AuthMode} */ ('login'));
   const [title, first, second] = headings[mode];
@@ -35,7 +34,7 @@ export function LoginPage({ onAuthenticated }) {
             {flashNotice}
           </p>
         )}
-        <AuthPanel onAuthenticated={onAuthenticated} onModeChange={setMode} />
+        <AuthPanel onModeChange={setMode} />
         {session?.authenticated && (
           <a className="login-home" href="/">
             トップページへ
