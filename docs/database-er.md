@@ -333,6 +333,7 @@ erDiagram
 | `members` | `store_id` | なくす（店舗とのつながりは `organizations`・`store_members` で持つ） |
 | `members` | なし | `email_verified_at`、`created_at` |
 | `organization_applications` | `member_id`、`company`、`contact`、`email`、`phone`、`address`、`reason` | `applicant_member_id`、`organization_name`、`contact_name`、`contact_email`、`contact_phone`、`company_address`、`rejection_reason` |
+| `organization_applications` | 審査中の状態の名前は `PENDING` | `SUBMITTED` |
 | `organization_applications` | なし | `organization_id`、`submitted_at`。状態に `DRAFT`・`WITHDRAWN` を足す。書類の3列と却下の理由は、空にできる（下書きには書類がないため） |
 | `stores` | `hours`、`contact`、`email`、`story` | `business_hours`、`contact_name`、`contact_email`、`introduction` |
 | `stores` | `company` | なくす（事業者名は `organizations.name` だけに持つ） |
