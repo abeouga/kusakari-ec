@@ -1,0 +1,90 @@
+OK|準備: 会員を作る|INSERT INTO members (id, issuer, subject, email, display_name, account_type) VALUES ('u1','iss','s-u1','u1@example.test','購入者','USER'),('ap1','iss','s-ap1','ap1@example.test','申請者1','SHOP_OWNER_APPLICANT'),('ap2','iss','s-ap2','ap2@example.test','申請者2','SHOP_OWNER_APPLICANT'),('st1','iss','s-st1','st1@example.test','スタッフ1','SHOP_STAFF'),('st2','iss','s-st2','st2@example.test','スタッフ2','SHOP_STAFF'),('ad1','iss','s-ad1','ad1@example.test','運営','ADMIN')
+NG|種別: 小文字の種別は拒否|INSERT INTO members (id, issuer, subject, email, display_name, account_type) VALUES ('x1','iss','s-x1','x@example.test','x','shop_owner')
+NG|種別: 旧種別 SHOP は拒否|INSERT INTO members (id, issuer, subject, email, display_name, account_type) VALUES ('x2','iss','s-x2','x@example.test','x','SHOP')
+NG|会員: 同じ issuer, subject は拒否|INSERT INTO members (id, issuer, subject, email, display_name, account_type) VALUES ('x3','iss','s-u1','x@example.test','x','USER')
+OK|組織: オーナーのいないサンプル組織|INSERT INTO organizations (id, name) VALUES (1,'サンプル組織')
+NG|組織: 申請中の会員をオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ap1')
+NG|組織: 購入者をオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','u1')
+NG|組織: 運営をオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ad1')
+NG|組織: 子アカウントをオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','st1')
+OK|申請: 下書きを作る|INSERT INTO organization_applications (id, applicant_member_id, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app1','ap1','A社','担当','c@example.test','000','東京都','STANDARD')
+NG|申請: 同じ人の2件目の申請は拒否|INSERT INTO organization_applications (id, applicant_member_id, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app1b','ap1','A社','担当','c@example.test','000','東京都','STANDARD')
+NG|申請: 知らない状態は拒否|UPDATE organization_applications SET status='PENDING' WHERE id='app1'
+NG|申請: 組織なしの承認済みは拒否|UPDATE organization_applications SET status='APPROVED' WHERE id='app1'
+OK|申請: 下書きから審査中へ|UPDATE organization_applications SET status='SUBMITTED', submitted_at=NOW(6) WHERE id='app1'
+OK|申請: 取り下げ|UPDATE organization_applications SET status='WITHDRAWN' WHERE id='app1'
+OK|申請: 取り下げ後に再申請|UPDATE organization_applications SET status='SUBMITTED', submitted_at=NOW(6) WHERE id='app1'
+OK|承認: 種別変更→組織作成→申請に記録（1トランザクション）|START TRANSACTION; UPDATE members SET account_type='SHOP_OWNER' WHERE id='ap1'; INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ap1'); UPDATE organization_applications SET status='APPROVED', organization_id=2, reviewed_at=NOW(6) WHERE id='app1'; COMMIT
+NG|承認後: 承認済みの申請から組織を外すのは拒否|UPDATE organization_applications SET organization_id=NULL WHERE id='app1'
+NG|オーナー: オーナーである間の種別変更は拒否|UPDATE members SET account_type='USER' WHERE id='ap1'
+NG|オーナー: 2つ目の組織のオーナーは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (3,'B社','ap1')
+OK|準備: 2社目を承認|START TRANSACTION; UPDATE members SET account_type='SHOP_OWNER' WHERE id='ap2'; INSERT INTO organizations (id, name, owner_member_id) VALUES (3,'B社','ap2'); COMMIT
+OK|店舗: A社に店舗を2つ、B社に1つ作る|INSERT INTO stores (id, organization_id, name) VALUES (10,2,'A社 本店'),(11,2,'A社 2号店'),(20,3,'B社 本店')
+NG|店舗: 同じ組織に同じ名前は拒否|INSERT INTO stores (id, organization_id, name) VALUES (12,2,'A社 本店')
+OK|店舗: 別の組織なら同じ名前を使える|INSERT INTO stores (id, organization_id, name) VALUES (21,3,'A社 本店')
+OK|店舗: 作った直後は非公開で位置なし|INSERT INTO t_assert VALUES (((SELECT COUNT(*) FROM stores WHERE id=10 AND published=FALSE AND suspended=FALSE AND latitude IS NULL AND longitude IS NULL)=1))
+NG|店舗: 緯度だけ入れるのは拒否|UPDATE stores SET latitude=35.6 WHERE id=10
+OK|店舗: 緯度経度を両方入れる|UPDATE stores SET latitude=35.6, longitude=139.6 WHERE id=10
+NG|所属: 購入者は所属できない|INSERT INTO organization_members (organization_id, member_id, member_account_type) VALUES (2,'u1','SHOP_STAFF')
+NG|所属: 運営は所属できない|INSERT INTO organization_members (organization_id, member_id) VALUES (2,'ad1')
+NG|所属: オーナーは自分の組織の子アカウントになれない|INSERT INTO organization_members (organization_id, member_id) VALUES (2,'ap1')
+NG|所属: オーナーは別の組織の子アカウントになれない|INSERT INTO organization_members (organization_id, member_id) VALUES (3,'ap1')
+NG|所属: 種別の列を SHOP_OWNER にするのは拒否|INSERT INTO organization_members (organization_id, member_id, member_account_type) VALUES (3,'ap1','SHOP_OWNER')
+OK|招待: A社本店の招待キーを発行|INSERT INTO store_invitations (id, store_id, issued_by_member_id, key_hash, expires_at) VALUES ('inv1',10,'ap1',REPEAT('a',64),NOW(6) + INTERVAL 7 DAY)
+NG|招待: 同じキーのハッシュは拒否|INSERT INTO store_invitations (id, store_id, issued_by_member_id, key_hash, expires_at) VALUES ('inv2',11,'ap1',REPEAT('a',64),NOW(6) + INTERVAL 7 DAY)
+NG|招待: 使用日時だけ入れるのは拒否|UPDATE store_invitations SET used_at=NOW(6) WHERE id='inv1'
+OK|招待キーで登録: 所属→担当（ロールなし）→キー使用済み（1トランザクション）|START TRANSACTION; INSERT INTO organization_members (organization_id, member_id) VALUES (2,'st1'); INSERT INTO store_members (store_id, member_id, organization_id) VALUES (10,'st1',2); UPDATE store_invitations SET used_at=NOW(6), used_by_member_id='st1' WHERE id='inv1'; COMMIT
+OK|担当: 登録直後はロール未割り当て|INSERT INTO t_assert VALUES (((SELECT COUNT(*) FROM store_members WHERE store_id=10 AND member_id='st1' AND role IS NULL)=1))
+NG|所属: 2つ目の組織への所属は拒否|INSERT INTO organization_members (organization_id, member_id) VALUES (3,'st1')
+NG|所属: 所属している間の種別変更は拒否|UPDATE members SET account_type='USER' WHERE id='st1'
+NG|担当: 小文字のロールは拒否|UPDATE store_members SET role='manager' WHERE store_id=10 AND member_id='st1'
+NG|担当: OWNER のロールは拒否|UPDATE store_members SET role='OWNER' WHERE store_id=10 AND member_id='st1'
+OK|担当: A社本店で MANAGER にする|UPDATE store_members SET role='MANAGER' WHERE store_id=10 AND member_id='st1'
+OK|担当: 同じ人を A社2号店では STAFF にする|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (11,'st1',2,'STAFF')
+NG|担当: 同じ店舗への二重の割り当ては拒否|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (10,'st1',2,'STAFF')
+NG|担当: 別の組織の店舗は拒否（組織を所属側に合わせる）|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (20,'st1',2,'STAFF')
+NG|担当: 別の組織の店舗は拒否（組織を店舗側に合わせる）|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (20,'st1',3,'STAFF')
+NG|担当: オーナーは店舗の担当になれない|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (10,'ap1',2,'MANAGER')
+NG|担当: 所属していない子アカウントは担当になれない|INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (10,'st2',2,'STAFF')
+OK|準備: カテゴリー|INSERT INTO categories (name) VALUES ('庭木')
+OK|商品: A社本店とB社本店に同じ商品番号で登録|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-a1',10,'OLIVE-001','オリーブ','Olea europaea','庭木','説明','5号鉢','育て方',3000,'/images/x.png',''),('p-b1',20,'OLIVE-001','オリーブ','Olea europaea','庭木','説明','5号鉢','育て方',3200,'/images/x.png','')
+NG|商品: 同じ店舗に同じ商品番号は拒否|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-a2',10,'OLIVE-001','オリーブ2','Olea europaea','庭木','説明','5号鉢','育て方',3000,'/images/x.png','')
+NG|商品: 店舗のない商品は拒否|INSERT INTO products (id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-x','X','x','Olea europaea','庭木','説明','5号鉢','育て方',1,'/images/x.png','')
+NG|商品: 存在しない店舗は拒否|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-x',999,'X','x','Olea europaea','庭木','説明','5号鉢','育て方',1,'/images/x.png','')
+NG|商品: 価格0円は拒否|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-x',10,'X0','x','Olea europaea','庭木','説明','5号鉢','育て方',0,'/images/x.png','')
+NG|商品: 存在しないカテゴリーは拒否|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge) VALUES ('p-x',10,'X1','x','Olea europaea','ない分類','説明','5号鉢','育て方',100,'/images/x.png','')
+NG|商品: 育てやすさが1〜3以外は拒否|INSERT INTO products (id, store_id, sku, name, latin_name, category_name, description, size_label, care, price_yen, image_url, badge, care_level) VALUES ('p-x',10,'X2','x','Olea europaea','庭木','説明','5号鉢','育て方',100,'/images/x.png','',4)
+OK|商品: 説明用の列の初期値が入っている|INSERT INTO t_assert VALUES ((SELECT unit='piece' AND source='demo' AND sunlight='未設定' AND care_level=1 AND suspended=0 AND published_at IS NOT NULL FROM products WHERE id='p-a1'))
+OK|画像: 画像の本体と、商品の画像の一覧を登録|INSERT INTO product_media (id, content_type, image_data) VALUES ('m1','image/png',x'89504E47'); INSERT INTO product_images (product_id, sort_order, image_url) VALUES ('p-a1',0,'/api/media/m1')
+NG|画像: 存在しない商品の画像は拒否|INSERT INTO product_images (product_id, sort_order, image_url) VALUES ('p-none',0,'/x')
+OK|素材: 素材コードと商品の対応を登録|INSERT INTO material_products (material_code, product_id) VALUES ('olive-tree','p-a1')
+NG|素材: 存在しない商品との対応は拒否|INSERT INTO material_products (material_code, product_id) VALUES ('olive-tree','p-none')
+OK|在庫: 商品ごとに1行|INSERT INTO inventory (product_id, quantity, publication_status) VALUES ('p-a1',3,'PUBLISHED'),('p-b1',2,'PUBLISHED')
+NG|在庫: 同じ商品の2行目は拒否|INSERT INTO inventory (product_id, quantity) VALUES ('p-a1',1)
+NG|在庫: 負の数は拒否|UPDATE inventory SET quantity=-1 WHERE product_id='p-a1'
+NG|在庫: 知らない公開状態は拒否|UPDATE inventory SET publication_status='ACTIVE' WHERE product_id='p-a1'
+OK|公開: 店舗が非公開の間は購入者に見えない（0件）|INSERT INTO t_assert VALUES (((SELECT COUNT(*) FROM products p JOIN inventory i ON i.product_id=p.id JOIN stores s ON s.id=p.store_id JOIN organizations o ON o.id=s.organization_id WHERE i.publication_status='PUBLISHED' AND p.suspended=FALSE AND s.published=TRUE AND s.suspended=FALSE AND o.suspended=FALSE)=0))
+OK|公開: オーナーが A社本店だけ公開|UPDATE stores SET published=TRUE WHERE id=10
+OK|公開: 運営が A社本店を停止して解除|UPDATE stores SET suspended=TRUE WHERE id=10; UPDATE stores SET suspended=FALSE WHERE id=10
+OK|公開: 停止を解除しても、未公開のB社本店は見えないまま（A社本店の1件だけ）|INSERT INTO t_assert VALUES (((SELECT GROUP_CONCAT(p.id) FROM products p JOIN inventory i ON i.product_id=p.id JOIN stores s ON s.id=p.store_id JOIN organizations o ON o.id=s.organization_id WHERE i.publication_status='PUBLISHED' AND p.suspended=FALSE AND s.published=TRUE AND s.suspended=FALSE AND o.suspended=FALSE)='p-a1'))
+OK|準備: B社本店を公開|UPDATE stores SET published=TRUE WHERE id=20
+OK|公開: 運営が A社を組織ごと停止すると B社の1件だけ見える|UPDATE organizations SET suspended=TRUE WHERE id=2; INSERT INTO t_assert VALUES (((SELECT GROUP_CONCAT(p.id) FROM products p JOIN inventory i ON i.product_id=p.id JOIN stores s ON s.id=p.store_id JOIN organizations o ON o.id=s.organization_id WHERE i.publication_status='PUBLISHED' AND p.suspended=FALSE AND s.published=TRUE AND s.suspended=FALSE AND o.suspended=FALSE)='p-b1')); UPDATE organizations SET suspended=FALSE WHERE id=2
+OK|カート: 購入者のカートに2店舗の商品を入れる|INSERT INTO carts (id, member_id) VALUES ('c1','u1'); INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ('c1','p-a1',2),('c1','p-b1',1)
+NG|カート: 1人に2つ目のカートは拒否|INSERT INTO carts (id, member_id) VALUES ('c2','u1')
+NG|カート: 数量100は拒否|UPDATE cart_items SET quantity=100 WHERE cart_id='c1' AND product_id='p-a1'
+NG|カート: 数量0は拒否|UPDATE cart_items SET quantity=0 WHERE cart_id='c1' AND product_id='p-a1'
+OK|カート: 受取店舗は商品からたどれる（2店舗）|INSERT INTO t_assert VALUES (((SELECT COUNT(DISTINCT p.store_id) FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.cart_id='c1')=2))
+OK|庭の買い物リスト: 庭ごとの一覧と商品|INSERT INTO garden_shopping_lists (cart_id, garden_id) VALUES ('c1','g1'); INSERT INTO garden_shopping_items (cart_id, garden_id, product_id) VALUES ('c1','g1','p-a1')
+NG|庭の買い物リスト: 一覧のない庭の商品は拒否|INSERT INTO garden_shopping_items (cart_id, garden_id, product_id) VALUES ('c1','g-none','p-a1')
+OK|注文: 店舗ごとに1件ずつ作り在庫を減らす（1トランザクション）|START TRANSACTION; INSERT INTO orders (id, cart_id, request_id, request_revision, buyer_member_id, store_id, store_name, store_address, store_business_hours, status, total_yen, payment_method, recipient_name, recipient_phone, contact_email) SELECT CONCAT('o-', s.id), 'c1', 'req1', 0, 'u1', s.id, s.name, s.address, s.business_hours, 'RECEIVED', SUM(p.price_yen * ci.quantity), 'STORE', '受取人', '000', 'u1@example.test' FROM cart_items ci JOIN products p ON p.id=ci.product_id JOIN stores s ON s.id=p.store_id WHERE ci.cart_id='c1' GROUP BY s.id; INSERT INTO order_items (order_id, product_id, sku, product_name, quantity, unit_price_yen) SELECT CONCAT('o-', p.store_id), p.id, p.sku, p.name, ci.quantity, p.price_yen FROM cart_items ci JOIN products p ON p.id=ci.product_id WHERE ci.cart_id='c1'; UPDATE inventory i JOIN cart_items ci ON ci.product_id=i.product_id AND ci.cart_id='c1' SET i.quantity = i.quantity - ci.quantity; DELETE FROM cart_items WHERE cart_id='c1'; COMMIT
+OK|注文: 店舗ごとの金額と在庫が合っている|INSERT INTO t_assert VALUES (((SELECT GROUP_CONCAT(CONCAT(id,':',total_yen) ORDER BY id) FROM orders)='o-10:6000,o-20:3200' AND (SELECT GROUP_CONCAT(CONCAT(product_id,':',quantity) ORDER BY product_id) FROM inventory)='p-a1:1,p-b1:1'))
+NG|注文: 同じ購入操作から同じ店舗の注文を2つ作るのは拒否|INSERT INTO orders (id, cart_id, request_id, request_revision, buyer_member_id, store_id, store_name, store_address, store_business_hours, status, total_yen, payment_method, recipient_name, recipient_phone, contact_email) VALUES ('o-dup','c1','req1',0,'u1',10,'x','x','x','RECEIVED',1,'STORE','x','x','x')
+NG|注文: 存在しないカートの注文は拒否|INSERT INTO orders (id, cart_id, request_id, request_revision, buyer_member_id, store_id, store_name, store_address, store_business_hours, status, total_yen, payment_method, recipient_name, recipient_phone, contact_email) VALUES ('o-nocart','c-none','req9',0,'u1',10,'x','x','x','RECEIVED',1,'STORE','x','x','x')
+OK|注文: キャンセルの列の初期値が入っている|INSERT INTO t_assert VALUES ((SELECT cancellation_status='NONE' AND cancellation_reason='' AND cancellation_response='' FROM orders WHERE id='o-10'))
+NG|注文: 在庫が足りない注文は在庫の制約で止まる|UPDATE inventory SET quantity = quantity - 5 WHERE product_id='p-a1'
+OK|キャンセル: 在庫を商品に戻す|UPDATE inventory i JOIN order_items oi ON oi.product_id=i.product_id AND oi.order_id='o-10' SET i.quantity = i.quantity + oi.quantity; INSERT INTO t_assert VALUES (((SELECT quantity FROM inventory WHERE product_id='p-a1')=3))
+NG|店舗: 注文のある店舗の削除は拒否|DELETE FROM stores WHERE id=20
+OK|組織から外す: 所属を消すと担当も消える|DELETE FROM organization_members WHERE member_id='st1'; INSERT INTO t_assert VALUES (((SELECT COUNT(*) FROM store_members WHERE member_id='st1')=0))
+OK|組織から外した後: 種別を購入者に戻せる|UPDATE members SET account_type='USER' WHERE id='st1'; UPDATE members SET account_type='SHOP_STAFF' WHERE id='st1'
+OK|オーナー交代: 所属を消す→種別変更→オーナー書き換え→旧オーナーを子アカウントに（1トランザクション）|START TRANSACTION; INSERT INTO organization_members (organization_id, member_id) VALUES (2,'st2'); COMMIT; START TRANSACTION; DELETE FROM organization_members WHERE member_id='st2'; UPDATE members SET account_type='SHOP_OWNER' WHERE id='st2'; UPDATE organizations SET owner_member_id='st2' WHERE id=2; UPDATE members SET account_type='SHOP_STAFF' WHERE id='ap1'; INSERT INTO organization_members (organization_id, member_id) VALUES (2,'ap1'); INSERT INTO store_members (store_id, member_id, organization_id, role) VALUES (10,'ap1',2,'MANAGER'); COMMIT
+OK|オーナー交代: 結果が合っている|INSERT INTO t_assert VALUES (((SELECT owner_member_id FROM organizations WHERE id=2)='st2' AND (SELECT account_type FROM members WHERE id='ap1')='SHOP_STAFF'))
