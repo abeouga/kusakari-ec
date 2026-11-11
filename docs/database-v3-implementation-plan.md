@@ -11,7 +11,7 @@
 | 項目 | 状態 |
 | --- | --- |
 | 構成の決定 | 済み（2026-11-11、#126） |
-| EC のテーブル定義 | [database-v3-check/schema.sql](database-v3-check/schema.sql)。使い捨ての MySQL 8.0.46 で21テーブルを作り、制約を90件確かめた |
+| EC のテーブル定義 | [database-v3-check/schema.sql](database-v3-check/schema.sql)。使い捨ての MySQL 8.0.46 で21テーブルを作り、制約を97件確かめた |
 | EC のマイグレーション | まだない（段階2） |
 | Canvas の DB の変更 | 未確認 |
 | アプリケーションからの動作 | 未確認（確かめたのは SQL だけ） |

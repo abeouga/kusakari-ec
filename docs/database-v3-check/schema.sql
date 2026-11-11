@@ -61,6 +61,8 @@ CREATE TABLE organization_applications (
   id CHAR(36) NOT NULL,
   applicant_member_id CHAR(36) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+  -- TRUE = 今の申請、FALSE = 前回の申請。1人につき、それぞれ1行まで
+  is_latest BOOLEAN NOT NULL DEFAULT TRUE,
   organization_name VARCHAR(160) NOT NULL,
   contact_name VARCHAR(120) NOT NULL,
   contact_email VARCHAR(255) NOT NULL,
@@ -76,11 +78,12 @@ CREATE TABLE organization_applications (
   submitted_at TIMESTAMP(6) NULL,
   reviewed_at TIMESTAMP(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_applications_applicant (applicant_member_id),
+  UNIQUE KEY uk_applications_applicant_latest (applicant_member_id, is_latest),
   UNIQUE KEY uk_applications_organization (organization_id),
   CONSTRAINT ck_applications_status CHECK (BINARY status IN
     ('DRAFT','SUBMITTED','APPROVED','REJECTED','WITHDRAWN')),
   CONSTRAINT ck_applications_approved CHECK ((status = 'APPROVED') = (organization_id IS NOT NULL)),
+  CONSTRAINT ck_applications_previous CHECK (is_latest OR status IN ('REJECTED','WITHDRAWN')),
   CONSTRAINT fk_applications_applicant FOREIGN KEY (applicant_member_id) REFERENCES members (id),
   CONSTRAINT fk_applications_organization FOREIGN KEY (organization_id) REFERENCES organizations (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

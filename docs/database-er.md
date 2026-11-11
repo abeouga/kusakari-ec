@@ -39,8 +39,9 @@ erDiagram
     }
     organization_applications {
         char36 id PK
-        char36 applicant_member_id FK, UK "1人1申請"
+        char36 applicant_member_id FK, UK "applicant_member_id, is_latest で一意"
         varchar status "DRAFT / SUBMITTED / APPROVED / REJECTED / WITHDRAWN"
+        boolean is_latest UK "true = 今の申請、false = 前回の申請"
         varchar organization_name
         varchar contact_name
         varchar contact_email
@@ -221,7 +222,7 @@ erDiagram
 
     members ||--o| member_pickup_contacts : "受取連絡先"
     members ||--o{ notifications : "宛先"
-    members ||--o| organization_applications : "申請"
+    members ||--o{ organization_applications : "申請（今と前回の2行まで）"
     organization_applications |o--o| organizations : "承認で作成"
     members |o--o| organizations : "オーナー"
     members ||--o| organization_members : "所属"
@@ -277,7 +278,8 @@ erDiagram
 | `store_members(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗に担当を割り当てる |
 | `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から外すと、担当も消える |
 | `store_members.role` の CHECK | `MANAGER`・`STAFF` 以外のロール（NULL は「未割り当て」として許す） |
-| `organization_applications.applicant_member_id` の一意キー | 同じ人の2件目の申請 |
+| `organization_applications(applicant_member_id, is_latest)` の一意キー | 同じ人の「今の申請」の2行目、「前回の申請」の2行目（1人につき、今の申請と前回の申請の2行まで） |
+| `is_latest OR status IN ('REJECTED', 'WITHDRAWN')` の CHECK | 下書き・審査中・承認済みの申請を「前回の申請」にする |
 | `(status = 'APPROVED') = (organization_id IS NOT NULL)` の CHECK | 組織のない承認済みの申請。承認済みでない申請に組織を付ける |
 | `stores(organization_id, name)` の一意キー | 同じ組織に同じ名前の店舗 |
 | `(latitude IS NULL) = (longitude IS NULL)` の CHECK | 緯度と経度の片方だけの入力 |
@@ -334,6 +336,7 @@ erDiagram
 | `members` | なし | `email_verified_at`、`created_at` |
 | `organization_applications` | `member_id`、`company`、`contact`、`email`、`phone`、`address`、`reason` | `applicant_member_id`、`organization_name`、`contact_name`、`contact_email`、`contact_phone`、`company_address`、`rejection_reason` |
 | `organization_applications` | 審査中の状態の名前は `PENDING` | `SUBMITTED` |
+| `organization_applications` | 再申請のたびに行が増える | 1人につき「今の申請」と「前回の申請」の2行まで（`is_latest`）。再申請で新しい行を作り、前々回の行は消す |
 | `organization_applications` | なし | `organization_id`、`submitted_at`。状態に `DRAFT`・`WITHDRAWN` を足す。書類の3列と却下の理由は、空にできる（下書きには書類がないため） |
 | `stores` | `hours`、`contact`、`email`、`story` | `business_hours`、`contact_name`、`contact_email`、`introduction` |
 | `stores` | `company` | なくす（事業者名は `organizations.name` だけに持つ） |

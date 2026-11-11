@@ -8,14 +8,21 @@ NG|組織: 購入者をオーナーにするのは拒否|INSERT INTO organizatio
 NG|組織: 運営をオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ad1')
 NG|組織: 子アカウントをオーナーにするのは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','st1')
 OK|申請: 下書きを作る|INSERT INTO organization_applications (id, applicant_member_id, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app1','ap1','A社','担当','c@example.test','000','東京都','STANDARD')
-NG|申請: 同じ人の2件目の申請は拒否|INSERT INTO organization_applications (id, applicant_member_id, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app1b','ap1','A社','担当','c@example.test','000','東京都','STANDARD')
+NG|申請: 同じ人の「今の申請」の2件目は拒否|INSERT INTO organization_applications (id, applicant_member_id, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app1b','ap1','A社','担当','c@example.test','000','東京都','STANDARD')
 NG|申請: 知らない状態は拒否|UPDATE organization_applications SET status='PENDING' WHERE id='app1'
 NG|申請: 組織なしの承認済みは拒否|UPDATE organization_applications SET status='APPROVED' WHERE id='app1'
 OK|申請: 下書きから審査中へ|UPDATE organization_applications SET status='SUBMITTED', submitted_at=NOW(6) WHERE id='app1'
+NG|申請: 審査中の申請を「前回の申請」にするのは拒否|UPDATE organization_applications SET is_latest=FALSE WHERE id='app1'
 OK|申請: 取り下げ|UPDATE organization_applications SET status='WITHDRAWN' WHERE id='app1'
-OK|申請: 取り下げ後に再申請|UPDATE organization_applications SET status='SUBMITTED', submitted_at=NOW(6) WHERE id='app1'
-OK|承認: 種別変更→組織作成→申請に記録（1トランザクション）|START TRANSACTION; UPDATE members SET account_type='SHOP_OWNER' WHERE id='ap1'; INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ap1'); UPDATE organization_applications SET status='APPROVED', organization_id=2, reviewed_at=NOW(6) WHERE id='app1'; COMMIT
-NG|承認後: 承認済みの申請から組織を外すのは拒否|UPDATE organization_applications SET organization_id=NULL WHERE id='app1'
+OK|再申請: 取り下げた申請を前回として残し、新しい申請を作る（1トランザクション）|START TRANSACTION; DELETE FROM organization_applications WHERE applicant_member_id='ap1' AND is_latest=FALSE; UPDATE organization_applications SET is_latest=FALSE WHERE id='app1'; INSERT INTO organization_applications (id, applicant_member_id, status, organization_name, contact_name, contact_email, contact_phone, company_address, plan, submitted_at) SELECT 'app2', applicant_member_id, 'SUBMITTED', organization_name, contact_name, contact_email, contact_phone, company_address, plan, NOW(6) FROM organization_applications WHERE id='app1'; COMMIT
+OK|再申請: 今の申請と前回の申請が1行ずつある|INSERT INTO t_assert VALUES ((SELECT GROUP_CONCAT(CONCAT(id,':',status,':',is_latest) ORDER BY id) FROM organization_applications WHERE applicant_member_id='ap1')='app1:WITHDRAWN:0,app2:SUBMITTED:1')
+NG|再申請: 前回の申請の2行目は拒否|INSERT INTO organization_applications (id, applicant_member_id, status, is_latest, organization_name, contact_name, contact_email, contact_phone, company_address, plan) VALUES ('app0','ap1','REJECTED',FALSE,'A社','担当','c@example.test','000','東京都','STANDARD')
+OK|却下: 理由を付けて却下する|UPDATE organization_applications SET status='REJECTED', rejection_reason='書類が足りない', reviewed_at=NOW(6) WHERE id='app2'
+OK|2回目の再申請: 前々回の行を消し、却下された申請を前回として残す（1トランザクション）|START TRANSACTION; DELETE FROM organization_applications WHERE applicant_member_id='ap1' AND is_latest=FALSE; UPDATE organization_applications SET is_latest=FALSE WHERE id='app2'; INSERT INTO organization_applications (id, applicant_member_id, status, organization_name, contact_name, contact_email, contact_phone, company_address, plan, submitted_at) SELECT 'app3', applicant_member_id, 'SUBMITTED', organization_name, contact_name, contact_email, contact_phone, company_address, plan, NOW(6) FROM organization_applications WHERE id='app2'; COMMIT
+OK|2回目の再申請: 前々回の行が消え、前回と今の申請だけがある|INSERT INTO t_assert VALUES ((SELECT GROUP_CONCAT(CONCAT(id,':',status,':',is_latest) ORDER BY id) FROM organization_applications WHERE applicant_member_id='ap1')='app2:REJECTED:0,app3:SUBMITTED:1')
+OK|承認: 種別変更→組織作成→申請に記録（1トランザクション）|START TRANSACTION; UPDATE members SET account_type='SHOP_OWNER' WHERE id='ap1'; INSERT INTO organizations (id, name, owner_member_id) VALUES (2,'A社','ap1'); UPDATE organization_applications SET status='APPROVED', organization_id=2, reviewed_at=NOW(6) WHERE id='app3'; COMMIT
+OK|承認後: 前回の申請（却下）が残っている|INSERT INTO t_assert VALUES ((SELECT GROUP_CONCAT(CONCAT(id,':',status,':',is_latest) ORDER BY id) FROM organization_applications WHERE applicant_member_id='ap1')='app2:REJECTED:0,app3:APPROVED:1')
+NG|承認後: 承認済みの申請から組織を外すのは拒否|UPDATE organization_applications SET organization_id=NULL WHERE id='app3'
 NG|オーナー: オーナーである間の種別変更は拒否|UPDATE members SET account_type='USER' WHERE id='ap1'
 NG|オーナー: 2つ目の組織のオーナーは拒否|INSERT INTO organizations (id, name, owner_member_id) VALUES (3,'B社','ap1')
 OK|準備: 2社目を承認|START TRANSACTION; UPDATE members SET account_type='SHOP_OWNER' WHERE id='ap2'; INSERT INTO organizations (id, name, owner_member_id) VALUES (3,'B社','ap2'); COMMIT
