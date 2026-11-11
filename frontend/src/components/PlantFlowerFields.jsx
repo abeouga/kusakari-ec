@@ -32,7 +32,7 @@ const FLOWER_COLORS = [
   ['#7b93d6', '青紫'],
 ];
 
-/** @param {{profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile)=>void}} props */
+/** @param {{profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile|((current:import('../types').PlantModelProfile)=>import('../types').PlantModelProfile))=>void}} props */
 export function PlantFlowerFields({ profile: p, onChange }) {
   const group = useId();
   const species = p.botanicalForm ? plantSpecies[p.botanicalForm] : null;
@@ -50,7 +50,10 @@ export function PlantFlowerFields({ profile: p, onChange }) {
           role="switch"
           checked={p.flowerEnabled}
           disabled={unavailable}
-          onChange={(event) => onChange({ ...p, flowerEnabled: event.target.checked })}
+          onChange={(event) => {
+            const checked = event.target.checked;
+            onChange((current) => ({ ...current, flowerEnabled: checked }));
+          }}
         />
         花を付ける
         {unavailable && <small className="muted">この植物タイプ・種類には付けられません</small>}
@@ -61,7 +64,10 @@ export function PlantFlowerFields({ profile: p, onChange }) {
           <select
             name="modelFlowerShape"
             value={p.flowerShape}
-            onChange={(event) => onChange({ ...p, flowerShape: event.target.value })}
+            onChange={(event) => {
+              const value = event.target.value;
+              onChange((current) => ({ ...current, flowerShape: value }));
+            }}
           >
             {FLOWER_SHAPES.filter(([value]) => !speciesFlowers || speciesFlowers.includes(value)).map(
               ([value, label]) => (
@@ -80,7 +86,7 @@ export function PlantFlowerFields({ profile: p, onChange }) {
           step={0.1}
           unit="cm"
           value={p.flowerSizeCm}
-          onChange={(value) => onChange({ ...p, flowerSizeCm: Number(value) })}
+          onChange={(value) => onChange((current) => ({ ...current, flowerSizeCm: Number(value) }))}
           validOnly
           required
         />
@@ -96,7 +102,7 @@ export function PlantFlowerFields({ profile: p, onChange }) {
                   name={group}
                   value={hex}
                   checked={hex === color}
-                  onChange={() => onChange({ ...p, flowerColor: hex })}
+                  onChange={() => onChange((current) => ({ ...current, flowerColor: hex }))}
                 />
                 <span className="flower-swatch-dot" style={{ background: hex }} aria-hidden="true">
                   {hex === color && <Check size={14} strokeWidth={3} />}
@@ -111,7 +117,10 @@ export function PlantFlowerFields({ profile: p, onChange }) {
                   type="color"
                   aria-label="その他の色"
                   value={color}
-                  onChange={(event) => onChange({ ...p, flowerColor: event.target.value })}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    onChange((current) => ({ ...current, flowerColor: value }));
+                  }}
                 />
               </span>
               <span className="flower-swatch-name" aria-hidden="true">

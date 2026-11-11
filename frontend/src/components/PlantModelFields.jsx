@@ -35,13 +35,13 @@ export function PlantModelFields({ plant }) {
   function changePlantType(type) {
     /** @type {Record<string,string>} */
     const leaves = { conifer: 'needle', grass: 'grass', palm: 'frond', rosette: 'succulent', vine: 'heart' };
-    onChange({
-      ...p,
+    onChange((current) => ({
+      ...current,
       plantType: type,
       botanicalForm: null,
       leafShape: leaves[type] || 'oval',
-      flowerEnabled: ['conifer', 'palm'].includes(type) ? false : p.flowerEnabled,
-    });
+      flowerEnabled: ['conifer', 'palm'].includes(type) ? false : current.flowerEnabled,
+    }));
   }
   return (
     <div className="plant-model-fields">
@@ -66,7 +66,7 @@ export function PlantModelFields({ plant }) {
             max={1000}
             unit="cm"
             value={p.widthCm}
-            onChange={(value) => onChange({ ...p, widthCm: Number(value) })}
+            onChange={(value) => onChange((current) => ({ ...current, widthCm: Number(value) }))}
             validOnly
             required
           />
@@ -83,7 +83,10 @@ export function PlantModelFields({ plant }) {
               <select
                 name="modelBotanicalForm"
                 value={botanicalForm}
-                onChange={(event) => onChange(applySpecies(p, event.target.value))}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  onChange((current) => applySpecies(current, value));
+                }}
               >
                 <option value="">指定しない</option>
                 {Object.entries(plantSpecies).map(([id, item]) => (
@@ -110,7 +113,10 @@ export function PlantModelFields({ plant }) {
             <select
               name="modelCrownShape"
               value={p.crownShape}
-              onChange={(event) => onChange({ ...p, crownShape: event.target.value })}
+              onChange={(event) => {
+                const value = event.target.value;
+                onChange((current) => ({ ...current, crownShape: value }));
+              }}
             >
               <option value="round">丸い</option>
               <option value="conical">円錐形</option>
@@ -136,7 +142,7 @@ export function PlantModelFields({ plant }) {
             max={24}
             unit="本"
             value={p.branchCount}
-            onChange={(value) => onChange({ ...p, branchCount: Number(value) })}
+            onChange={(value) => onChange((current) => ({ ...current, branchCount: Number(value) }))}
             validOnly
             required
           />
@@ -148,7 +154,7 @@ export function PlantModelFields({ plant }) {
               max={80}
               unit="度"
               value={p.branchAngle}
-              onChange={(value) => onChange({ ...p, branchAngle: Number(value) })}
+              onChange={(value) => onChange((current) => ({ ...current, branchAngle: Number(value) }))}
               validOnly
               required
             />
@@ -162,7 +168,7 @@ export function PlantModelFields({ plant }) {
               step={0.1}
               unit="cm"
               value={p.trunkThicknessCm}
-              onChange={(value) => onChange({ ...p, trunkThicknessCm: Number(value) })}
+              onChange={(value) => onChange((current) => ({ ...current, trunkThicknessCm: Number(value) }))}
               validOnly
               required
             />
