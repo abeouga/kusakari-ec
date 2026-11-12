@@ -10,7 +10,8 @@
 
 - 会員の種別は`members.account_type`に保存します。値は`USER`（購入者）、`SHOP_OWNER_APPLICANT`（出店を申請するアカウント）、`SHOP_OWNER`（組織のオーナー）、`SHOP_STAFF`（店舗の担当者）、`ADMIN`（運営）の5つです。CHECK制約はバイナリ比較で、大文字小文字・全角・末尾空白の違いを拒否します。
 - オーナーは`organizations.owner_member_id`で組織と結び付き、その組織の全店舗を操作できます。外部キーが、オーナーに指定できる会員を`SHOP_OWNER`だけに限ります。
-- 担当者は`organization_members`で組織に入り、`store_members.role`（`MANAGER`/`STAFF`/なし）で店舗ごとの操作が決まります。`STAFF`は商品の公開・在庫・注文の受け渡し、`MANAGER`はそれに加えて店舗情報の編集・商品の登録と削除・キャンセル申請への回答ができます。ロールのない担当者は、その店舗を操作できません。
+- 担当者は`organization_members`で組織に入り、`store_members.role`（`MANAGER`/`STAFF`/なし）で店舗ごとの操作が決まります。`STAFF`は商品の編集（価格を含む）・公開・在庫・注文の受け渡し、`MANAGER`はそれに加えて店舗情報の編集・商品の登録と削除・キャンセル申請への回答ができます。ロールのない担当者は、所属する店舗の店舗情報と、出店者の商品一覧・在庫を見られるだけで（GET）、変更と注文の閲覧はできません（#105、[残りの決定](decisions/2026-11-12-remaining-decisions.md)）。
+- 店舗側のアカウント（`SHOP_OWNER`・`SHOP_STAFF`）と申請中のアカウント（`SHOP_OWNER_APPLICANT`）は、カート・注文・庭の買い物リストを使えません（API は403 `BUYER_REQUIRED`）。購入者（`USER`）と運営（`ADMIN`）は使えます（#108）。
 - 通常の出店は、企業様向けの登録（`SHOP_OWNER_APPLICANT`）→ 出店申請 → 運営の承認（`SHOP_OWNER`になり、組織ができる）→ オーナーによる店舗の作成、の順です。
 - 開発用に種別を直接付け替えるときは`scripts/set-member-role.ps1`を使います。`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。
   - `-Role ADMIN`：購入者を運営にします。
