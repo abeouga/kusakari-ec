@@ -48,10 +48,13 @@ CREATE TABLE organizations (
   name VARCHAR(160) NOT NULL,
   owner_member_id CHAR(36) NULL,
   owner_account_type VARCHAR(32) NOT NULL DEFAULT 'SHOP_OWNER',
+  -- 通常：suspension_started_at が NULL。受付停止中：日時あり・suspended = FALSE。停止：suspended = TRUE
+  suspension_started_at TIMESTAMP(6) NULL,
   suspended BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uk_organizations_owner (owner_member_id),
+  CONSTRAINT ck_organizations_suspension CHECK (suspended = FALSE OR suspension_started_at IS NOT NULL),
   CONSTRAINT ck_organizations_owner_type CHECK (BINARY owner_account_type = 'SHOP_OWNER'),
   CONSTRAINT fk_organizations_owner FOREIGN KEY (owner_member_id, owner_account_type)
     REFERENCES members (id, account_type)
@@ -68,7 +71,6 @@ CREATE TABLE organization_applications (
   contact_email VARCHAR(255) NOT NULL,
   contact_phone VARCHAR(40) NOT NULL,
   company_address VARCHAR(255) NOT NULL,
-  plan VARCHAR(40) NOT NULL,
   rejection_reason VARCHAR(1000) NULL,
   document_name VARCHAR(255) NULL,
   document_type VARCHAR(100) NULL,
@@ -92,10 +94,13 @@ CREATE TABLE organization_members (
   organization_id BIGINT NOT NULL,
   member_id CHAR(36) NOT NULL,
   member_account_type VARCHAR(32) NOT NULL DEFAULT 'SHOP_STAFF',
+  -- 人事のロール。NULL = ロールなし。店舗の操作のロールは store_members.role
+  role VARCHAR(16) NULL,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (organization_id, member_id),
   UNIQUE KEY uk_org_members_member (member_id),
   CONSTRAINT ck_org_members_type CHECK (BINARY member_account_type = 'SHOP_STAFF'),
+  CONSTRAINT ck_org_members_role CHECK (BINARY role IN ('ORG_ADMIN')),
   CONSTRAINT fk_org_members_org FOREIGN KEY (organization_id) REFERENCES organizations (id),
   CONSTRAINT fk_org_members_member FOREIGN KEY (member_id, member_account_type)
     REFERENCES members (id, account_type)
@@ -114,12 +119,19 @@ CREATE TABLE stores (
   introduction VARCHAR(2000) NOT NULL DEFAULT '',
   published BOOLEAN NOT NULL DEFAULT FALSE,
   suspended BOOLEAN NOT NULL DEFAULT FALSE,
+  -- 営業中：closing_started_at が NULL。閉鎖中：日時あり・closed_at が NULL。閉鎖済み：closed_at あり
+  closing_started_at TIMESTAMP(6) NULL,
+  closing_started_by VARCHAR(16) NULL,
+  closed_at TIMESTAMP(6) NULL,
   revision BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uk_stores_id_org (id, organization_id),
   UNIQUE KEY uk_stores_org_name (organization_id, name),
   CONSTRAINT ck_stores_location CHECK ((latitude IS NULL) = (longitude IS NULL)),
+  CONSTRAINT ck_stores_closing CHECK ((closing_started_at IS NULL) = (closing_started_by IS NULL)),
+  CONSTRAINT ck_stores_closing_by CHECK (BINARY closing_started_by IN ('OWNER','ADMIN')),
+  CONSTRAINT ck_stores_closed CHECK (closed_at IS NULL OR closing_started_at IS NOT NULL),
   CONSTRAINT fk_stores_org FOREIGN KEY (organization_id) REFERENCES organizations (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -144,17 +156,27 @@ CREATE TABLE store_invitations (
   issued_by_member_id CHAR(36) NOT NULL,
   key_hash CHAR(64) NOT NULL,
   expires_at TIMESTAMP(6) NOT NULL,
-  used_at TIMESTAMP(6) NULL,
-  used_by_member_id CHAR(36) NULL,
+  -- 1 = 1回限り、NULL = 有効期限内なら何回でも。超えないことは、キーの行をロックしてアプリが確かめる
+  max_uses INT NULL,
   revoked_at TIMESTAMP(6) NULL,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uk_invitations_key (key_hash),
   KEY idx_invitations_store (store_id),
-  CONSTRAINT ck_invitations_used CHECK ((used_at IS NULL) = (used_by_member_id IS NULL)),
+  CONSTRAINT ck_invitations_max_uses CHECK (max_uses IS NULL OR max_uses >= 1),
   CONSTRAINT fk_invitations_store FOREIGN KEY (store_id) REFERENCES stores (id),
-  CONSTRAINT fk_invitations_issuer FOREIGN KEY (issued_by_member_id) REFERENCES members (id),
-  CONSTRAINT fk_invitations_used_by FOREIGN KEY (used_by_member_id) REFERENCES members (id)
+  CONSTRAINT fk_invitations_issuer FOREIGN KEY (issued_by_member_id) REFERENCES members (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 招待キーを使った人。キーが使えるのは新規登録のときだけなので、1人につき1行まで
+CREATE TABLE store_invitation_uses (
+  invitation_id CHAR(36) NOT NULL,
+  member_id CHAR(36) NOT NULL,
+  used_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (invitation_id, member_id),
+  UNIQUE KEY uk_invitation_uses_member (member_id),
+  CONSTRAINT fk_invitation_uses_invitation FOREIGN KEY (invitation_id) REFERENCES store_invitations (id),
+  CONSTRAINT fk_invitation_uses_member FOREIGN KEY (member_id) REFERENCES members (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE categories (
@@ -280,11 +302,41 @@ CREATE TABLE garden_shopping_items (
   CONSTRAINT fk_garden_items_product FOREIGN KEY (product_id) REFERENCES products (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- お会計1回につき決済1つ（Stripe の PaymentIntent。テストモードだけ）。名前と状態の値は #131 が決まるまで仮
+CREATE TABLE payments (
+  id CHAR(36) NOT NULL,
+  cart_id CHAR(36) NOT NULL,
+  request_id CHAR(36) NOT NULL,
+  buyer_member_id CHAR(36) NOT NULL,
+  payment_intent_id VARCHAR(255) NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+  amount_yen INT NOT NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_payments_checkout (cart_id, request_id),
+  UNIQUE KEY uk_payments_intent (payment_intent_id),
+  UNIQUE KEY uk_payments_id_checkout (id, cart_id, request_id),
+  CONSTRAINT ck_payments_status CHECK (BINARY status IN ('PENDING','SUCCEEDED','FAILED','EXPIRED')),
+  CONSTRAINT ck_payments_amount CHECK (amount_yen > 0),
+  CONSTRAINT fk_payments_cart FOREIGN KEY (cart_id) REFERENCES carts (id),
+  CONSTRAINT fk_payments_buyer FOREIGN KEY (buyer_member_id) REFERENCES members (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 処理済みの Stripe の通知（Webhook）。同じ通知を2回処理しないための記録
+CREATE TABLE stripe_events (
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  processed_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE orders (
   id CHAR(36) NOT NULL,
   cart_id CHAR(36) NOT NULL,
   request_id CHAR(36) NOT NULL,
   request_revision BIGINT NOT NULL,
+  payment_id CHAR(36) NULL,
   buyer_member_id CHAR(36) NOT NULL,
   store_id BIGINT NOT NULL,
   store_name VARCHAR(120) NOT NULL,
@@ -292,6 +344,9 @@ CREATE TABLE orders (
   store_business_hours VARCHAR(255) NOT NULL,
   status VARCHAR(30) NOT NULL,
   total_yen INT NOT NULL,
+  -- 注文したときの手数料の率（1万分率。800 = 8%）と額。後で率を変えても過去の注文は変わらない
+  commission_rate_bp INT NOT NULL,
+  commission_yen INT NOT NULL,
   payment_method VARCHAR(32) NOT NULL,
   recipient_name VARCHAR(120) NOT NULL,
   recipient_phone VARCHAR(40) NOT NULL,
@@ -300,15 +355,26 @@ CREATE TABLE orders (
   cancellation_reason VARCHAR(1000) NOT NULL DEFAULT '',
   cancellation_response VARCHAR(1000) NOT NULL DEFAULT '',
   cancellation_at TIMESTAMP(6) NULL,
+  -- キャンセルした人（店舗の担当者・オーナー・運営）。運営か店舗かは会員の種別で分かる
+  cancelled_by_member_id CHAR(36) NULL,
   created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   ready_at TIMESTAMP(6) NULL,
   picked_up_at TIMESTAMP(6) NULL,
   deleted_at TIMESTAMP(6) NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uk_orders_request (cart_id, request_id, store_id),
+  UNIQUE KEY uk_orders_id_payment (id, payment_id),
   KEY idx_orders_buyer (buyer_member_id, created_at),
   KEY idx_orders_store (store_id, status, created_at),
+  CONSTRAINT ck_orders_status CHECK (BINARY status IN ('PENDING_PAYMENT','ACCEPTED','READY','COMPLETED','CANCELLED')),
+  CONSTRAINT ck_orders_cancellation_status CHECK (BINARY cancellation_status IN ('NONE','PENDING','APPROVED','REJECTED')),
+  CONSTRAINT ck_orders_commission_rate CHECK (commission_rate_bp BETWEEN 0 AND 10000),
+  CONSTRAINT ck_orders_commission CHECK (commission_yen >= 0 AND commission_yen <= total_yen),
   CONSTRAINT fk_orders_cart FOREIGN KEY (cart_id) REFERENCES carts (id),
+  -- 注文は、同じお会計（cart_id, request_id）の決済だけを指せる
+  CONSTRAINT fk_orders_payment FOREIGN KEY (payment_id, cart_id, request_id)
+    REFERENCES payments (id, cart_id, request_id),
+  CONSTRAINT fk_orders_cancelled_by FOREIGN KEY (cancelled_by_member_id) REFERENCES members (id),
   CONSTRAINT fk_orders_buyer FOREIGN KEY (buyer_member_id) REFERENCES members (id),
   CONSTRAINT fk_orders_store FOREIGN KEY (store_id) REFERENCES stores (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -323,3 +389,65 @@ CREATE TABLE order_items (
   PRIMARY KEY (order_id, product_id),
   CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 返金（#133。Stripe の Refund。テストモードだけ）。注文1件につき1行。名前と状態の値は #131 が決まるまで仮
+CREATE TABLE refunds (
+  id CHAR(36) NOT NULL,
+  order_id CHAR(36) NOT NULL,
+  payment_id CHAR(36) NOT NULL,
+  stripe_refund_id VARCHAR(255) NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'REQUESTED',
+  amount_yen INT NOT NULL,
+  -- 返金を始めた人。Stripe の管理画面から返金されたときは NULL
+  requested_by_member_id CHAR(36) NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_refunds_order (order_id),
+  UNIQUE KEY uk_refunds_stripe (stripe_refund_id),
+  KEY idx_refunds_payment (payment_id),
+  CONSTRAINT ck_refunds_status CHECK (BINARY status IN ('REQUESTED','SUCCEEDED','FAILED')),
+  CONSTRAINT ck_refunds_amount CHECK (amount_yen > 0),
+  -- 返金は、その注文が支払われた決済だけを指せる
+  CONSTRAINT fk_refunds_order FOREIGN KEY (order_id, payment_id) REFERENCES orders (id, payment_id),
+  CONSTRAINT fk_refunds_payment FOREIGN KEY (payment_id) REFERENCES payments (id),
+  CONSTRAINT fk_refunds_requested_by FOREIGN KEY (requested_by_member_id) REFERENCES members (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 運営による警告・警告解除・停止・再開の履歴（#16）。行は書き換えず、削除もしない
+CREATE TABLE product_moderation_events (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  product_id VARCHAR(40) NOT NULL,
+  event_type VARCHAR(16) NOT NULL,
+  reason VARCHAR(1000) NOT NULL DEFAULT '',
+  actor_member_id CHAR(36) NOT NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  KEY idx_product_moderation_target (product_id, id),
+  CONSTRAINT ck_product_moderation_type CHECK (BINARY event_type IN ('WARN','CLEAR_WARNING','SUSPEND','RESUME')),
+  CONSTRAINT ck_product_moderation_reason CHECK (event_type NOT IN ('WARN','SUSPEND') OR reason <> ''),
+  CONSTRAINT fk_product_moderation_product FOREIGN KEY (product_id) REFERENCES products (id),
+  CONSTRAINT fk_product_moderation_actor FOREIGN KEY (actor_member_id) REFERENCES members (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE store_moderation_events (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  store_id BIGINT NOT NULL,
+  event_type VARCHAR(16) NOT NULL,
+  reason VARCHAR(1000) NOT NULL DEFAULT '',
+  actor_member_id CHAR(36) NOT NULL,
+  created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (id),
+  KEY idx_store_moderation_target (store_id, id),
+  CONSTRAINT ck_store_moderation_type CHECK (BINARY event_type IN ('WARN','CLEAR_WARNING','SUSPEND','RESUME')),
+  CONSTRAINT ck_store_moderation_reason CHECK (event_type NOT IN ('WARN','SUSPEND') OR reason <> ''),
+  CONSTRAINT fk_store_moderation_store FOREIGN KEY (store_id) REFERENCES stores (id),
+  CONSTRAINT fk_store_moderation_actor FOREIGN KEY (actor_member_id) REFERENCES members (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 閉鎖済みになってから90日たった店舗の連絡先を消す（#79）。1日1回。event_scheduler が ON の MySQL で動く
+CREATE EVENT ev_stores_clear_closed_contacts
+  ON SCHEDULE EVERY 1 DAY
+  DO UPDATE stores SET contact_name = '', contact_email = ''
+     WHERE closed_at IS NOT NULL AND closed_at < NOW(6) - INTERVAL 90 DAY
+       AND (contact_name <> '' OR contact_email <> '');
