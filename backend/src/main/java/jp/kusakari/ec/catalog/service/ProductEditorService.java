@@ -56,7 +56,8 @@ public class ProductEditorService {
     ProductEntity product = products
       .findLocked(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    auth.requireProductStore(product.getStoreId(), true);
+    // 商品の編集（価格を含む）は STAFF もできる。登録と削除はオーナーか MANAGER だけ（#105）。
+    auth.requireProductStore(product.getStoreId(), false);
     // 注文の店舗と商品の店舗を一致させるため、商品をほかの店舗へ移すことはできない。
     if (!product.getStoreId().equals(input.getStoreId())) {
       throw new ApiException(400, "STORE_IMMUTABLE", "商品の店舗は変更できません。");

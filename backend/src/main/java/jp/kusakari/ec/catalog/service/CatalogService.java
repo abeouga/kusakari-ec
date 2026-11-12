@@ -46,13 +46,33 @@ public class CatalogService {
   private final MaterialProductRepository materialProducts;
   private final ProductMapper mapper;
 
+  // 買えない理由。前の4つは、もう戻らない（または戻しても外した明細は戻さない）ので、カートの明細と庭の配置から外す。
+  public static final String DELETED = "DELETED";
+  public static final String STORE_CLOSED = "STORE_CLOSED";
+  public static final String STORE_SUSPENDED = "STORE_SUSPENDED";
+  public static final String ORGANIZATION_SUSPENDED = "ORGANIZATION_SUSPENDED";
+  // 後の理由は一時的なので外さず、「購入できません」と出す。
+  public static final String STORE_CLOSING = "STORE_CLOSING";
+  public static final String STORE_UNPUBLISHED = "STORE_UNPUBLISHED";
+  public static final String ORGANIZATION_NOT_ACCEPTING = "ORGANIZATION_NOT_ACCEPTING";
+  public static final String PRODUCT_SUSPENDED = "PRODUCT_SUSPENDED";
+  public static final String HIDDEN = "HIDDEN";
+  public static final String OUT_OF_STOCK = "OUT_OF_STOCK";
+  public static final Set<String> REMOVED_REASONS = Set.of(DELETED, STORE_CLOSED, STORE_SUSPENDED, ORGANIZATION_SUSPENDED);
+
   /**
    * 商品と、購入者に見えて今買えるか。見えるのは、店舗が開いていて、組織が受付を止めておらず、
-   * 運営が商品を停止しておらず、出店者が公開している商品だけ。
+   * 運営が商品を停止しておらず、出店者が公開している商品だけ。unavailableReason は買えない理由（買えるなら null）。
+   * 在庫数はここでは見ない（在庫0の商品も一覧には出す）。
    */
-  public record Listing(ProductView product, boolean purchasable) {}
+  public record Listing(ProductView product, String unavailableReason) {
+    public boolean purchasable() {
+      return unavailableReason == null;
+    }
+  }
 
-  private record StoreState(String name, boolean sellable) {}
+  /** reason は店舗・組織の側で買えない理由（買えるなら null）。 */
+  private record StoreState(String name, String reason) {}
 
   /** storeId が null なら、購入者に見える全店舗の商品。 */
   public List<ProductView> products(Long storeId) {
@@ -109,6 +129,9 @@ public class CatalogService {
         ProductStoreReference owner = owners.get(id);
         InventoryEntity stock = stockByProduct.get(id);
         StoreState store = states.get(owner.storeId());
+        // 照会では在庫0も買えない理由に含める（庭は配置を残し「在庫なし」と出す）。
+        String reason = unavailableReason(store, owner.suspended(), stock);
+        if (reason == null && stock.getQuantity() <= 0) reason = OUT_OF_STOCK;
         return new ProductReferenceView(
           reference.id(),
           reference.name(),
@@ -118,7 +141,8 @@ public class CatalogService {
           owner.storeId(),
           store == null ? "" : store.name(),
           stock == null ? 0 : stock.getQuantity(),
-          purchasable(store, owner.suspended(), stock)
+          reason == null,
+          reason
         );
       })
       .toList();
@@ -146,20 +170,18 @@ public class CatalogService {
             stock == null ? InventoryEntity.DELETED : stock.getPublicationStatus(),
             store == null ? "" : store.name()
           ),
-          purchasable(store, product.isSuspended(), stock)
+          unavailableReason(store, product.isSuspended(), stock)
         );
       })
       .toList();
   }
 
-  private static boolean purchasable(StoreState store, boolean suspended, InventoryEntity stock) {
-    return (
-      store != null &&
-      store.sellable() &&
-      !suspended &&
-      stock != null &&
-      InventoryEntity.PUBLISHED.equals(stock.getPublicationStatus())
-    );
+  private static String unavailableReason(StoreState store, boolean suspended, InventoryEntity stock) {
+    if (store == null || stock == null || InventoryEntity.DELETED.equals(stock.getPublicationStatus())) return DELETED;
+    if (store.reason() != null) return store.reason();
+    if (suspended) return PRODUCT_SUSPENDED;
+    if (!InventoryEntity.PUBLISHED.equals(stock.getPublicationStatus())) return HIDDEN;
+    return null;
   }
 
   private Map<String, InventoryEntity> stockByProduct(Collection<String> productIds) {
@@ -169,17 +191,28 @@ public class CatalogService {
   // 店舗が開いていても、組織が受付停止中・停止なら、その店舗の商品は購入者に見せない。
   private Map<Long, StoreState> storeStates(Collection<Long> storeIds) {
     List<StoreEntity> selected = stores.findAllById(storeIds);
-    Map<Long, Boolean> accepting = organizations
+    Map<Long, OrganizationEntity> owners = organizations
       .findAllById(selected.stream().map(StoreEntity::getOrganizationId).collect(toSet()))
       .stream()
-      .collect(toMap(OrganizationEntity::getId, OrganizationEntity::acceptsOrders));
+      .collect(toMap(OrganizationEntity::getId, organization -> organization));
     return selected
       .stream()
       .collect(
         toMap(StoreEntity::getId, store ->
-          new StoreState(store.getName(), store.isOpen() && accepting.getOrDefault(store.getOrganizationId(), false))
+          new StoreState(store.getName(), storeReason(store, owners.get(store.getOrganizationId())))
         )
       );
+  }
+
+  // 戻らない理由（閉鎖済み・停止）を先に見る。閉鎖中・非公開・受付停止中は、一時的な理由として扱う。
+  private static String storeReason(StoreEntity store, OrganizationEntity organization) {
+    if (store.getClosedAt() != null) return STORE_CLOSED;
+    if (store.isSuspended()) return STORE_SUSPENDED;
+    if (organization == null || organization.isSuspended()) return ORGANIZATION_SUSPENDED;
+    if (store.getClosingStartedAt() != null) return STORE_CLOSING;
+    if (!store.isPublished()) return STORE_UNPUBLISHED;
+    if (!organization.acceptsOrders()) return ORGANIZATION_NOT_ACCEPTING;
+    return null;
   }
 
   public void requireStore(long id) {

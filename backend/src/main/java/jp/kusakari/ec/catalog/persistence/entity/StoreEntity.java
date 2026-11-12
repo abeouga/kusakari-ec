@@ -61,6 +61,10 @@ public class StoreEntity {
   @Column(name = "closing_started_at")
   private Instant closingStartedAt;
 
+  /** 閉鎖が済んだ日時。空でなければ閉鎖済みで、購入者には見せない（書き込みは #79 で作る）。 */
+  @Column(name = "closed_at", insertable = false, updatable = false)
+  private Instant closedAt;
+
   @Version
   private long revision;
 

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
 import jp.kusakari.ec.auth.AuthMember;
 import jp.kusakari.ec.auth.AuthService;
@@ -25,7 +26,10 @@ public class StoreService {
   private final OrganizationRepository organizations;
   private final AuthService auth;
 
-  /** company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。 */
+  /**
+   * company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。
+   * closingStartedAt は閉鎖を始めた日時（空なら営業中）。日時があれば、画面は「閉店予定」と出す。
+   */
   public record Profile(
     long id,
     long revision,
@@ -38,7 +42,8 @@ public class StoreService {
     String hours,
     String story,
     boolean enabled,
-    boolean published
+    boolean published,
+    Instant closingStartedAt
   ) {}
 
   public record Input(
@@ -51,9 +56,20 @@ public class StoreService {
     @NotNull @Size(max = 1000) String story
   ) {}
 
+  /**
+   * 店舗の公開ページ。購入者・未ログインには、公開中の店舗と閉鎖予定（閉鎖中）の店舗だけを返す。
+   * 非公開・運営の停止・閉鎖済み・組織の停止の店舗は、ないものとして 404。オーナー・担当者・運営は、扱える店舗を見られる。
+   */
   @Transactional(readOnly = true)
   public Profile get(long id) {
-    return view(require(id));
+    var store = require(id);
+    if (!publiclyVisible(store) && !auth.canViewAsStaff(store)) throw notFound();
+    return view(store);
+  }
+
+  private boolean publiclyVisible(StoreEntity store) {
+    if (!store.isPublished() || store.isSuspended() || store.getClosedAt() != null) return false;
+    return organizations.findById(store.getOrganizationId()).map(organization -> !organization.isSuspended()).orElse(false);
   }
 
   @Transactional(readOnly = true)
@@ -68,7 +84,8 @@ public class StoreService {
     auth.requireSellerRole();
     AuthMember member = auth.current();
     if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
-    return stores.findAllById(auth.storeIdsOf(member)).stream().map(this::view).toList();
+    // ロール未割り当ての担当者も、所属店舗の店舗情報は見られる（#105）。変更の API は、それぞれロールを確かめる。
+    return stores.findAllById(auth.viewableStoreIdsOf(member)).stream().map(this::view).toList();
   }
 
   /** オーナーが、自分の組織に店舗を作る。申請や運営の審査は要らない。作った直後は非公開。 */
@@ -123,7 +140,11 @@ public class StoreService {
   }
 
   private StoreEntity require(long id) {
-    return stores.findById(id).orElseThrow(() -> new ApiException(404, "STORE_NOT_FOUND", "店舗が見つかりません。"));
+    return stores.findById(id).orElseThrow(StoreService::notFound);
+  }
+
+  private static ApiException notFound() {
+    return new ApiException(404, "STORE_NOT_FOUND", "店舗が見つかりません。");
   }
 
   private Profile view(StoreEntity s) {
@@ -140,7 +161,8 @@ public class StoreService {
       s.getHours(),
       s.getStory(),
       !s.isSuspended(),
-      s.isPublished()
+      s.isPublished(),
+      s.getClosingStartedAt()
     );
   }
 }
