@@ -18,10 +18,11 @@
 ### 実行のしかた
 
 1. `stop.bat` で、このフォルダーの Web と API を止める（止めていなくても、スクリプトがこのフォルダーの分だけ止める）
-2. `DB-reset.bat -DryRun` を実行する。Windows の確認（ユーザー アカウント制御）が出るので「はい」を選ぶ。別のウィンドウが開き、対象が表示される。この時点では何も変更しない
-3. `DB-reset.bat` を実行する。同じように Windows の確認の後、別のウィンドウに対象が表示されるので、合っていれば `RESET kusakari` と入力する
-4. 「EC の DB の初期化が完了しました」と表示されたら、`start.bat` で起動する
-5. Canvas を使っている PC では、続けて Canvas 側の DB も初期化する（abeouga/kusakari-canvas#63）
+2. 新しいコードを取得した後なら、`npm run build:api` で API を作り直す。初期化の後の確認は、このフォルダーの API でテーブルを作るため
+3. `DB-reset.bat -DryRun` を実行する。Windows の確認（ユーザー アカウント制御）が出るので「はい」を選ぶ。別のウィンドウが開き、対象が表示される。この時点では何も変更しない
+4. `DB-reset.bat` を実行する。同じように Windows の確認の後、別のウィンドウに対象が表示されるので、合っていれば `RESET kusakari` と入力する
+5. 「EC の DB の初期化が完了しました」と表示されたら、`start.bat` で起動する
+6. Canvas を使っている PC では、続けて Canvas 側の DB も初期化する（abeouga/kusakari-canvas#63）
 
 | 引数 | 動き |
 | --- | --- |
@@ -89,7 +90,9 @@ MySQL の方式、ポート、プロセス ID、実行ファイル、データ�
 - EC だけを初期化すると、Canvas の庭の持ち主（EC の会員 ID）と、買い物リストが持つ庭 ID が、作り直した EC と食い違う。Canvas 側も続けて初期化する
 - 認証基盤（Cognito）のユーザーは消さない。初期化の後、初めてログインしたときに会員が作られる
 - DB を作り直した後でマイグレーションの確認に失敗すると、DB は空か、途中まで作られた状態で残る。原因を直してから `setup.bat` を実行すると、テーブルが作られる
-- 新しいテーブル構成（#107）では、閉鎖した店舗の連絡先を消すイベントをマイグレーションで作る。アプリ用の DB ユーザーに `EVENT` の権限が要るので、#107 でセットアップが付ける権限を見直す
+- 閉鎖した店舗の連絡先を消すイベントは、#107 ではマイグレーションに入れなかった（`docs/database-v3-check/store-closure-event.sql`）。アプリ用の DB ユーザーに `EVENT` の権限が要るので、#79 でセットアップが付ける権限と合わせて入れる
+- 初期化の後の確認は、`backend/target` にある API の JAR でマイグレーションを適用する。古い JAR のままだと、古いマイグレーションが空の DB に適用されてしまう。新しい main を取得した後は、`npm run build:api`（または `setup.bat`）で API を作り直してから初期化する
+- 2026-11-12、v3 への切り替えの後、以前にビルドしたフォルダーで初期化すると、確認が「Found more than one migration with version 1」で失敗した。Maven の `package` が、ソースから消した旧マイグレーション（V1〜V15）を `target` に残していたため。`scripts/api.mjs` の API のビルドに `clean` を付けて直した。直す前のフォルダーでは、`backend` で `mvnw clean package -DskipTests` を実行してから `setup.bat` を実行すると、空の DB にテーブルが作られる
 - `scripts/setup.ps1` は、確認の処理を `scripts/database-verify.ps1` の関数の呼び出しに置き換えた。処理の中身は変えていない
 
 ## Verification scope
