@@ -444,10 +444,3 @@ CREATE TABLE store_moderation_events (
   CONSTRAINT fk_store_moderation_store FOREIGN KEY (store_id) REFERENCES stores (id),
   CONSTRAINT fk_store_moderation_actor FOREIGN KEY (actor_member_id) REFERENCES members (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 閉鎖済みになってから90日たった店舗の連絡先を消す（#79）。1日1回。event_scheduler が ON の MySQL で動く
-CREATE EVENT ev_stores_clear_closed_contacts
-  ON SCHEDULE EVERY 1 DAY
-  DO UPDATE stores SET contact_name = '', contact_email = ''
-     WHERE closed_at IS NOT NULL AND closed_at < NOW(6) - INTERVAL 90 DAY
-       AND (contact_name <> '' OR contact_email <> '');

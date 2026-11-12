@@ -1,7 +1,10 @@
 package jp.kusakari.ec.commerce.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import jp.kusakari.ec.auth.AuthService;
+import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
@@ -21,7 +24,6 @@ public class OrderWorkflowService {
   private final AuthService auth;
   private final OrderRepository orders;
   private final OrderItemRepository items;
-  private final OrderDetailsRepository details;
   private final InventoryRepository inventory;
   private final OrderResponseMapper mapper;
   private final NotificationService notices;
@@ -81,22 +83,24 @@ public class OrderWorkflowService {
   public OrderView decideCancellation(String id, boolean approved, String reason) {
     var order = orders.lockOrder(id).orElseThrow(this::missing);
     requireStore(order);
+    // キャンセル申請への回答は、オーナーか MANAGER だけができる。
+    auth.requireManager(order.getStoreId());
     if (!order.getStatus().equals("ACCEPTED") || !order.getCancellationStatus().equals("PENDING")) conflict();
     if (!approved && reason.isBlank()) throw new ApiException(400, "REASON_REQUIRED", "却下理由を入力してください。");
     if (approved) {
       // Match checkout's ascending product order. The order lock prevents double restocking.
-      items
-        .findAllForOrder(id)
+      var orderItems = items.findAllForOrder(id);
+      Map<String, InventoryEntity> stockByProduct = inventory
+        .lockAll(orderItems.stream().map(item -> item.getId().getProductId()).toList())
         .stream()
-        .sorted(java.util.Comparator.comparing(i -> i.getId().getProductId()))
-        .forEach(item -> {
-          var stock = inventory
-            .lockAtStore(order.getStoreId(), item.getId().getProductId())
-            .orElseThrow(() -> new ApiException(409, "STOCK_NOT_FOUND", "在庫情報が見つかりません。"));
-          stock.setQuantity(Math.addExact(stock.getQuantity(), item.getQuantity()));
-        });
+        .collect(Collectors.toMap(InventoryEntity::getProductId, stock -> stock));
+      for (var item : orderItems) {
+        var stock = stockByProduct.get(item.getId().getProductId());
+        if (stock == null) throw new ApiException(409, "STOCK_NOT_FOUND", "在庫情報が見つかりません。");
+        stock.setQuantity(Math.addExact(stock.getQuantity(), item.getQuantity()));
+      }
     }
-    order.decideCancellation(approved, reason);
+    order.decideCancellation(approved, reason, auth.current().getId());
     notices.send(
       order.getBuyerMemberId(),
       approved ? "注文をキャンセルしました" : "キャンセル申請の結果",
@@ -106,22 +110,21 @@ public class OrderWorkflowService {
   }
 
   private OrderView view(OrderEntity order) {
-    return mapper.toView(
-      order,
-      items.findAllForOrder(order.getId()),
-      details.findById(order.getId()).map(OrderDetailsEntity::getDetails).orElseGet(DeliveryFields::empty)
-    );
+    return mapper.toView(order, items.findAllForOrder(order.getId()));
   }
 
   private void requireBuyer(OrderEntity order) {
     if (!auth.current().getId().equals(order.getBuyerMemberId())) throw missing();
   }
 
+  // ほかの店舗の注文は、ないものとして返す（注文の有無を知らせない）。
   private void requireStore(OrderEntity order) {
-    if (order.getStoreId() == null) throw missing();
-    var member = auth.current();
-    if (!member.getRole().equals("ADMIN") && !order.getStoreId().equals(member.getStoreId())) throw missing();
-    auth.requireSeller(order.getStoreId());
+    try {
+      auth.requireSeller(order.getStoreId());
+    } catch (ApiException error) {
+      if (error.status() != 403) throw error;
+      throw missing();
+    }
   }
 
   private ApiException missing() {

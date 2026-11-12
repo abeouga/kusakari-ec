@@ -1,13 +1,16 @@
 package jp.kusakari.ec.auth;
 
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface AuthMemberRepository extends JpaRepository<AuthMember, String> {
-  java.util.List<AuthMember> findByStoreIdAndEnabledTrue(Long storeId);
   Optional<AuthMember> findByIssuerAndSubject(String issuer, String subject);
 
-  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-  @org.springframework.data.jpa.repository.Query("select m from AuthMember m where m.id = :id")
-  Optional<AuthMember> lockMember(@org.springframework.data.repository.query.Param("id") String id);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select m from AuthMember m where m.id = :id")
+  Optional<AuthMember> lockMember(@Param("id") String id);
 }

@@ -52,10 +52,12 @@ public class ProductEntity {
   @Column(length = 40)
   private String id;
 
-  @Column(name = "owner_member_id", length = 36, columnDefinition = "CHAR(36)")
-  private String ownerMemberId;
+  /** 商品が属する店舗。登録した後は変えない（注文の店舗と商品の店舗を一致させるため）。 */
+  @Column(name = "store_id", nullable = false, updatable = false)
+  private Long storeId;
 
-  @Column(nullable = false, length = 50)
+  /** 商品番号。店舗の中で一意。 */
+  @Column(nullable = false, length = 64)
   private String sku;
 
   @Column(nullable = false, length = 120)
@@ -64,7 +66,7 @@ public class ProductEntity {
   @Column(name = "latin_name", nullable = false, length = 120)
   private String latinName;
 
-  @Column(nullable = false, length = 30)
+  @Column(name = "category_name", nullable = false, length = 80)
   private String category;
 
   @Column(nullable = false, columnDefinition = "TEXT")
@@ -135,9 +137,6 @@ public class ProductEntity {
 
   @Column(name = "published_at", nullable = false)
   private Instant publishedAt = Instant.now();
-
-  @Column(nullable = false)
-  private boolean active = true;
 
   @ElementCollection(fetch = FetchType.LAZY)
   @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))

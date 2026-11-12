@@ -2,8 +2,12 @@ package jp.kusakari.ec.catalog.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,43 +18,69 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StoreEntity {
 
-  @Column(length = 100, nullable = false)
-  private String company = "";
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-  @Column(length = 100, nullable = false)
+  /** 店舗が属する組織。作った後は変えない。 */
+  @Column(name = "organization_id", nullable = false, updatable = false)
+  private Long organizationId;
+
+  @Column(nullable = false, length = 120)
+  private String name;
+
+  @Column(nullable = false, length = 255)
+  private String address = "";
+
+  /** 位置がない店舗は、緯度と経度の両方が空。 */
+  private Double latitude;
+
+  private Double longitude;
+
+  @Column(name = "business_hours", nullable = false, length = 255)
+  private String hours = "";
+
+  @Column(name = "contact_name", nullable = false, length = 120)
   private String contact = "";
 
-  @Column(length = 200, nullable = false)
+  @Column(name = "contact_email", nullable = false, length = 255)
   private String email = "";
 
-  @Column(length = 1000, nullable = false)
+  @Column(name = "introduction", nullable = false, length = 2000)
   private String story = "";
 
+  /** オーナーによる公開。作った直後は非公開。 */
   @Column(nullable = false)
-  private boolean enabled = true;
+  private boolean published;
 
-  @jakarta.persistence.Version
+  /** 運営による停止。 */
+  @Column(nullable = false)
+  private boolean suspended;
+
+  /** 閉鎖を始めた日時。空なら営業中（閉鎖の操作は #79 で作る）。 */
+  @Column(name = "closing_started_at")
+  private Instant closingStartedAt;
+
+  @Version
   private long revision;
 
-  public static StoreEntity create(String name, String address) {
-    StoreEntity store = new StoreEntity();
-    store.name = name;
-    store.address = address;
-    store.hours = "未設定";
-    return store;
-  }
-
-  public void updateProfile(
+  public static StoreEntity create(
+    long organizationId,
     String name,
-    String company,
     String contact,
     String email,
     String address,
     String hours,
     String story
   ) {
+    StoreEntity store = new StoreEntity();
+    store.organizationId = organizationId;
+    store.updateProfile(name, contact, email, address, hours, story);
+    return store;
+  }
+
+  public void updateProfile(String name, String contact, String email, String address, String hours, String story) {
     this.name = name.trim();
-    this.company = company.trim();
     this.contact = contact.trim();
     this.email = email;
     this.address = address.trim();
@@ -58,26 +88,20 @@ public class StoreEntity {
     this.story = story.trim();
   }
 
-  public void changeEnabled(boolean enabled) {
-    this.enabled = enabled;
+  public void changePublished(boolean published) {
+    this.published = published;
   }
 
-  @Id
-  @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-  private Long id;
+  public void changeSuspended(boolean suspended) {
+    this.suspended = suspended;
+  }
 
-  @Column(nullable = false, length = 100)
-  private String name;
+  /** 購入者に見せて、新しい注文を受け付けられる店舗か（組織の停止は別に確かめる）。 */
+  public boolean isOpen() {
+    return published && !suspended && closingStartedAt == null;
+  }
 
-  @Column(nullable = false, length = 200)
-  private String address;
-
-  @Column(nullable = false)
-  private double latitude;
-
-  @Column(nullable = false)
-  private double longitude;
-
-  @Column(nullable = false, length = 80)
-  private String hours;
+  public boolean hasLocation() {
+    return latitude != null && longitude != null;
+  }
 }

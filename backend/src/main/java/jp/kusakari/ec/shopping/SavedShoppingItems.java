@@ -57,13 +57,10 @@ public class SavedShoppingItems {
 
   @Transactional
   public void add(String cartId, String gardenId, String productId) {
-    var cart = lock(cartId);
-    var product = catalog
-      .productsAtSaleStores(cart.getStoreId(), List.of(productId))
-      .stream()
-      .findFirst()
-      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    if (!product.active()) throw new ApiException(409, "PRODUCT_ARCHIVED", "この商品は販売を終了しています。");
+    lock(cartId);
+    if (!catalog.listing(productId).purchasable()) {
+      throw new ApiException(409, "PRODUCT_ARCHIVED", "この商品は販売を終了しています。");
+    }
     var existing = read(cartId, gardenId);
     if (
       existing
@@ -94,9 +91,7 @@ public class SavedShoppingItems {
     );
   }
 
-  private jp.kusakari.ec.commerce.persistence.entity.CartEntity lock(String cartId) {
-    return carts
-      .findLocked(cartId)
-      .orElseThrow(() -> new ApiException(404, "CART_NOT_FOUND", "カートが見つかりません。"));
+  private void lock(String cartId) {
+    carts.findLocked(cartId).orElseThrow(() -> new ApiException(404, "CART_NOT_FOUND", "カートが見つかりません。"));
   }
 }

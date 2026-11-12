@@ -8,10 +8,9 @@ import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderLine;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
-import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
+import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsView;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
-import jp.kusakari.ec.commerce.service.DeliveryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,10 +18,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class OrderResponseMapper {
 
-  private final DeliveryService delivery;
   private final ProductRepository products;
 
-  public OrderView toView(OrderEntity order, List<OrderItemEntity> items, DeliveryFields details) {
+  public OrderView toView(OrderEntity order, List<OrderItemEntity> items) {
     Map<String, String> images = products
       .findImageReferences(
         items
@@ -63,9 +61,12 @@ public class OrderResponseMapper {
       order.getStoreName(),
       order.getTotalYen(),
       lines,
-      order.getSubtotalYen(),
-      order.getShippingFeeYen(),
-      delivery.view(details)
+      new DetailsView(
+        order.getPaymentMethod(),
+        order.getRecipientName(),
+        order.getRecipientPhone(),
+        order.getContactEmail()
+      )
     );
   }
 }

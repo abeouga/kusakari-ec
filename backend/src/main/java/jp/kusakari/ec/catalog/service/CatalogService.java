@@ -2,12 +2,11 @@ package jp.kusakari.ec.catalog.service;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,11 +14,13 @@ import java.util.Set;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.Candidate;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.MaterialMatch;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.MaterialRequest;
+import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductReferenceView;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.StoreView;
 import jp.kusakari.ec.catalog.dto.ProductImageReference;
+import jp.kusakari.ec.catalog.dto.ProductStoreReference;
 import jp.kusakari.ec.catalog.mapper.ProductMapper;
-import jp.kusakari.ec.catalog.persistence.entity.InventoryId;
+import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
@@ -27,6 +28,8 @@ import jp.kusakari.ec.catalog.persistence.repository.MaterialProductRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
+import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,104 +41,92 @@ public class CatalogService {
 
   private final ProductRepository products;
   private final StoreRepository stores;
+  private final OrganizationRepository organizations;
   private final InventoryRepository inventory;
   private final MaterialProductRepository materialProducts;
   private final ProductMapper mapper;
-  private final jp.kusakari.ec.auth.AuthMemberRepository members;
-
-  private static final Comparator<ProductView> VIEW_ORDER = Comparator.comparingInt((ProductView view) ->
-    displayOrder(view.id())
-  ).thenComparing(ProductView::id);
-
-  public List<ProductView> products(long storeId) {
-    requireStore(storeId);
-    return views(products.findByActiveTrue(), storeId).stream().filter(ProductView::active).toList();
-  }
 
   /**
-   * Issue #70: products evaluated at their sale stores, where they are picked up; {@link ProductView#sellerStoreId()}
-   * is that store. Used when a product is added to the cart from outside the browsed store's listing.
+   * 商品と、購入者に見えて今買えるか。見えるのは、店舗が開いていて、組織が受付を止めておらず、
+   * 運営が商品を停止しておらず、出店者が公開している商品だけ。
    */
-  public List<ProductView> productsAtSaleStores(long browseStoreId, Collection<String> ids) {
-    requireStore(browseStoreId);
-    return ids.isEmpty() ? List.of() : atSaleStores(browseStoreId, products.findByIdIn(ids));
+  public record Listing(ProductView product, boolean purchasable) {}
+
+  private record StoreState(String name, boolean sellable) {}
+
+  /** storeId が null なら、購入者に見える全店舗の商品。 */
+  public List<ProductView> products(Long storeId) {
+    if (storeId != null) requireStore(storeId);
+    var selected = storeId == null ? products.findAllNotDeleted() : products.findNotDeletedAtStore(storeId);
+    return listings(selected).stream().filter(Listing::purchasable).map(Listing::product).toList();
   }
 
-  /** Products evaluated at an explicitly recorded store per product, such as a cart line's pickup store. */
-  public Map<String, ProductView> productsAt(Map<String, Long> storeByProduct) {
-    Map<String, ProductView> result = new HashMap<>();
-    storeByProduct
-      .entrySet()
-      .stream()
-      .collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, toList())))
-      .forEach((storeId, ids) -> productsByIds(storeId, ids).forEach(view -> result.put(view.id(), view)));
-    return result;
-  }
-
-  // A seller's product is sold by the seller's own store; Kusakari's shared products (no owner) by the
-  // store being browsed, which keeps its own stock of them (EC-B05).
-  private List<ProductView> atSaleStores(long browseStoreId, List<ProductEntity> selected) {
-    Map<String, Long> owners = ownerStores();
-    return selected
-      .stream()
-      .collect(
-        groupingBy(product -> owners.getOrDefault(Objects.toString(product.getOwnerMemberId(), ""), browseStoreId))
-      )
-      .entrySet()
-      .stream()
-      .flatMap(group -> views(group.getValue(), group.getKey()).stream())
-      .sorted(VIEW_ORDER)
-      .toList();
-  }
-
-  private Map<String, Long> ownerStores() {
-    return members
-      .findAll()
-      .stream()
-      .filter(m -> m.getStoreId() != null)
-      .collect(java.util.stream.Collectors.toMap(m -> m.getId(), m -> m.getStoreId()));
-  }
-
-  public List<ProductImageReference> imageReferences(List<String> ids) {
-    if (Set.copyOf(ids).size() != ids.size()) {
-      throw new ApiException(400, "DUPLICATE_PRODUCT", "参照する商品IDが重複しています。");
-    }
-    var found = products
-      .findImageReferences(ids)
-      .stream()
-      .collect(java.util.stream.Collectors.toMap(ProductImageReference::id, item -> item));
-    if (found.size() != ids.size()) {
-      throw new ApiException(404, "PRODUCT_NOT_FOUND", "配置に紐づく商品の登録情報が見つかりません。");
-    }
-    return ids.stream().map(found::get).toList();
-  }
-
-  public List<ProductView> allProducts(long storeId) {
+  /** 出店者の一覧。非公開の商品も含む、その店舗の削除されていない商品。 */
+  public List<ProductView> storeProducts(long storeId) {
     requireStore(storeId);
-    return views(products.findAll(), storeId);
+    return listings(products.findNotDeletedAtStore(storeId)).stream().map(Listing::product).toList();
   }
 
   // Purchase flows must not deserialize every product's potentially large 3D manifest.
-  public List<ProductView> productsByIds(long storeId, Collection<String> ids) {
-    requireStore(storeId);
-    return ids.isEmpty() ? List.of() : views(products.findByIdIn(ids), storeId);
+  public List<Listing> listingsByIds(Collection<String> ids) {
+    return ids.isEmpty() ? List.of() : listings(products.findByIdIn(ids));
   }
 
-  private List<ProductView> views(List<ProductEntity> selected, long storeId) {
-    Map<String, jp.kusakari.ec.catalog.persistence.entity.InventoryEntity> stockByProduct = inventory
-      .findAllAtStore(storeId)
+  public Listing listing(String id) {
+    return listingsByIds(List.of(id))
       .stream()
-      .collect(java.util.stream.Collectors.toMap(row -> row.getId().getProductId(), row -> row));
-    boolean open = stores.findById(storeId).map(StoreEntity::isEnabled).orElse(false);
-    var allMembers = members.findAll();
-    var enabledOwners = allMembers
+      .findFirst()
+      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+  }
+
+  public ProductView product(String id) {
+    return listing(id).product();
+  }
+
+  public List<ProductReferenceView> imageReferences(List<String> ids) {
+    if (Set.copyOf(ids).size() != ids.size()) {
+      throw new ApiException(400, "DUPLICATE_PRODUCT", "参照する商品IDが重複しています。");
+    }
+    Map<String, ProductImageReference> found = products
+      .findImageReferences(ids)
       .stream()
-      .filter(m -> m.isEnabled())
-      .map(m -> m.getId())
-      .collect(toSet());
-    // EC-B05: a seller's product is introduced by the seller's own store; Kusakari's shared products
-    // (no owner) are sold by whichever store lists them, i.e. the store being viewed.
-    Map<String, Long> ownerStores = ownerStores();
+      .collect(toMap(ProductImageReference::id, item -> item));
+    if (found.size() != ids.size()) {
+      throw new ApiException(404, "PRODUCT_NOT_FOUND", "配置に紐づく商品の登録情報が見つかりません。");
+    }
+    Map<String, ProductStoreReference> owners = products
+      .findStoreReferences(ids)
+      .stream()
+      .collect(toMap(ProductStoreReference::id, item -> item));
+    Map<String, InventoryEntity> stockByProduct = stockByProduct(ids);
+    Map<Long, StoreState> states = storeStates(
+      owners.values().stream().map(ProductStoreReference::storeId).collect(toSet())
+    );
+    return ids
+      .stream()
+      .map(id -> {
+        ProductImageReference reference = found.get(id);
+        ProductStoreReference owner = owners.get(id);
+        InventoryEntity stock = stockByProduct.get(id);
+        StoreState store = states.get(owner.storeId());
+        return new ProductReferenceView(
+          reference.id(),
+          reference.name(),
+          reference.imageUrl(),
+          reference.active(),
+          reference.hasPlantModel(),
+          owner.storeId(),
+          store == null ? "" : store.name(),
+          stock == null ? 0 : stock.getQuantity(),
+          purchasable(store, owner.suspended(), stock)
+        );
+      })
+      .toList();
+  }
+
+  private List<Listing> listings(List<ProductEntity> selected) {
+    Map<String, InventoryEntity> stockByProduct = stockByProduct(selected.stream().map(ProductEntity::getId).toList());
+    Map<Long, StoreState> states = storeStates(selected.stream().map(ProductEntity::getStoreId).collect(toSet()));
     return selected
       // Sorting JSON model manifests in MySQL can exhaust its per-query sort buffer.
       // The comparator below already provides the complete, deterministic display order.
@@ -146,50 +137,61 @@ public class CatalogService {
         )
       )
       .map(product -> {
-        var stock = stockByProduct.get(product.getId());
-        return mapper.toView(
-          product,
-          stock == null ? 0 : stock.getQuantity(),
-          stock == null
-            ? "DELETED"
-            : !open || (product.getOwnerMemberId() != null && !enabledOwners.contains(product.getOwnerMemberId()))
-              ? "HIDDEN"
-              : stock.getPublicationStatus(),
-          ownerStores.getOrDefault(Objects.toString(product.getOwnerMemberId(), ""), storeId)
+        InventoryEntity stock = stockByProduct.get(product.getId());
+        StoreState store = states.get(product.getStoreId());
+        return new Listing(
+          mapper.toView(
+            product,
+            stock == null ? 0 : stock.getQuantity(),
+            stock == null ? InventoryEntity.DELETED : stock.getPublicationStatus(),
+            store == null ? "" : store.name()
+          ),
+          purchasable(store, product.isSuspended(), stock)
         );
       })
       .toList();
   }
 
-  public ProductView product(String id, long storeId) {
-    return productsByIds(storeId, List.of(id))
+  private static boolean purchasable(StoreState store, boolean suspended, InventoryEntity stock) {
+    return (
+      store != null &&
+      store.sellable() &&
+      !suspended &&
+      stock != null &&
+      InventoryEntity.PUBLISHED.equals(stock.getPublicationStatus())
+    );
+  }
+
+  private Map<String, InventoryEntity> stockByProduct(Collection<String> productIds) {
+    return inventory.findAllById(productIds).stream().collect(toMap(InventoryEntity::getProductId, row -> row));
+  }
+
+  // 店舗が開いていても、組織が受付停止中・停止なら、その店舗の商品は購入者に見せない。
+  private Map<Long, StoreState> storeStates(Collection<Long> storeIds) {
+    List<StoreEntity> selected = stores.findAllById(storeIds);
+    Map<Long, Boolean> accepting = organizations
+      .findAllById(selected.stream().map(StoreEntity::getOrganizationId).collect(toSet()))
       .stream()
-      .findFirst()
-      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+      .collect(toMap(OrganizationEntity::getId, OrganizationEntity::acceptsOrders));
+    return selected
+      .stream()
+      .collect(
+        toMap(StoreEntity::getId, store ->
+          new StoreState(store.getName(), store.isOpen() && accepting.getOrDefault(store.getOrganizationId(), false))
+        )
+      );
   }
 
   public void requireStore(long id) {
     if (!stores.existsById(id)) throw new ApiException(404, "STORE_NOT_FOUND", "店舗が見つかりません。");
   }
 
-  public String storeName(long id) {
-    return stores
-      .findById(id)
-      .map(StoreEntity::getName)
-      .orElseThrow(() -> new ApiException(404, "STORE_NOT_FOUND", "店舗が見つかりません。"));
-  }
-
-  public List<Long> storeIds() {
-    return stores.findAll().stream().map(StoreEntity::getId).toList();
-  }
-
   public List<StoreView> stores(Double latitude, Double longitude) {
     validateCoordinates(latitude, longitude);
     // EC-B12: suspended stores are not offered as pickup candidates; checkout still rejects them.
     return stores
-      .findAllByOrderByIdAsc()
+      .findOpen()
       .stream()
-      .filter(StoreEntity::isEnabled)
       .map(store ->
         new StoreView(
           store.getId(),
@@ -198,7 +200,9 @@ public class CatalogService {
           store.getHours(),
           store.getLatitude(),
           store.getLongitude(),
-          latitude == null ? null : distance(latitude, longitude, store.getLatitude(), store.getLongitude())
+          latitude == null || !store.hasLocation()
+            ? null
+            : distance(latitude, longitude, store.getLatitude(), store.getLongitude())
         )
       )
       .sorted(Comparator.comparing(StoreView::distanceKm, Comparator.nullsLast(Double::compareTo)))
@@ -206,7 +210,7 @@ public class CatalogService {
   }
 
   public List<MaterialMatch> match(MaterialRequest request) {
-    requireStore(request.storeId());
+    if (request.storeId() != null) requireStore(request.storeId());
     Map<String, Set<String>> productIdsByCode = materialProducts
       .findAllForCodes(
         request
@@ -218,10 +222,12 @@ public class CatalogService {
       .stream()
       .collect(groupingBy(row -> row.getId().getMaterialCode(), mapping(row -> row.getId().getProductId(), toSet())));
     Set<String> matchedIds = productIdsByCode.values().stream().flatMap(Set::stream).collect(toSet());
-    Map<String, ProductView> productsById = productsByIds(request.storeId(), matchedIds)
+    Map<String, ProductView> productsById = listingsByIds(matchedIds)
       .stream()
-      .filter(ProductView::active)
-      .collect(java.util.stream.Collectors.toMap(ProductView::id, product -> product));
+      .filter(Listing::purchasable)
+      .map(Listing::product)
+      .filter(product -> request.storeId() == null || request.storeId().equals(product.sellerStoreId()))
+      .collect(toMap(ProductView::id, product -> product));
 
     return request
       .items()
@@ -232,7 +238,7 @@ public class CatalogService {
           .stream()
           .sorted()
           .map(productsById::get)
-          .filter(java.util.Objects::nonNull)
+          .filter(Objects::nonNull)
           .map(product ->
             new Candidate(
               product,

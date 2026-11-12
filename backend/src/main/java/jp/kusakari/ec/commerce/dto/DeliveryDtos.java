@@ -12,16 +12,6 @@ public final class DeliveryDtos {
     @NotNull @Email @Size(max = 200) String contactEmail
   ) {}
 
-  public record DetailsView(
-    String fulfillmentMethod,
-    String paymentMethod,
-    String recipientName,
-    String recipientPhone,
-    String contactEmail,
-    String postalCode,
-    String addressLine1,
-    String addressLine2,
-    String requestedDate,
-    String timeSlot
-  ) {}
+  /** 店舗受け取りだけなので、支払方法と受取連絡先だけを持つ。カートの支払方法は、お会計まで NONE。 */
+  public record DetailsView(String paymentMethod, String recipientName, String recipientPhone, String contactEmail) {}
 }

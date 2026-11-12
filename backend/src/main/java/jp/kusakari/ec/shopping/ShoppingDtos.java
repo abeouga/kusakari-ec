@@ -29,7 +29,17 @@ public final class ShoppingDtos {
 
   public record SavedItems(long listRevision, List<SavedItem> items) {}
 
-  public record Product(String id, String name, String imageUrl, int priceYen, int stock, boolean active) {}
+  /** active は、今カートに入れられる商品か。storeId/storeName は商品の店舗（在庫を持ち、受け渡す店舗）。 */
+  public record Product(
+    String id,
+    String name,
+    String imageUrl,
+    int priceYen,
+    int stock,
+    boolean active,
+    Long storeId,
+    String storeName
+  ) {}
 
   public record Line(String key, String name, int quantity, String unit, List<Product> products) {}
 
@@ -38,8 +48,6 @@ public final class ShoppingDtos {
     String name,
     long revision,
     String updatedAt,
-    long storeId,
-    String storeName,
     List<Line> items,
     long listRevision
   ) {}

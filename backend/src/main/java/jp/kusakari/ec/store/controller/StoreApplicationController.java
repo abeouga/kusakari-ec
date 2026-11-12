@@ -35,6 +35,11 @@ public class StoreApplicationController {
     return service.submit(in, file);
   }
 
+  @PutMapping("/api/account/store-applications/{id}/withdrawal")
+  public StoreApplicationService.Application withdraw(@PathVariable String id) {
+    return service.withdraw(id);
+  }
+
   @PutMapping("/api/operator/applications/{id}")
   public StoreApplicationService.Application decide(@PathVariable String id, @Valid @RequestBody Decision in) {
     return service.decide(id, in.approved(), in.reason());

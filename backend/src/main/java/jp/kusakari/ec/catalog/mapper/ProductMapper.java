@@ -15,13 +15,12 @@ import org.mapstruct.ReportingPolicy;
 public interface ProductMapper {
   @Mapping(target = "stock", source = "stock")
   @Mapping(target = "modelComposition", source = "product.modelComposition", qualifiedByName = "compositionView")
-  @Mapping(
-    target = "active",
-    expression = "java(product.isActive() && !product.isSuspended() && publicationStatus.equals(\"PUBLISHED\"))"
-  )
-  @Mapping(target = "publicationStatus", expression = "java(product.isActive() ? publicationStatus : \"DELETED\")")
-  @Mapping(target = "sellerStoreId", source = "sellerStoreId")
-  ProductView toView(ProductEntity product, int stock, String publicationStatus, Long sellerStoreId);
+  // 削除は在庫の公開状態で表す。購入者に見えるかどうかは、店舗と組織の状態も要るので CatalogService が決める。
+  @Mapping(target = "active", expression = "java(!publicationStatus.equals(\"DELETED\"))")
+  @Mapping(target = "publicationStatus", source = "publicationStatus")
+  @Mapping(target = "sellerStoreId", source = "product.storeId")
+  @Mapping(target = "sellerStoreName", source = "sellerStoreName")
+  ProductView toView(ProductEntity product, int stock, String publicationStatus, String sellerStoreName);
 
   // Seller forms edit the profile, not the generated geometry. Avoid sending large meshes in list responses.
   @Mapping(target = "modelComposition", ignore = true)
@@ -57,7 +56,6 @@ public interface ProductMapper {
   @Mapping(target = "sourceProductId", ignore = true)
   @Mapping(target = "sourceUpdatedAt", ignore = true)
   @Mapping(target = "publishedAt", ignore = true)
-  @Mapping(target = "active", ignore = true)
   ProductEntity toEntity(ProductRequest input);
 
   @Mapping(target = "care", ignore = true)
@@ -73,6 +71,6 @@ public interface ProductMapper {
   @Mapping(target = "sourceProductId", ignore = true)
   @Mapping(target = "sourceUpdatedAt", ignore = true)
   @Mapping(target = "publishedAt", ignore = true)
-  @Mapping(target = "active", ignore = true)
+  @Mapping(target = "storeId", ignore = true)
   void updateEntity(ProductRequest input, @MappingTarget ProductEntity product);
 }

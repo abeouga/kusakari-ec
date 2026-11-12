@@ -4,11 +4,7 @@ import java.util.List;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsRequest;
 import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
-import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
-import jp.kusakari.ec.commerce.persistence.entity.OrderDetailsEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
-import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
-import jp.kusakari.ec.commerce.persistence.repository.OrderDetailsRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.common.web.ApiException;
@@ -24,8 +20,6 @@ public class OrderService {
   private final jp.kusakari.ec.auth.AuthService auth;
   private final OrderRepository orders;
   private final OrderItemRepository items;
-  private final OrderDetailsRepository details;
-  private final DeliveryService delivery;
   private final OrderResponseMapper mapper;
 
   public List<OrderView> list(String cartId) {
@@ -36,6 +30,7 @@ public class OrderService {
       .toList();
   }
 
+  /** 受取連絡先だけを変える。支払方法は注文したときのまま。 */
   public OrderView updateDetails(String cartId, String orderId, DetailsRequest request) {
     OrderEntity order = ownedOrder(orderId);
     if (!order.getStatus().equals("ACCEPTED")) throw new ApiException(
@@ -43,17 +38,8 @@ public class OrderService {
       "ORDER_FIXED",
       "受付中の注文のみ編集できます。"
     );
-    DeliveryFields previous = details
-      .findById(orderId)
-      .map(OrderDetailsEntity::getDetails)
-      .orElseGet(DeliveryFields::empty);
-    if (!previous.getFulfillmentMethod().equals("PICKUP")) {
-      throw new ApiException(409, "ORDER_METHOD_FIXED", "注文後は受取・配送区分を変更できません。");
-    }
-    DeliveryFields updated = delivery.validate(request);
-    updated.setPaymentMethod(previous.getPaymentMethod());
-    details.save(new OrderDetailsEntity(orderId, updated));
-    return mapper.toView(order, items.findAllForOrder(orderId), updated);
+    order.changeRecipient(request.recipientName().trim(), request.recipientPhone(), request.contactEmail());
+    return view(order);
   }
 
   public void delete(String cartId, String orderId) {
@@ -70,11 +56,6 @@ public class OrderService {
   }
 
   private OrderView view(OrderEntity order) {
-    List<OrderItemEntity> lines = items.findAllForOrder(order.getId());
-    DeliveryFields savedDetails = details
-      .findById(order.getId())
-      .map(OrderDetailsEntity::getDetails)
-      .orElseGet(DeliveryFields::empty);
-    return mapper.toView(order, lines, savedDetails);
+    return mapper.toView(order, items.findAllForOrder(order.getId()));
   }
 }
