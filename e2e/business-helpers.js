@@ -148,7 +148,9 @@ export function productInput() {
 }
 
 export async function add(request, productId, quantity = 1) {
-  const cart = await call(request, '/cart').then((r) => r.json());
+  const opened = await call(request, '/cart');
+  expect(opened.status(), await opened.text()).toBe(200);
+  const cart = await opened.json();
   const result = await call(request, `/cart/items/${productId}`, 'PUT', { quantity, revision: cart.revision });
   expect(result.status(), await result.text()).toBe(200);
   return result.json();

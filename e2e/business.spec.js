@@ -224,9 +224,10 @@ test('concurrent final stock, cancellation locking, access control and catalog m
     const result = await call(seller.request, '/products', 'POST', input);
     expect(result.status(), await result.text()).toBe(200);
     const product = await result.json();
-    const carts = await Promise.all([add(buyer.request, product.id), add(seller.request, product.id)]);
+    // Issue #108: shop accounts cannot buy, so the operator is the second buyer in the race.
+    const carts = await Promise.all([add(buyer.request, product.id), add(admin.request, product.id)]);
     const results = await Promise.all(
-      [buyer, seller].map((p, i) =>
+      [buyer, admin].map((p, i) =>
         call(p.request, '/orders', 'POST', {
           requestId: randomUUID(),
           revision: carts[i].revision,
@@ -236,8 +237,8 @@ test('concurrent final stock, cancellation locking, access control and catalog m
       ),
     );
     expect(results.map((r) => r.status()).sort()).toEqual([200, 409]);
-    const winning = results[0].ok() ? buyer : seller;
-    const losing = winning === buyer ? seller : buyer;
+    const winning = results[0].ok() ? buyer : admin;
+    const losing = winning === buyer ? admin : buyer;
     const [order] = (await results.find((r) => r.ok()).json()).orders;
     expect((await call(losing.request, `/orders/${order.id}`)).status()).toBe(404);
     expect((await call(buyer.request, '/operator/members')).status()).toBe(403);
@@ -362,12 +363,16 @@ test('account, applications with private documents, store profile, categories an
     expect(
       (await call(admin.request, `/operator/members/${member.id}/enabled`, 'PUT', { enabled: false })).status(),
     ).toBe(200);
-    expect((await call(user.request, '/orders')).status()).toBe(403);
+    // Issue #108: the new owner is a shop account, so the buyer APIs refuse it; a disabled account is refused anywhere.
+    const disabled = await call(user.request, '/notifications');
+    expect(disabled.status()).toBe(403);
+    expect((await disabled.json()).code).toBe('ACCOUNT_DISABLED');
     expect(
       (await call(admin.request, `/operator/members/${member.id}/enabled`, 'PUT', { enabled: true })).status(),
     ).toBe(200);
     await login(user, 'test.user@example.com');
-    expect((await call(user.request, '/orders')).status()).toBe(200);
+    expect((await call(user.request, '/notifications')).status()).toBe(200);
+    expect((await call(user.request, '/orders').then((r) => r.json())).code).toBe('BUYER_REQUIRED');
     // Withdrawal is verified with dedicated accounts in business-account.spec.js: this shared buyer keeps
     // open orders from other specs, which now correctly block withdrawal (EC-B21 7a).
     await admin.screenshot({ path: 'artifacts/business/categories-reloaded.png', fullPage: true });
