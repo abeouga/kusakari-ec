@@ -2,7 +2,7 @@
 
 2026-11-11 作成、2026-11-12 に作り直し。[database-er.md](database-er.md) の構成を、EC と Canvas に実装する順番です。構成を決めた経緯は、[decisions/2026-11-11-shop-organization-db-v3.md](decisions/2026-11-11-shop-organization-db-v3.md) と [decisions/2026-11-12-db-v3-payments-closure-roles.md](decisions/2026-11-12-db-v3-payments-closure-roles.md) にあります。
 
-- 作業は、EC・Canvas それぞれの統合ブランチ `feature/shop-organization` から切ったブランチで行います。main にはマージしません
+- 作業は、EC・Canvas それぞれの統合ブランチ `feature/shop-organization` から切ったブランチで行います。統合ブランチは、動く状態になった区切りで main にマージします（2026-11-12 に、DB の初期化スクリプトと、新しい構成で起動して基本の流れが動く所までを main にマージ。[記録](decisions/2026-11-12-db-v3-application.md)）
 - 既存のデータは移行しません。開発用・E2E 用の DB は、初期化スクリプト（#106、abeouga/kusakari-canvas#63）で作り直します
 - 起動時に DB を消す処理は作りません。初期化は、確認の入力が付いた手動のスクリプトだけが行います
 - 決済は Stripe のテストモードだけを使います。実際のお金は動かしません
