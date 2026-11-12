@@ -26,7 +26,7 @@ function leafAllowed(plantType, shape) {
   return true;
 }
 
-/** @param {{profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile)=>void}} props */
+/** @param {{profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile|((current:import('../types').PlantModelProfile)=>import('../types').PlantModelProfile))=>void}} props */
 export function PlantLeafFields({ profile: p, onChange }) {
   return (
     <fieldset className="plant-group">
@@ -37,7 +37,10 @@ export function PlantLeafFields({ profile: p, onChange }) {
           <select
             name="modelLeafShape"
             value={p.leafShape}
-            onChange={(event) => onChange({ ...p, leafShape: event.target.value, botanicalForm: null })}
+            onChange={(event) => {
+              const value = event.target.value;
+              onChange((current) => ({ ...current, leafShape: value, botanicalForm: null }));
+            }}
           >
             {LEAF_SHAPES.filter(([value]) => leafAllowed(p.plantType, value)).map(([value, label]) => (
               <option key={value} value={value}>
@@ -53,7 +56,10 @@ export function PlantLeafFields({ profile: p, onChange }) {
               name="modelLeafColor"
               type="color"
               value={p.leafColor}
-              onChange={(event) => onChange({ ...p, leafColor: event.target.value })}
+              onChange={(event) => {
+                const value = event.target.value;
+                onChange((current) => ({ ...current, leafColor: value }));
+              }}
             />
             <span>{p.leafColor}</span>
           </span>
@@ -66,7 +72,7 @@ export function PlantLeafFields({ profile: p, onChange }) {
           step={0.1}
           unit="cm"
           value={p.leafSizeCm}
-          onChange={(value) => onChange({ ...p, leafSizeCm: Number(value) })}
+          onChange={(value) => onChange((current) => ({ ...current, leafSizeCm: Number(value) }))}
           validOnly
           required
         />
@@ -81,7 +87,7 @@ export function PlantLeafFields({ profile: p, onChange }) {
             ['dense', 'とても多い'],
           ]}
           value={p.leafDensity}
-          onChange={(value) => onChange({ ...p, leafDensity: value })}
+          onChange={(value) => onChange((current) => ({ ...current, leafDensity: value }))}
         />
       </div>
       <PlantShapeFields profile={p} group="leaf" onChange={onChange} />

@@ -68,6 +68,11 @@ export function PlantPreview({ plant, preview, draft }) {
           {plant.busy ? '推定中…' : 'AIで生成'}
         </button>
       </div>
+      {preview.approximateHeight !== null && (
+        <p className="muted plant-preview-height-hint">
+          高さ未入力のため、{preview.approximateHeight}cmで仮表示しています。出品前に実際の高さを入力してください。
+        </p>
+      )}
       {plant.error && (
         <p className="error plant-ai-error" role="alert">
           {plant.error}

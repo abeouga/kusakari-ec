@@ -98,6 +98,16 @@ test('garden step previews automatically, guides required input and saves groupe
     expect(loads.length).toBe(before + 2);
     expect(loads.at(-1)).toMatch(param('branchCount', 20));
 
+    // #116: a choice from a <select> must stick. The browser fires input before change, and the garden wrapper
+    // re-checked the preview on input, so the re-render in between used to restore the old value for the change
+    // handler to read. selectOption sends both events at once, so only the keyboard reproduces the timing.
+    const leafShape = garden.locator('select[name="modelLeafShape"]');
+    await leafShape.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(leafShape).toHaveValue('narrow');
+    // The profile change still reloads the preview, without the input re-check.
+    await expect(frame).toHaveAttribute('src', param('leafShape', 'narrow'));
+
     // An invalid value keeps the previous preview and shows the error at the input.
     const width5000 = loads.length;
     await garden.getByLabel('植物の幅', { exact: true }).fill('5000');

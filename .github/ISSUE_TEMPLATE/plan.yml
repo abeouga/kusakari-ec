@@ -1,0 +1,75 @@
+name: Plan / 仕様決定
+description: 実装の前に、仕様・設計・方針を決める（コードは書かない）
+title: "[Plan] "
+labels:
+  - Plan
+
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 決めたいこと
+      description: このIssueで何を決めるのか、決めると何ができるようになるのかを記載してください。
+      placeholder: 例）組織・店舗・メンバーのテーブル構成を決め、マイグレーションと認可の実装に入れるようにする
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・現在の問題
+      description: なぜ決める必要があるのか、今どのような問題があるのかを記載してください。
+      placeholder: |
+        例）
+        - 1つのアカウントで1つの店舗しか扱えない
+        - 組織やロールの階層を表す仕組みがない
+
+  - type: textarea
+    id: premises
+    attributes:
+      label: 決まっている前提
+      description: すでに決まっていて、このIssueでは変えないことを記載してください。
+      placeholder: |
+        例）
+        - 購入用と店舗側のアカウントを分ける
+        - 既存のDBは移行せずに初期化する
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 決めること
+      description: 決める項目をチェックリストで記載してください。決まったら [x] にして、どう決まったかと理由を1行添えてください。
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: 案と比較
+      description: 検討している案と、それぞれの良い点・問題点を記載してください。採用しなかった案は理由とともに残してください。
+      placeholder: |
+        例）
+        - 案A：商品の所有者を組織にする。1回の登録で複数店舗で売れるが、価格の変更がほかの店舗にも効く
+        - 案B：商品の所有者を店舗にする。店舗ごとに登録し直す必要がある
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      description: このIssueをCloseできる条件を記載してください。
+      value: |
+        - 「決めること」がすべて決まっている
+        - 決定を `docs/` に記録している
+        - 実装のIssueを作成している
+    validations:
+      required: true
+
+  - type: textarea
+    id: related
+    attributes:
+      label: 関連するIssue・資料
+      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。
+      placeholder: 例）親issue：#103、実装：#107、#108

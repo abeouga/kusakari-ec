@@ -33,7 +33,17 @@ export function ProductGardenStep({ plant, draft, active }) {
   return (
     <div className="model-layout">
       <PlantPreview plant={plant} preview={preview} draft={draft} />
-      <div ref={fields} onInput={preview.edited}>
+      {/*
+        A <select> fires input and then change. Re-rendering between them makes React put the controlled value
+        back, so the change handler would read the old value and the seller's choice would be lost (issue #116).
+        Selects always change the profile on change, so only the other inputs need this validity re-check.
+      */}
+      <div
+        ref={fields}
+        onInput={(event) => {
+          if (!(event.target instanceof HTMLSelectElement)) preview.edited();
+        }}
+      >
         {!plant.configured && (
           <p className="fine-print garden-unset">
             この商品は庭オブジェクトが未設定です。特徴を変更すると、保存時に設定されます。
