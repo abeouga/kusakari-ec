@@ -297,11 +297,6 @@ test('EC-B24/B25 garden dialog shows cart items, selects what can be added and r
     }
     const [scarce, plenty] = products;
     await login(page, 'test.user@example.com');
-    const cart = await call(page.request, '/cart').then((r) => r.json());
-    if (cart.storeId !== 1)
-      expect((await call(page.request, '/cart/store', 'PUT', { storeId: 1, revision: cart.revision })).status()).toBe(
-        200,
-      );
     const created = await call(
       page.request,
       '/gardens',

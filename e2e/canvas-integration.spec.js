@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 
 test('EC to Canvas to project shopping list to selected purchase and persisted cart', async ({ page, request }) => {
@@ -8,8 +7,8 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.getByRole('link', { name: /Canvasでお気に入りの植物を探す/ }).click();
     await expect(page).toHaveURL('http://127.0.0.1:15173/');
-    await page.getByLabel('庭の名前', { exact: true }).fill('庭別購入の統合-' + randomUUID().slice(0, 8));
-    await page.getByRole('button', { name: '庭を作成', exact: true }).click();
+    // Canvas creates a garden from the list's first card; its name is edited later in the editor.
+    await page.getByRole('button', { name: '新しい庭をつくる', exact: true }).click();
     await page.waitForURL(/\/gardens\//, { waitUntil: 'domcontentloaded' });
     id = new URL(page.url()).pathname.split('/').at(-1);
     await page.getByLabel('商品を検索', { exact: true }).fill('ベンチ');

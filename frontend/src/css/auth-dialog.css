@@ -103,6 +103,19 @@
   color: var(--field-text);
   background: var(--surface-field);
 }
+/* The business sign-up choice: the box keeps its own size beside its text. */
+.auth-form .auth-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.6;
+}
+.auth-form .auth-check input {
+  flex: none;
+  width: 18px;
+  min-height: 18px;
+  padding: 0;
+}
 .auth-form .auth-submit {
   width: 100%;
   min-height: 46px;

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import jp.kusakari.ec.catalog.dto.ProductImageReference;
+import jp.kusakari.ec.catalog.dto.ProductStoreReference;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,12 +17,11 @@ import org.springframework.data.repository.query.Param;
 public interface ProductRepository extends JpaRepository<ProductEntity, String> {
   boolean existsByCategory(String category);
 
-  // A product is deleted when archived, or when every store row is DELETED (seller-side deletion).
+  // 削除された商品（在庫の公開状態が DELETED）は、カテゴリーを使っている商品に数えない。
   @Query(
     "select case when count(p) > 0 then true else false end from ProductEntity p " +
-      "where p.category = :category and p.active = true and (" +
-      "exists (select i.quantity from InventoryEntity i where i.id.productId = p.id and i.publicationStatus <> 'DELETED') " +
-      "or not exists (select i.quantity from InventoryEntity i where i.id.productId = p.id))"
+      "where p.category = :category and not exists " +
+      "(select i.quantity from InventoryEntity i where i.productId = p.id and i.publicationStatus = 'DELETED')"
   )
   boolean isCategoryInUse(@Param("category") String category);
 
@@ -41,25 +41,41 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
   @EntityGraph(attributePaths = "images")
   List<ProductEntity> findByIdIn(Collection<String> ids);
 
-  // The public catalog never shows archived products, so their large 3D manifests are not loaded.
+  // 削除された商品は一覧に出さないので、大きな 3D モデルの JSON を読み込まない。
   @EntityGraph(attributePaths = "images")
-  List<ProductEntity> findByActiveTrue();
+  @Query(
+    "select p from ProductEntity p where not exists " +
+      "(select i.quantity from InventoryEntity i where i.productId = p.id and i.publicationStatus = 'DELETED')"
+  )
+  List<ProductEntity> findAllNotDeleted();
+
+  @EntityGraph(attributePaths = "images")
+  @Query(
+    "select p from ProductEntity p where p.storeId = :storeId and not exists " +
+      "(select i.quantity from InventoryEntity i where i.productId = p.id and i.publicationStatus = 'DELETED')"
+  )
+  List<ProductEntity> findNotDeletedAtStore(@Param("storeId") long storeId);
 
   // Avoid loading multi-megabyte manifests just to retrieve image metadata.
   @Query(
-    "select new jp.kusakari.ec.catalog.dto.ProductImageReference(p.id, p.name, p.imageUrl, p.active, " +
+    "select new jp.kusakari.ec.catalog.dto.ProductImageReference(p.id, p.name, p.imageUrl, " +
+      "case when exists (select i.quantity from InventoryEntity i where i.productId = p.id " +
+      "and i.publicationStatus = 'DELETED') then false else true end, " +
       "case when p.modelComposition is not null then true else false end) from ProductEntity p where p.id in :ids"
   )
   List<ProductImageReference> findImageReferences(@Param("ids") Collection<String> ids);
 
-  boolean existsBySku(String sku);
+  // 商品がどの店舗のものかを確かめるだけのときに、大きな 3D モデルの JSON を読み込まない。
+  @Query(
+    "select new jp.kusakari.ec.catalog.dto.ProductStoreReference(p.id, p.storeId, p.suspended) " +
+      "from ProductEntity p where p.id in :ids"
+  )
+  List<ProductStoreReference> findStoreReferences(@Param("ids") Collection<String> ids);
+
+  boolean existsByStoreIdAndSku(Long storeId, String sku);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from ProductEntity p where p.id = :id")
   Optional<ProductEntity> findLocked(@Param("id") String id);
 
-  // Do not deserialize/rewrite legacy JSON when changing only catalog visibility.
-  @Modifying
-  @Query("update ProductEntity p set p.active = false where p.id = :id")
-  int archiveById(@Param("id") String id);
 }

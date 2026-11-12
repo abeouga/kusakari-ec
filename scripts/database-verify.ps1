@@ -26,7 +26,7 @@ function Invoke-SchemaVerification {
                     } catch { Start-Sleep -Milliseconds 400 }
                 } while (-not $ready -and (Get-Date) -lt $deadline)
                 if (-not $ready) { throw 'セットアップ用APIが起動しませんでした。' }
-                $verification = "SELECT COUNT(*) FROM $db.flyway_schema_history WHERE success=1; SELECT COUNT(*) FROM $db.products; SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$db' AND table_name='auth_members' AND column_name IN ('id','issuer','subject','enabled','withdrawn_at');"
+                $verification = "SELECT COUNT(*) FROM $db.flyway_schema_history WHERE success=1; SELECT COUNT(*) FROM $db.products; SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='$db' AND table_name='members' AND column_name IN ('id','issuer','subject','enabled','withdrawn_at');"
                 $result = (Invoke-MySql $env:KUSAKARI_EC_DB_USER $env:KUSAKARI_EC_DB_PASSWORD ([int]$env:KUSAKARI_EC_DB_PORT) $verification).Output -split "`r?`n"
                 if ($result.Count -ne 3 -or [int]$result[0] -ne $latestMigration -or [int]$result[1] -lt 4 -or [int]$result[2] -ne 5) { throw '最新Flyway履歴・商品・会員テーブルの検証に失敗しました。' }
                 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession

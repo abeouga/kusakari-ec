@@ -66,21 +66,25 @@ ECルートで`.\start.bat`、別ウィンドウでCanvasルートの`.\start.ba
 
 ## 5. 出店者・運営者の権限を付ける
 
-Cognitoの利用者は共通ですが、権限（`USER`/`SELLER`/`ADMIN`）はECの`auth_members`に保存され、PCごと・DBごと（開発`kusakari`、E2E`kusakari_e2e`）に別です。初回ログインでは必ず`USER`として作られます。別PCの権限、既存の庭や商品は自動同期されません。
+Cognitoの利用者は共通ですが、会員の種別はECの`members.account_type`に保存され、PCごと・DBごと（開発`kusakari`、E2E`kusakari_e2e`）に別です。初回ログインでは必ず購入者（`USER`）として作られます。別PCの権限、既存の庭や商品は自動同期されません。
+
+通常の出店は、新規登録で「企業様向け」を選ぶ → 出店申請 → 運営の承認 → オーナーが店舗を作成、の順です。開発では、DBの初期化後に入っているサンプルの組織（ID 1、オーナーなし、店舗3つ）を次の手順で操作できるようにします。
 
 1. ECを`.\start.bat`で起動し、`test.seller@example.com`と`test.admin@example.com`でそれぞれ一度ログインしてからログアウトします。
 2. ECルートのPowerShellで次を実行します。E2E用DBにも設定する場合は、同じコマンドに`-Database kusakari_e2e`を付けて実行します。
 
    ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email test.seller@example.com -Role SELLER -StoreId 1
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email test.seller@example.com -Role SHOP_OWNER -OrganizationId 1
    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email test.admin@example.com -Role ADMIN
    ```
 
-3. ECの画面を再読み込みし、`http://127.0.0.1:5186/api/auth/me`が`role: SELLER`、`storeIds: [1]`を返すことを確認します。再ログインは不要です。
+3. ECの画面を再読み込みし、`http://127.0.0.1:5186/api/auth/me`が`accountType: SHOP_OWNER`、`organizationId: 1`、`storeIds: [1, 2, 3]`を返すことを確認します。再ログインは不要です。
 
-スクリプトは`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。MySQLクライアントやrootパスワードは不要です。未ログイン、利用停止中・退会済み、存在しない店舗、ADMINから`SELLER`への変更は、変更せずに停止します。出店の取り消し（`SELLER`から`USER`へ戻す操作）は`scripts/revert_store_approval.py`で行います。
+店舗の担当者として試すときは、`-Role SHOP_STAFF -StoreId 1 -StoreRole MANAGER`（または`STAFF`）を使います。
 
-権限名はアプリが大文字の完全一致で判定します。Flyway V14より前のDBは`seller`や`Seller`も受け付けたため、ログインはできても出店者画面に入れないことがありました。V14が既存値を大文字へ揃え、以後は`USER`/`SELLER`/`ADMIN`以外を拒否します。判断の記録は[会員権限の値](member-roles.md)を参照してください。
+スクリプトは`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。MySQLクライアントやrootパスワードは不要です。未ログイン、利用停止中・退会済み、存在しない組織・店舗、すでにオーナーのいる組織、店舗側のアカウントから`ADMIN`への変更は、変更せずに停止します。
+
+種別とロールの値、判断の記録は[会員の種別とロールの値](member-roles.md)を参照してください。
 
 ## 6. 動作確認とよくある失敗
 

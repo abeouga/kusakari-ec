@@ -48,10 +48,6 @@ function OrderBody({ order, resource }) {
         ))}
       </ul>
       <dl className="order-summary">
-        <dt>小計</dt>
-        <dd>{yen(order.subtotalYen)}</dd>
-        <dt>店舗受け取り</dt>
-        <dd>{yen(order.shippingFeeYen)}</dd>
         <dt>合計</dt>
         <dd>{yen(order.totalYen)}</dd>
       </dl>

@@ -46,6 +46,6 @@ test('product form fields are left aligned and checkboxes keep their size', asyn
   for (const width of fields.checkbox) expect(width).toBeLessThan(40);
   await page.screenshot({ path: `${dir}/new-product-form.png`, fullPage: true });
   const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
-  expect(me.role).toBe('SELLER');
-  await writeFile(`${dir}/fields.json`, JSON.stringify({ role: me.role, fields }, null, 2));
+  expect(me.accountType).toBe('SHOP_STAFF');
+  await writeFile(`${dir}/fields.json`, JSON.stringify({ accountType: me.accountType, fields }, null, 2));
 });

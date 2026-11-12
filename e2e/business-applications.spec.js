@@ -9,6 +9,7 @@ import {
   productInput,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  openStore,
 } from './business-helpers.js';
 
 async function submitApplication(page, input) {
@@ -34,7 +35,8 @@ test('application rejection permits resubmission', async ({ browser }) => {
   let member;
   try {
     member = await login(user, 'test.user@example.com');
-    prepareMember(member, 'USER');
+    // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
+    prepareMember(member, 'SHOP_OWNER_APPLICANT');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     const input = {
       company: `再申請検証 ${randomUUID().slice(0, 8)}`,
@@ -42,7 +44,6 @@ test('application rejection permits resubmission', async ({ browser }) => {
       email: 'test.user@example.com',
       address: '東京都 検証用',
       phone: '0312345678',
-      plan: 'STANDARD',
     };
     const submit = () => submitApplication(user, input);
     const first = await submit();
@@ -89,7 +90,8 @@ test('approved applicant manages only the new store; stale stock, confirmations 
   let member;
   try {
     member = await login(user, 'test.user@example.com');
-    prepareMember(member, 'USER');
+    // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
+    prepareMember(member, 'SHOP_OWNER_APPLICANT');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     const company = `新規店舗 ${randomUUID().slice(0, 8)}`;
     const submitted = await submitApplication(user, {
@@ -98,20 +100,19 @@ test('approved applicant manages only the new store; stale stock, confirmations 
       email: 'test.user@example.com',
       address: '東京都 新規店舗',
       phone: '0312345678',
-      plan: 'STANDARD',
     });
     expect(submitted.status(), await submitted.text()).toBe(200);
     const application = await submitted.json();
 
     // EC-A03: pending applications are listed by default with the application date and their own reason field.
     await admin.goto(`${ec}/operator/applications`);
-    await expect(admin.getByRole('combobox', { name: '表示する申請', exact: true })).toHaveValue('PENDING');
+    await expect(admin.getByRole('combobox', { name: '表示する申請', exact: true })).toHaveValue('SUBMITTED');
     const row = admin.locator('section').filter({ has: admin.getByRole('heading', { name: company, exact: true }) });
     await expect(row).toContainText('申請者：新規担当 / 申請日：');
     await row.getByRole('button', { name: '却下', exact: true }).click();
     await expect(row.getByRole('alert')).toContainText('却下理由を入力してください');
     const listed = await call(admin.request, '/operator/applications').then((r) => r.json());
-    expect(listed.find((a) => a.id === application.id).status).toBe('PENDING');
+    expect(listed.find((a) => a.id === application.id).status).toBe('SUBMITTED');
     await row.getByRole('button', { name: '承認', exact: true }).click();
     await expect(admin.getByRole('status')).toContainText('承認しました');
     await expect(row).toHaveCount(0);
@@ -119,8 +120,9 @@ test('approved applicant manages only the new store; stale stock, confirmations 
     await expect(row).toContainText('承認');
 
     const me = await call(user.request, '/auth/me').then((r) => r.json());
-    expect(me.role).toBe('SELLER');
-    const storeId = me.storeIds[0];
+    // The approval makes the applicant an owner with an organization and no store; the owner opens the store.
+    expect(me).toMatchObject({ accountType: 'SHOP_OWNER', storeIds: [] });
+    const storeId = await openStore(user.request, company);
     expect(storeId).not.toBe(1);
     const input = { ...productInput(), storeId };
     const created = await call(user.request, '/products', 'POST', input);
@@ -278,7 +280,7 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     phone: '電話番号',
   };
   try {
-    await login(user, account.email, account.secret);
+    prepareMember(await login(user, account.email, account.secret), 'SHOP_OWNER_APPLICANT');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     const sidebar = user.locator('.workspace-sidebar');
     // Direct access to the status page before applying leads to the application form.
@@ -293,9 +295,8 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await expect(steps.getByRole('listitem')).toHaveText([
       '1事業者情報',
       '2担当者・連絡先',
-      '3出店プラン',
-      '4事業確認書類',
-      '5入力内容の確認',
+      '3事業確認書類',
+      '4入力内容の確認',
     ]);
     await expect(steps.locator('[aria-current="step"]')).toHaveText('1事業者情報');
     await expect(user.getByLabel('担当者名', { exact: true })).toBeHidden();
@@ -317,8 +318,6 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await next.click();
     await expect(user.getByLabel('連絡先メール', { exact: true })).toHaveValue(input.email);
     await next.click();
-    await user.getByLabel('希望出店プラン').selectOption('PRODUCER');
-    await next.click();
     await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     await expect(alert).toHaveText('未入力の項目があります：事業確認書類');
     await user
@@ -331,7 +330,6 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     const review = user.getByRole('region', { name: '入力内容の確認' });
     await expect(review).toContainText(input.company);
-    await expect(review).toContainText('生産者直販');
     await expect(review).toContainText('application.pdf');
     await expect(next).toBeHidden();
     await expect(user.getByRole('button', { name: '戻る', exact: true })).toBeHidden();
@@ -341,8 +339,6 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await review.getByRole('button', { name: '担当者・連絡先を修正', exact: true }).click();
     await expect(steps.locator('[aria-current="step"]')).toHaveText('2担当者・連絡先');
     await user.getByLabel('担当者名', { exact: true }).fill('確認担当 修正');
-    await next.click();
-    await expect(user.getByLabel('希望出店プラン')).toHaveValue('PRODUCER');
     await next.click();
     await user.getByRole('button', { name: '確認画面へ', exact: true }).click();
     await expect(review).toContainText('確認担当 修正');
@@ -372,10 +368,9 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await user.screenshot({ path: 'artifacts/business/application-pending-reloaded.png', fullPage: true });
     const [pending] = await call(user.request, '/account/store-applications').then((r) => r.json());
     expect(pending).toMatchObject({
-      status: 'PENDING',
+      status: 'SUBMITTED',
       company: input.company,
       contact: '確認担当 修正',
-      plan: 'PRODUCER',
     });
     // 3a: after rejection, 再申請する opens the form with the previous content.
     const rejected = await call(admin.request, `/operator/applications/${pending.id}`, 'PUT', {
@@ -399,8 +394,6 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     for (const name of ['contact', 'email', 'phone'])
       await expect(user.getByLabel(labels[name], { exact: true })).toHaveValue(previous[name]);
     await next.click();
-    await expect(user.getByLabel('希望出店プラン')).toHaveValue('PRODUCER');
-    await next.click();
     // The same wizard re-submits after a rejection.
     await user
       .locator('input[type=file]')
@@ -415,10 +408,9 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
     await user.screenshot({ path: 'artifacts/business/application-resubmitted-reloaded.png', fullPage: true });
     const [again] = await call(user.request, '/account/store-applications').then((r) => r.json());
     expect(again).toMatchObject({
-      status: 'PENDING',
+      status: 'SUBMITTED',
       company: previous.company,
       contact: previous.contact,
-      plan: 'PRODUCER',
     });
     expect(again.documentName).toBe('resubmit.pdf');
     await writeFile(

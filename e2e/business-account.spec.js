@@ -11,6 +11,7 @@ import {
   checkout,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  openStore,
 } from './business-helpers.js';
 import { sql } from './database.js';
 
@@ -32,7 +33,6 @@ async function submitApplication(request, company) {
             email: 'test.seller@example.com',
             address: '東京都 退会検証',
             phone: '0312345678',
-            plan: 'STANDARD',
           }),
         ),
       },
@@ -52,20 +52,21 @@ test('EC-B21 withdrawal is refused while purchases, listings or store orders are
     const buyerMember = await login(buyer, buyerAccount.email, buyerAccount.secret);
     const sellerMember = await login(seller, sellerAccount.email, sellerAccount.secret);
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
-    // A dedicated store: an approved application makes the second account its seller.
-    const application = await submitApplication(seller.request, `退会検証店舗 ${randomUUID().slice(0, 8)}`);
+    // A dedicated store: an approved application makes the second account an owner, who then opens a store.
+    // Only an account from the business sign-up applies, so the fixture marks it as one.
+    prepareMember(sellerMember, 'SHOP_OWNER_APPLICANT');
+    const company = `退会検証店舗 ${randomUUID().slice(0, 8)}`;
+    const application = await submitApplication(seller.request, company);
     const approved = await call(admin.request, `/operator/applications/${application.id}`, 'PUT', {
       approved: true,
       reason: '',
     });
     expect(approved.status(), await approved.text()).toBe(200);
-    const storeId = (await call(seller.request, '/auth/me').then((r) => r.json())).storeIds[0];
-    expect(storeId).toBeTruthy();
+    expect((await call(seller.request, '/auth/me').then((r) => r.json())).accountType).toBe('SHOP_OWNER');
+    const storeId = await openStore(seller.request, company);
     const created = await call(seller.request, '/products', 'POST', { ...productInput(), storeId });
     expect(created.status(), await created.text()).toBe(200);
     const product = await created.json();
-    const cart = await call(buyer.request, '/cart').then((r) => r.json());
-    expect((await call(buyer.request, '/cart/store', 'PUT', { storeId, revision: cart.revision })).status()).toBe(200);
     await add(buyer.request, product.id);
     const { order } = await checkout(buyer.request);
 
@@ -125,7 +126,7 @@ test('EC-B21 withdrawal is refused while purchases, listings or store orders are
     await expect(
       sellerAlert.getByRole('link', { name: '注文一覧・キャンセル申請を確認する', exact: true }),
     ).toHaveAttribute('href', '/seller/orders');
-    expect(sql(`SELECT enabled FROM auth_members WHERE id='${sellerMember.id}'`)).toBe('1');
+    expect(sql(`SELECT enabled FROM members WHERE id='${sellerMember.id}'`)).toBe('1');
 
     // After pickup is completed both accounts can withdraw; the accounts are disabled and the order is kept.
     for (const [expectedStatus, status] of [
@@ -154,8 +155,8 @@ test('EC-B21 withdrawal is refused while purchases, listings or store orders are
     await buyer.screenshot({ path: 'artifacts/business/withdrawn-reloaded.png' });
     expect((await call(buyer.request, '/orders')).status()).toBe(401);
     const saved = {
-      buyer: sql(`SELECT enabled, withdrawn_at IS NOT NULL FROM auth_members WHERE id='${buyerMember.id}'`),
-      seller: sql(`SELECT enabled, withdrawn_at IS NOT NULL FROM auth_members WHERE id='${sellerMember.id}'`),
+      buyer: sql(`SELECT enabled, withdrawn_at IS NOT NULL FROM members WHERE id='${buyerMember.id}'`),
+      seller: sql(`SELECT enabled, withdrawn_at IS NOT NULL FROM members WHERE id='${sellerMember.id}'`),
       order: await call(admin.request, '/operator/orders')
         .then((r) => r.json())
         .then((orders) => orders.find((o) => o.id === order.id)),

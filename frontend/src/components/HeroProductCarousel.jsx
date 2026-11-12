@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, ChevronLeft, ChevronRight, Leaf } from 'lucide-react';
 
-/** @typedef {{products:import('../types').Product[],storeId:number,onDetail:(id:string)=>void,paused:boolean,loading:boolean}} CarouselProps */
+/** @typedef {{products:import('../types').Product[],onDetail:(id:string)=>void,paused:boolean,loading:boolean}} CarouselProps */
 
 /** @param {CarouselProps} props */
 export function HeroProductCarousel(props) {
-  // Reset selection only when the store or the ordered product IDs change.
-  const collectionKey = JSON.stringify([props.storeId, props.products.map((product) => product.id)]);
+  // Reset selection only when the ordered product IDs change.
+  const collectionKey = JSON.stringify(props.products.map((product) => product.id));
   return <ProductSlides key={collectionKey} {...props} />;
 }
 

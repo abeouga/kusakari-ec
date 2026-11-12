@@ -10,10 +10,10 @@ function fixtures() {
     ids
       .map(
         (id, index) => `
-    INSERT INTO products(id,sku,name,latin_name,category,description,size_label,care,price_yen,image_url,badge)
-    SELECT '${id}','${id}','${id}',latin_name,'${index % 2 ? 'ハーブ' : '庭木'}',description,size_label,care,
+    INSERT INTO products(id,store_id,sku,name,latin_name,category_name,description,size_label,care,price_yen,image_url,badge)
+    SELECT '${id}',1,'${id}','${id}',latin_name,'${index % 2 ? 'ハーブ' : '庭木'}',description,size_label,care,
       ${1000 + index * 100},image_url,badge FROM products WHERE id='olive';
-    INSERT INTO inventory(store_id,product_id,quantity) VALUES(1,'${id}',20);
+    INSERT INTO inventory(product_id,quantity,publication_status) VALUES('${id}',20,'PUBLISHED');
   `,
       )
       .join('\n'),

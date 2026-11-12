@@ -1,6 +1,6 @@
 import { MapPin } from 'lucide-react';
 
-/** @typedef {{id:number,name:string,address?:string,latitude?:number,longitude?:number}} MapStore */
+/** A store without a position (null) is listed but not drawn. @typedef {{id:number,name:string,address?:string,latitude?:number|null,longitude?:number|null}} MapStore */
 
 const WIDTH = 4;
 const HEIGHT = 3;

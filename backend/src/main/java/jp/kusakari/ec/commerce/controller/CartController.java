@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CartView;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.ItemRequest;
-import jp.kusakari.ec.commerce.dto.CommerceDtos.StoreRequest;
 import jp.kusakari.ec.commerce.service.CartService;
 import jp.kusakari.ec.commerce.session.CartSessionResolver;
 import lombok.RequiredArgsConstructor;
@@ -37,14 +36,5 @@ public class CartController {
     HttpServletResponse response
   ) {
     return carts.updateItem(sessions.resolve(request, response), productId, input);
-  }
-
-  @PutMapping("/store")
-  public CartView updateStore(
-    @Valid @RequestBody StoreRequest input,
-    HttpServletRequest request,
-    HttpServletResponse response
-  ) {
-    return carts.updateStore(sessions.resolve(request, response), input);
   }
 }

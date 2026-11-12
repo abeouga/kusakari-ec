@@ -24,6 +24,24 @@ public class StoreController {
     return service.save(id, in);
   }
 
+  public record PublishedRequest(boolean published) {}
+
+  @GetMapping("/api/seller/stores")
+  public List<StoreService.Profile> mine() {
+    return service.mine();
+  }
+
+  @PostMapping("/api/seller/stores")
+  @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+  public StoreService.Profile create(@Valid @RequestBody StoreService.Input in) {
+    return service.create(in);
+  }
+
+  @PutMapping("/api/seller/stores/{id}/published")
+  public StoreService.Profile publish(@PathVariable long id, @RequestBody PublishedRequest in) {
+    return service.publish(id, in.published());
+  }
+
   @GetMapping("/api/operator/stores")
   public List<StoreService.Profile> list() {
     return service.list();

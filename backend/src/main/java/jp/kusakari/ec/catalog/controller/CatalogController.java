@@ -4,7 +4,6 @@ import static jp.kusakari.ec.catalog.dto.CatalogDtos.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.service.CatalogService;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +18,7 @@ public class CatalogController {
   }
 
   @GetMapping("/products")
-  public List<ProductView> products(@RequestParam(defaultValue = "1") long storeId) {
+  public List<ProductView> products(@RequestParam(required = false) Long storeId) {
     return service.products(storeId);
   }
 
@@ -32,7 +31,7 @@ public class CatalogController {
   }
 
   @PostMapping("/products/references")
-  public List<ProductImageReference> references(@Valid @RequestBody ProductReferenceRequest request) {
+  public List<ProductReferenceView> references(@Valid @RequestBody ProductReferenceRequest request) {
     return service.imageReferences(request.productIds());
   }
 

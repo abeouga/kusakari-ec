@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Assigns a product number when a seller leaves it blank (issue #25), e.g. KS-20261105-7Q2M4X.
  * The registration date keeps numbers readable; the random part avoids a per-store counter row.
- * The unique index on products.sku stays the final guard against a concurrent duplicate.
+ * 商品番号は店舗の中で一意。The unique index on (store_id, sku) stays the final guard against a concurrent duplicate.
  */
 @Component
 @RequiredArgsConstructor
@@ -24,12 +24,12 @@ class ProductSkuGenerator {
   private final SecureRandom random = new SecureRandom();
   private final ProductRepository products;
 
-  String next() {
+  String next(long storeId) {
     String prefix = "KS-" + LocalDate.now(TOKYO).format(DAY) + "-";
     for (int attempt = 0; attempt < 5; attempt++) {
       StringBuilder sku = new StringBuilder(prefix);
       for (int i = 0; i < 6; i++) sku.append(LETTERS.charAt(random.nextInt(LETTERS.length())));
-      if (!products.existsBySku(sku.toString())) return sku.toString();
+      if (!products.existsByStoreIdAndSku(storeId, sku.toString())) return sku.toString();
     }
     throw new ApiException(503, "SKU_UNAVAILABLE", "商品番号を自動で設定できませんでした。もう一度お試しください。");
   }

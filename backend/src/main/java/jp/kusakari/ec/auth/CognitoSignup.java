@@ -26,6 +26,7 @@ public class CognitoSignup {
 
   private final RestClient client;
   private final String clientId;
+  private final String issuer;
 
   public CognitoSignup(
     @Value("${KUSAKARI_COGNITO_ISSUER}") String issuer,
@@ -36,6 +37,7 @@ public class CognitoSignup {
       throw new IllegalArgumentException("A valid Cognito issuer is required.");
     }
     this.clientId = clientId;
+    this.issuer = issuer;
     var factory = new JdkClientHttpRequestFactory(
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
     );
@@ -51,8 +53,13 @@ public class CognitoSignup {
       .build();
   }
 
-  public void signUp(String email, String password) {
-    call(
+  public String issuer() {
+    return issuer;
+  }
+
+  /** Cognito に登録し、作られたユーザーの ID（sub）を返す。 */
+  public String signUp(String email, String password) {
+    JsonNode response = call(
       "SignUp",
       Map.of(
         "ClientId",
@@ -65,6 +72,9 @@ public class CognitoSignup {
         List.of(Map.of("Name", "email", "Value", email))
       )
     );
+    String subject = response == null ? "" : response.path("UserSub").asText("");
+    if (subject.isBlank()) throw new ApiException(503, "AUTH_UNAVAILABLE", "認証を確認できません。時間をおいて再試行してください。");
+    return subject;
   }
 
   public void confirm(String email, String code) {
@@ -75,16 +85,16 @@ public class CognitoSignup {
     call("ResendConfirmationCode", Map.of("ClientId", clientId, "Username", email));
   }
 
-  private void call(String action, Map<String, Object> body) {
+  private JsonNode call(String action, Map<String, Object> body) {
     try {
-      client
+      return client
         .post()
         .uri("/")
         .header("Content-Type", "application/x-amz-json-1.1")
         .header("X-Amz-Target", "AWSCognitoIdentityProviderService." + action)
         .body(body)
         .retrieve()
-        .toBodilessEntity();
+        .body(JsonNode.class);
     } catch (RestClientResponseException error) {
       throw translate(action, errorType(error));
     } catch (RestClientException error) {

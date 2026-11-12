@@ -8,14 +8,10 @@ export const fields = /** @type {const} */ ([
   ['address', '所在地', 'text', 200],
   ['phone', '電話番号', 'tel', 30],
 ]);
-/** @type {Record<string,string>} */
-export const plans = { STANDARD: 'スタンダード', PRODUCER: '生産者直販' };
-
 /** Issue #20: one kind of information per step; the last step is the existing confirmation. */
 const steps = [
   { title: '事業者情報', names: ['company', 'address'] },
   { title: '担当者・連絡先', names: ['contact', 'email', 'phone'] },
-  { title: '出店プラン', names: ['plan'] },
   { title: '事業確認書類', names: ['document'] },
 ];
 const reviewStep = steps.length;
@@ -31,8 +27,6 @@ export function Summary({ application, documentName }) {
           <dd>{application[name]}</dd>
         </Fragment>
       ))}
-      <dt>希望出店プラン</dt>
-      <dd>{plans[application.plan] || application.plan}</dd>
       <dt>事業確認書類</dt>
       <dd>{documentName}</dd>
     </dl>
@@ -45,12 +39,12 @@ function stepError(step, data) {
   const file = data.get('document');
   const missing = steps[step].names
     .filter((name) => (name === 'document' ? !(file instanceof File) || !file.name : !text(name)))
-    .map((name) => (name === 'document' ? '事業確認書類' : name === 'plan' ? '希望出店プラン' : labelOf[name]));
+    .map((name) => (name === 'document' ? '事業確認書類' : labelOf[name]));
   if (missing.length) return `未入力の項目があります：${missing.join('、')}`;
   if (step === 1 && !/^[^\s@]+@[^\s@]+$/.test(text('email'))) return '連絡先メールの形式が正しくありません。';
   if (step === 1 && !/^[0-9+() -]{1,30}$/.test(text('phone')))
     return '電話番号は数字・＋・括弧・ハイフンで入力してください。';
-  if (step === 3 && file instanceof File && file.size > 5 * 1024 * 1024)
+  if (step === 2 && file instanceof File && file.size > 5 * 1024 * 1024)
     return '事業確認書類は5MB以内のファイルを選択してください。';
   return '';
 }
@@ -77,7 +71,7 @@ export function ApplicationWizard({ previous, onDone }) {
     if (message) return setError(message);
     if (step + 1 < reviewStep) return go(step + 1);
     const input = Object.fromEntries(
-      [...fields.map(([name]) => name), 'plan'].map((name) => [name, String(data.get(name) || '').trim()]),
+      fields.map(([name]) => [name, String(data.get(name) || '').trim()]),
     );
     const file = data.get('document');
     setDraft({ input, documentName: file instanceof File ? file.name : '' });
@@ -146,19 +140,6 @@ export function ApplicationWizard({ previous, onDone }) {
                       required
                       maxLength={field[3]}
                     />
-                  </label>
-                );
-              if (name === 'plan')
-                return (
-                  <label key={name}>
-                    希望出店プラン
-                    <select name="plan" defaultValue={previous?.plan ?? 'STANDARD'}>
-                      {Object.entries(plans).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
                   </label>
                 );
               return (

@@ -2,7 +2,14 @@ package jp.kusakari.ec.auth;
 
 import java.time.Instant;
 import java.util.List;
+import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
+import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
+import jp.kusakari.ec.store.persistence.entity.StoreMemberEntity;
+import jp.kusakari.ec.store.persistence.entity.StoreMemberId;
+import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
+import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -10,12 +17,18 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 会員の種別と、店舗を操作できるかの判定。
+ * オーナーは自分の組織の全店舗、子アカウントは担当の店舗を店舗ごとのロールで、運営は全店舗を扱える。
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
   private final AuthMemberRepository members;
-  private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
+  private final StoreRepository stores;
+  private final OrganizationRepository organizations;
+  private final StoreMemberRepository storeMembers;
 
   @Value("${kusakari.auth.mode:cognito}")
   private String mode;
@@ -24,6 +37,7 @@ public class AuthService {
     return "cognito".equals(mode);
   }
 
+  /** 初めてログインした購入者の会員を作る。企業様向けの登録で作った会員は、ここでメール確認済みにする。 */
   @Transactional
   public void provision(OidcUser user) {
     if (!Boolean.TRUE.equals(user.getEmailVerified())) throw new ApiException(
@@ -32,12 +46,26 @@ public class AuthService {
       "メール確認が必要です。"
     );
     String issuer = user.getIssuer().toString();
-    if (members.findByIssuerAndSubject(issuer, user.getSubject()).isEmpty()) {
-      String name = user.getFullName() == null ? user.getEmail() : user.getFullName();
-      members.saveAndFlush(
-        new AuthMember(issuer, user.getSubject(), user.getEmail(), name.substring(0, Math.min(name.length(), 100)))
-      );
+    var existing = members.findByIssuerAndSubject(issuer, user.getSubject());
+    if (existing.isPresent()) {
+      existing.get().markEmailVerified();
+      return;
     }
+    String name = user.getFullName() == null ? user.getEmail() : user.getFullName();
+    var member = new AuthMember(issuer, user.getSubject(), user.getEmail(), limit(name), AuthMember.USER);
+    member.markEmailVerified();
+    members.saveAndFlush(member);
+  }
+
+  /** 企業様向けの登録。登録した時点で、申請中の法人用アカウントとして会員を作る。 */
+  @Transactional
+  public void registerApplicant(String issuer, String subject, String email) {
+    if (members.findByIssuerAndSubject(issuer, subject).isPresent()) return;
+    members.saveAndFlush(new AuthMember(issuer, subject, email, limit(email), AuthMember.SHOP_OWNER_APPLICANT));
+  }
+
+  private static String limit(String name) {
+    return name.substring(0, Math.min(name.length(), 120));
   }
 
   @Transactional(readOnly = true)
@@ -62,8 +90,9 @@ public class AuthService {
     return expiresAt != null && expiresAt.isAfter(Instant.now());
   }
 
+  @Transactional(readOnly = true)
   public SessionView session() {
-    if (!enabled()) return new SessionView("demo", false, null, null, null, null, List.of());
+    if (!enabled()) return new SessionView("demo", false, null, null, null, null, null, List.of());
     try {
       var member = current();
       return new SessionView(
@@ -72,43 +101,109 @@ public class AuthService {
         member.getId(),
         member.getEmail(),
         member.getDisplayName(),
-        member.getRole(),
-        member.getStoreId() == null ? List.of() : List.of(member.getStoreId())
+        member.getAccountType(),
+        organizationIdOf(member),
+        storeIdsOf(member)
       );
     } catch (ApiException error) {
       if (error.status() != 401) throw error;
-      return new SessionView("cognito", false, null, null, null, null, List.of());
+      return new SessionView("cognito", false, null, null, null, null, null, List.of());
     }
   }
 
+  /** オーナーなら自分の組織。子アカウントなら、担当している店舗の組織。 */
+  public Long organizationIdOf(AuthMember member) {
+    if (AuthMember.SHOP_OWNER.equals(member.getAccountType())) {
+      return organizations.findByOwnerMemberId(member.getId()).map(OrganizationEntity::getId).orElse(null);
+    }
+    if (AuthMember.SHOP_STAFF.equals(member.getAccountType())) {
+      return storeMembers.findAllForMember(member.getId()).stream().map(StoreMemberEntity::getOrganizationId).findFirst().orElse(null);
+    }
+    return null;
+  }
+
+  /** その会員が操作できる店舗。オーナーは組織の全店舗、子アカウントはロールが割り振られた担当の店舗。 */
+  public List<Long> storeIdsOf(AuthMember member) {
+    if (AuthMember.SHOP_OWNER.equals(member.getAccountType())) {
+      Long organizationId = organizationIdOf(member);
+      if (organizationId == null) return List.of();
+      return stores.findByOrganizationIdOrderByIdAsc(organizationId).stream().map(StoreEntity::getId).toList();
+    }
+    if (AuthMember.SHOP_STAFF.equals(member.getAccountType())) {
+      return storeMembers
+        .findAllForMember(member.getId())
+        .stream()
+        .filter(assignment -> assignment.getRole() != null)
+        .map(assignment -> assignment.getId().getStoreId())
+        .toList();
+    }
+    return List.of();
+  }
+
+  /** 店舗の商品・在庫・注文を扱えるか（STAFF 以上）。運営が停止した店舗は、運営だけが扱える。 */
   public void requireSeller(Long storeId) {
+    requireStoreRole(storeId, false);
+  }
+
+  /** 店舗の情報の編集、商品の登録・削除、キャンセルへの対応ができるか（オーナーか MANAGER）。 */
+  public void requireManager(Long storeId) {
+    requireStoreRole(storeId, true);
+  }
+
+  private void requireStoreRole(Long storeId, boolean managerOnly) {
     if (!enabled()) return;
     var member = current();
-    if ("ADMIN".equals(member.getRole())) return;
-    if (!"SELLER".equals(member.getRole()) || !java.util.Objects.equals(storeId, member.getStoreId())) denied();
-    if (
-      !stores
-        .findById(storeId)
-        .map(s -> s.isEnabled())
-        .orElse(false)
-    ) denied();
+    if (member.isAdmin()) return;
+    var store = storeId == null ? null : stores.findById(storeId).orElse(null);
+    if (store == null || store.isSuspended()) denied();
+    if (AuthMember.SHOP_OWNER.equals(member.getAccountType())) {
+      var organization = organizations.findByOwnerMemberId(member.getId()).orElse(null);
+      if (organization == null || !organization.getId().equals(store.getOrganizationId())) denied();
+      return;
+    }
+    if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) denied();
+    String role = storeMembers
+      .findById(new StoreMemberId(storeId, member.getId()))
+      .map(StoreMemberEntity::getRole)
+      .orElse(null);
+    if (role == null || (managerOnly && !StoreMemberEntity.MANAGER.equals(role))) denied();
+  }
+
+  /** 自分の組織を返す。オーナーでなければ拒否する。 */
+  public OrganizationEntity requireOwnedOrganization() {
+    var member = current();
+    if (!AuthMember.SHOP_OWNER.equals(member.getAccountType())) denied();
+    return organizations
+      .findByOwnerMemberId(member.getId())
+      .orElseThrow(() -> new ApiException(403, "FORBIDDEN", "この操作の権限がありません。"));
+  }
+
+  /** その店舗が、自分がオーナーの組織の店舗か。 */
+  public void requireOwnerOf(StoreEntity store) {
+    if (!enabled()) return;
+    if (!requireOwnedOrganization().getId().equals(store.getOrganizationId())) denied();
   }
 
   public void requireAdmin() {
-    if (enabled() && !"ADMIN".equals(current().getRole())) denied();
+    if (enabled() && !current().isAdmin()) denied();
   }
 
+  /** 店舗側のアカウント（オーナー・子アカウント）か、運営か。 */
   public void requireSellerRole() {
-    if (enabled() && !List.of("SELLER", "ADMIN").contains(current().getRole())) denied();
+    if (!enabled()) return;
+    String type = current().getAccountType();
+    if (!List.of(AuthMember.SHOP_OWNER, AuthMember.SHOP_STAFF, AuthMember.ADMIN).contains(type)) denied();
   }
 
-  public void requireProductOwner(String owner) {
+  /** 商品の店舗を扱えなければ、商品がないものとして返す（ほかの店舗の商品の有無を知らせない）。 */
+  public void requireProductStore(Long storeId, boolean managerOnly) {
     if (!enabled()) return;
-    var member = current();
-    if (
-      !"ADMIN".equals(member.getRole()) && !("SELLER".equals(member.getRole()) && member.getId().equals(owner))
-    ) throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
-    if (!"ADMIN".equals(member.getRole())) requireSeller(member.getStoreId());
+    try {
+      requireStoreRole(storeId, managerOnly);
+    } catch (ApiException error) {
+      if (error.status() != 403) throw error;
+      throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
+    }
   }
 
   private static void denied() {
@@ -121,7 +216,8 @@ public class AuthService {
     String id,
     String email,
     String name,
-    String role,
+    String accountType,
+    Long organizationId,
     List<Long> storeIds
   ) {}
 }

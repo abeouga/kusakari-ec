@@ -8,7 +8,7 @@ import { yen } from '../api';
 /** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, disabled:boolean}} props */
 export function ProductCard({ product, onOpen, onAdd, disabled }) {
   let stockClass = 'sold-out';
-  let stockLabel = 'この店舗では在庫なし';
+  let stockLabel = '在庫なし';
   if (product.stock > 0) {
     stockClass = 'stock';
     stockLabel = `在庫 ${product.stock} 点`;
@@ -31,6 +31,7 @@ export function ProductCard({ product, onOpen, onAdd, disabled }) {
       </button>
       <p className="latin">{product.latinName}</p>
       <p className="product-nursery">{catalogText(product.nurseryName)}</p>
+      <p className="product-nursery">販売店舗：{product.sellerStoreName}</p>
       <p className="product-excerpt">{catalogText(product.description)}</p>
       <div className="product-bottom">
         <span className="price">

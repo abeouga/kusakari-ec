@@ -6,6 +6,14 @@ import '../css/auth-dialog.css';
 
 /** @typedef {'login'|'signup'|'confirm'} AuthMode */
 
+/** @type {Record<string,string>} */
+const accountLabels = {
+  ADMIN: '管理者',
+  SHOP_OWNER: '出店者（オーナー）',
+  SHOP_STAFF: '出店者（スタッフ）',
+  SHOP_OWNER_APPLICANT: '出店申請用アカウント',
+};
+
 /**
  * @param {{initialMode?:AuthMode, onModeChange?:(mode:AuthMode)=>void}} [props]
  */
@@ -73,7 +81,7 @@ export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
       {session.authenticated ? (
         <>
           <p>{session.name || session.email}</p>
-          <p>{session.role === 'ADMIN' ? '管理者' : session.role === 'SELLER' ? '出店者' : '利用者'}</p>
+          <p>{accountLabels[session.accountType || ''] || '利用者'}</p>
           <button
             disabled={loggingOut}
             onClick={() => {

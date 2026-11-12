@@ -48,36 +48,21 @@ ECのV9で会員・店舗・注文を拡張し、住所・カテゴリ・出店�
 
 事前バックアップ: `%LOCALAPPDATA%/Kusakari/backups/backend-implementation-20261020-113844/`。両DBのSQLダンプ（画像バイナリを含む）と変更前ソース・静的画像を保存済み。
 
-管理コマンドはCanvasのPython仮想環境から `scripts/manage_accounts.py` を実行する。`--env-file`、`--database`、`--seller`、`--store`、`--expected-count`、`--manifest`が必須。既定は確認のみ。`--apply`で紐付け、`--admin`とGit対象外の`--password-file`で管理者を準備する。AWS操作時は既存の `AWS_PROFILE=kusakari-dev` を明示する。招待メールは[AdminCreateUserのSUPPRESS](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html)で抑止する。
+管理コマンドはCanvasのPython仮想環境から `scripts/manage_accounts.py` を実行する。`--env-file`、`--database`、`--admin` が必須で、Git対象外の `--password-file` を付けると、Cognitoにアカウントがないときに作成する。運営（`ADMIN`）の会員を準備するだけで、商品・店舗は変更しない。AWS操作時は既存の `AWS_PROFILE=kusakari-dev` を明示する。招待メールは[AdminCreateUserのSUPPRESS](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminCreateUser.html)で抑止する。
 
-業務コードにテストメールを埋め込まない。既存の出店者ID・店舗を確認し、有効かつ所有者未設定の商品だけを紐付ける。商品ID/SKU/価格/画像URL/モデルハッシュ/在庫をmanifestへ出力する。再実行時に所有済み商品の公開状態や在庫を変更しない。
+業務コードにテストメールを埋め込まない。
 
-今回の移行結果: 有効31件を既存出店者・店舗1へ紐付け、在庫合計605と商品ID/SKU/画像URL/モデルハッシュ/価格を一致照合した。非有効15件、他店舗の在庫、既存庭、匿名旧注文を変更しない。
-### 出店承認の取り消し（検証用）
+2026-10-20の移行結果（当時の記録）: 有効31件を既存出店者・店舗1へ紐付け、在庫合計605と商品ID/SKU/画像URL/モデルハッシュ/価格を一致照合した。
 
-`scripts/revert_store_approval.py` は、出店申請の承認で SELLER になった会員を USER に戻し、承認で作られた店舗・承認済み申請・申請受付/承認通知と、その会員が出店後に登録した商品（在庫・画像・素材紐付け・アップロード画像）を削除する。CanvasのPython仮想環境から実行し、`--env-file`・`--database`・`--canvas-env-file`・`--canvas-database`・`--member`が必須。既定は確認のみで、`--apply`には削除行を書き出す`--backup`（新規ファイル、Git対象外の`artifacts/`などに置く）が必要。
+### 2026-11-12 DBの作り直し後
 
-他の会員・注文・カート・庭の買い物リスト・Canvasの配置/画像履歴が店舗や商品を参照している場合は、何も変更せず終了コード2で理由を表示する。他利用者のデータを消して整合させることはしない。取り消し後は申請前と同じく再申請できる。検証は `e2e/business-store-revert.spec.js`。
+DBを27テーブルの構成に作り直した（[ER図](database-er.md)、[記録](decisions/2026-11-12-db-v3-application.md)）。上の「注文と権限」「API」「移行と管理コマンド」のうち、次は新しい形に置き換わっている。
 
-**1. 確認だけ（何も変わりません）**
-
-```powershell
-& ..\kusakari-canvas\backend\.venv\Scripts\python.exe scripts\revert_store_approval.py --env-file .env --database kusakari --canvas-env-file ..\kusakari-canvas\.env --canvas-database kusakari_canvas --member <テスト利用者のメール>
-```
-
-**2. 実際に戻す**
-
-```powershell
-& ..\kusakari-canvas\backend\.venv\Scripts\python.exe scripts\revert_store_approval.py --env-file .env --database kusakari --canvas-env-file ..\kusakari-canvas\.env --canvas-database kusakari_canvas --member <テスト利用者のメール> --apply --backup artifacts\store-revert-backup.json
-```
-
-出力に `"applied": true` が出れば完了です。ブラウザを再読み込みすると、ロールがUSERに戻り、出店申請フォームが再び表示されます。
-
-**うまくいかないとき**
-
-- **`blockers` に理由が出て止まった場合**：何も変更されていません。たとえば `carts use the store` と出たら、そのカートの受け取り店舗を別の店舗に変えてから、もう一度実行してください。
-- **バックアップファイルがすでにあると言われた場合**：上書きはしない作りなので、`--backup` に別のファイル名を指定してください。
-- **元に戻したくなった場合**：削除した行はすべてバックアップのJSONに残っているので、そこから復元できます。
+- 会員の権限は `USER`/`SELLER`/`ADMIN` ではなく、会員の種別と店舗ごとのロールで決まる（[会員の種別とロールの値](member-roles.md)）。
+- 出店申請の承認は、店舗ではなく組織を作る。店舗はオーナーが作成・公開する。
+- 商品は1つの店舗に属し、カートは受取店舗を持たない。注文は商品の店舗ごとに1件できる。
+- マイグレーションは V1（テーブル）と V2（サンプルデータ）に作り直した。V9・V10 などの記述は当時の記録である。
+- 出店承認を取り消すスクリプト（`scripts/revert_store_approval.py`）と、その検証（`e2e/business-store-revert.spec.js`）は削除した。開発用DBを最初の状態に戻すときは `DB-reset.bat`（[手順](database-reset.md)）を使う。
 
 ## Alternatives
 

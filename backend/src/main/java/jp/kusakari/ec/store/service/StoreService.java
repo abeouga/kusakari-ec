@@ -1,11 +1,17 @@
 package jp.kusakari.ec.store.service;
 
-import jakarta.validation.constraints.*;
-import java.util.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.util.List;
+import jp.kusakari.ec.auth.AuthMember;
 import jp.kusakari.ec.auth.AuthService;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
+import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,11 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoreService {
 
   private final StoreRepository stores;
+  private final OrganizationRepository organizations;
   private final AuthService auth;
 
+  /** company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。 */
   public record Profile(
     long id,
     long revision,
+    long organizationId,
     String name,
     String company,
     String contact,
@@ -28,13 +37,13 @@ public class StoreService {
     String address,
     String hours,
     String story,
-    boolean enabled
+    boolean enabled,
+    boolean published
   ) {}
 
   public record Input(
     long revision,
     @NotBlank @Size(max = 100) String name,
-    @NotNull @Size(max = 100) String company,
     @NotNull @Size(max = 100) String contact,
     @NotNull @Email @Size(max = 200) String email,
     @NotBlank @Size(max = 200) String address,
@@ -53,18 +62,64 @@ public class StoreService {
     return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
   }
 
+  /** ログインしている店舗側のアカウントが操作できる店舗。運営には全店舗を返す。 */
+  @Transactional(readOnly = true)
+  public List<Profile> mine() {
+    auth.requireSellerRole();
+    AuthMember member = auth.current();
+    if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
+    return stores.findAllById(auth.storeIdsOf(member)).stream().map(this::view).toList();
+  }
+
+  /** オーナーが、自分の組織に店舗を作る。申請や運営の審査は要らない。作った直後は非公開。 */
+  public Profile create(Input in) {
+    OrganizationEntity organization = auth.requireOwnedOrganization();
+    String name = in.name().trim();
+    if (stores.existsByOrganizationIdAndName(organization.getId(), name)) throw new ApiException(
+      409,
+      "STORE_NAME_EXISTS",
+      "同じ名前の店舗がすでにあります。"
+    );
+    var store = StoreEntity.create(
+      organization.getId(),
+      name,
+      in.contact(),
+      in.email(),
+      in.address(),
+      in.hours(),
+      in.story()
+    );
+    return view(stores.saveAndFlush(store));
+  }
+
   public Profile save(long id, Input in) {
-    auth.requireSeller(id);
+    auth.requireManager(id);
     var s = require(id);
     if (s.getRevision() != in.revision()) throw new ApiException(409, "STORE_CHANGED", "店舗情報が更新されています。");
-    s.updateProfile(in.name(), in.company(), in.contact(), in.email(), in.address(), in.hours(), in.story());
+    String name = in.name().trim();
+    if (!name.equals(s.getName()) && stores.existsByOrganizationIdAndName(s.getOrganizationId(), name)) throw new ApiException(
+      409,
+      "STORE_NAME_EXISTS",
+      "同じ名前の店舗がすでにあります。"
+    );
+    s.updateProfile(name, in.contact(), in.email(), in.address(), in.hours(), in.story());
     stores.flush();
     return view(s);
   }
 
+  /** オーナーによる公開・非公開。運営の停止とは別の列なので、停止が解除されても未公開の店舗は公開されない。 */
+  public Profile publish(long id, boolean published) {
+    var s = require(id);
+    auth.requireOwnerOf(s);
+    s.changePublished(published);
+    stores.flush();
+    return view(s);
+  }
+
+  /** 運営による停止・再開。 */
   public void enable(long id, boolean enabled) {
     auth.requireAdmin();
-    require(id).changeEnabled(enabled);
+    require(id).changeSuspended(!enabled);
   }
 
   private StoreEntity require(long id) {
@@ -72,17 +127,20 @@ public class StoreService {
   }
 
   private Profile view(StoreEntity s) {
+    String company = organizations.findById(s.getOrganizationId()).map(OrganizationEntity::getName).orElse("");
     return new Profile(
       s.getId(),
       s.getRevision(),
+      s.getOrganizationId(),
       s.getName(),
-      s.getCompany(),
+      company,
       s.getContact(),
       s.getEmail(),
       s.getAddress(),
       s.getHours(),
       s.getStory(),
-      s.isEnabled()
+      !s.isSuspended(),
+      s.isPublished()
     );
   }
 }

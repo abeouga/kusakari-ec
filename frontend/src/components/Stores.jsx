@@ -1,5 +1,6 @@
-import { MapPin, Navigation, Check, Clock } from 'lucide-react';
+import { MapPin, Navigation, Clock } from 'lucide-react';
 import { Dialog } from './Dialog';
+import { PageLink } from '../workspace/Common';
 
 const points = [
   { name: '東京駅', latitude: 35.6812, longitude: 139.7671 },
@@ -7,7 +8,10 @@ const points = [
   { name: '大宮駅', latitude: 35.906, longitude: 139.624 },
 ];
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>, onClose:()=>void}} props */
+/**
+ * A guide to the stores. The pickup store is the store of each product, so nothing is chosen here.
+ * @param {{shop:ReturnType<import('../useShop').useShop>, onClose:()=>void}} props
+ */
 export function Stores({ shop, onClose }) {
   /** @param {import('react').ChangeEvent<HTMLSelectElement>} event */
   function changeLocation(event) {
@@ -17,13 +21,15 @@ export function Stores({ shop, onClose }) {
     }
   }
   return (
-    <Dialog title="受取店舗を選ぶ" onClose={onClose} wide>
+    <Dialog title="店舗一覧" onClose={onClose} wide>
       {shop.error && (
         <p className="error" role="alert">
           {shop.error}
         </p>
       )}
-      <p className="muted">{shop.locationLabel}から近い順に表示しています。距離は直線距離です。</p>
+      <p className="muted">
+        {shop.locationLabel}から近い順に表示しています。距離は直線距離です。商品は、その商品を販売する店舗で受け取ります。
+      </p>
       <div className="location-controls">
         <label>
           距離の基準
@@ -41,40 +47,20 @@ export function Stores({ shop, onClose }) {
       </div>
       <div className="store-list">
         {shop.stores.map((store, index) => {
-          let selected = false;
-          if (shop.cart) selected = store.id === shop.cart.storeId;
-          let cardClass = 'store-card';
-          let buttonClass = 'primary-button';
-          if (selected) {
-            cardClass = 'store-card selected';
-            buttonClass = 'secondary-button';
-          }
           return (
-            <article className={cardClass} key={store.id}>
+            <article className="store-card" key={store.id}>
               <div className="store-title">
                 <MapPin size={22} />
                 <h3>{store.name}</h3>
-                {index === 0 && <span className="pill">最寄り</span>}
-                <strong>{store.distanceKm} km</strong>
+                {index === 0 && store.distanceKm !== null && <span className="pill">最寄り</span>}
+                {store.distanceKm !== null && <strong>{store.distanceKm} km</strong>}
               </div>
               <p>{store.address}</p>
               <p>
                 <Clock size={14} />
                 {store.hours}
               </p>
-              <button
-                className={buttonClass}
-                disabled={shop.busy || selected}
-                onClick={() => shop.selectStore(store.id)}
-              >
-                {selected && (
-                  <>
-                    <Check size={16} />
-                    選択中
-                  </>
-                )}
-                {!selected && 'この店舗で受け取る'}
-              </button>
+              <PageLink href={`/store/${store.id}`}>店舗の紹介を見る</PageLink>
             </article>
           );
         })}

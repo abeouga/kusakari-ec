@@ -3,26 +3,23 @@ package jp.kusakari.ec.commerce.service;
 import static jp.kusakari.ec.commerce.dto.CommerceDtos.CartLine;
 import static jp.kusakari.ec.commerce.dto.CommerceDtos.CartView;
 
-import java.util.List;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.service.CatalogService;
+import jp.kusakari.ec.catalog.service.CatalogService.Listing;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.ItemRequest;
-import jp.kusakari.ec.commerce.dto.CommerceDtos.StoreRequest;
 import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemId;
-import jp.kusakari.ec.commerce.persistence.entity.DeliveryFields;
 import jp.kusakari.ec.commerce.persistence.repository.CartItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.shopping.ShoppingDtos.Addition;
 import jp.kusakari.ec.shopping.ShoppingDtos.Outcome;
-import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import jp.kusakari.ec.shopping.ShoppingDtos.TransferResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +33,6 @@ public class CartService {
 
   private final CartRepository carts;
   private final CartItemRepository items;
-  private final PickupContactRepository pickupContacts;
   private final CatalogService catalog;
   private final DeliveryService delivery;
 
@@ -49,19 +45,13 @@ public class CartService {
     checkRevision(cart, request.revision());
     CartItemId itemId = new CartItemId(id, productId);
     var existing = items.findById(itemId);
-    // Issue #70: a line keeps the pickup store recorded when it was added; new lines use the sale store.
-    ProductView product = existing.isPresent()
-      ? catalog.product(productId, existing.get().pickupStoreId(cart))
-      : catalog
-        .productsAtSaleStores(cart.getStoreId(), List.of(productId))
-        .stream()
-        .findFirst()
-        .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+    // 在庫と受取店舗は、商品の店舗のもの。
+    Listing listing = catalog.listing(productId);
 
-    if (request.quantity() > 0 && !product.active()) {
+    if (request.quantity() > 0 && !listing.purchasable()) {
       throw new ApiException(409, "PRODUCT_ARCHIVED", "この商品は販売を終了しています。カートから削除してください。");
     }
-    if (request.quantity() > product.stock()) {
+    if (request.quantity() > listing.product().stock()) {
       throw new ApiException(409, "OUT_OF_STOCK", "受取店舗の在庫が不足しています。");
     }
 
@@ -74,7 +64,7 @@ public class CartService {
     if (request.quantity() == 0) {
       existing.ifPresent(items::delete);
     } else {
-      CartItemEntity item = existing.orElseGet(() -> new CartItemEntity(itemId, 0, product.sellerStoreId()));
+      CartItemEntity item = existing.orElseGet(() -> new CartItemEntity(itemId, 0));
       item.setQuantity(request.quantity());
       items.save(item);
     }
@@ -82,39 +72,46 @@ public class CartService {
     return view(cart);
   }
 
-  public TransferResult addShoppingItems(String id, long revision, long storeId, String gardenId,
-                                          String gardenName, List<Addition> additions) {
+  public TransferResult addShoppingItems(
+    String id,
+    long revision,
+    String gardenId,
+    String gardenName,
+    List<Addition> additions
+  ) {
     CartEntity cart = requireLockedCart(id);
     checkRevision(cart, revision);
-    if (cart.getStoreId() != storeId) {
-      throw new ApiException(409, "CART_CHANGED", "受取店舗が変更されました。最新の内容を確認してください。");
-    }
     var requestedIds = additions.stream().map(Addition::productId).distinct().toList();
     Map<String, CartItemEntity> current = new LinkedHashMap<>();
     for (var item : items.findAllForCart(id)) current.put(item.getId().getProductId(), item);
-    Map<String, Long> recordedStores = new HashMap<>();
-    requestedIds.stream().filter(current::containsKey)
-      .forEach(productId -> recordedStores.put(productId, current.get(productId).pickupStoreId(cart)));
-    Map<String, ProductView> products = new HashMap<>(catalog.productsAt(recordedStores));
-    var newIds = requestedIds.stream().filter(productId -> !current.containsKey(productId)).toList();
-    catalog.productsAtSaleStores(storeId, newIds).forEach(product -> products.put(product.id(), product));
+    Map<String, Listing> listings = listingsById(requestedIds);
     List<Outcome> added = new ArrayList<>();
     List<Outcome> skipped = new ArrayList<>();
     for (var addition : additions) {
-      var product = products.get(addition.productId());
+      var listing = listings.get(addition.productId());
       var existing = current.get(addition.productId());
       int next = addition.quantity() + (existing == null ? 0 : existing.getQuantity());
       String code = "";
       String message = "";
-      if (product == null || !product.active()) { code = "PRODUCT_ARCHIVED"; message = "販売終了または商品が見つかりません。"; }
-      else if (next > 99) { code = "QUANTITY_LIMIT"; message = "追加すると商品数量の上限99点を超えます。"; }
-      else if (next > product.stock()) { code = "OUT_OF_STOCK"; message = "受取店舗の在庫が不足しています。"; }
-      else if (existing == null && current.size() >= 50) { code = "CART_LIMIT"; message = "カートの商品種類の上限50種類を超えます。"; }
+      if (listing == null || !listing.purchasable()) {
+        code = "PRODUCT_ARCHIVED";
+        message = "販売終了または商品が見つかりません。";
+      } else if (next > 99) {
+        code = "QUANTITY_LIMIT";
+        message = "追加すると商品数量の上限99点を超えます。";
+      } else if (next > listing.product().stock()) {
+        code = "OUT_OF_STOCK";
+        message = "受取店舗の在庫が不足しています。";
+      } else if (existing == null && current.size() >= 50) {
+        code = "CART_LIMIT";
+        message = "カートの商品種類の上限50種類を超えます。";
+      }
       var outcome = new Outcome(addition.productId(), addition.name(), addition.quantity(), code, message);
-      if (!code.isEmpty()) { skipped.add(outcome); continue; }
-      var item = existing == null
-        ? new CartItemEntity(new CartItemId(id, addition.productId()), 0, product.sellerStoreId())
-        : existing;
+      if (!code.isEmpty()) {
+        skipped.add(outcome);
+        continue;
+      }
+      var item = existing == null ? new CartItemEntity(new CartItemId(id, addition.productId()), 0) : existing;
       item.setQuantity(next);
       items.save(item);
       current.put(addition.productId(), item);
@@ -124,58 +121,45 @@ public class CartService {
     return new TransferResult(view(cart), gardenId, gardenName, added, skipped);
   }
 
-  public CartView updateStore(String id, StoreRequest request) {
-    CartEntity cart = requireLockedCart(id);
-    checkRevision(cart, request.revision());
-    catalog.requireStore(request.storeId());
-    cart.selectStore(request.storeId());
-    return view(cart);
-  }
-
   public CartView view(CartEntity cart) {
     List<CartItemEntity> cartItems = items.findAllForCart(cart.getId());
-    Map<String, Long> storeByProduct = cartItems
-      .stream()
-      .collect(Collectors.toMap(item -> item.getId().getProductId(), item -> item.pickupStoreId(cart)));
-    Map<String, ProductView> products = catalog.productsAt(storeByProduct);
-    Map<Long, String> storeNames = new HashMap<>();
+    Map<String, Listing> listings = listingsById(cartItems.stream().map(item -> item.getId().getProductId()).toList());
     List<CartLine> lines = cartItems
       .stream()
       .map(item -> {
-        ProductView product = products.get(item.getId().getProductId());
-        if (product == null) throw new IllegalStateException("Cart contains an unknown product.");
-        int lineTotal = Math.multiplyExact(product.priceYen(), item.getQuantity());
-        long storeId = item.pickupStoreId(cart);
+        Listing listing = listings.get(item.getId().getProductId());
+        if (listing == null) throw new IllegalStateException("Cart contains an unknown product.");
+        ProductView product = listing.product();
         return new CartLine(
           product,
           item.getQuantity(),
-          lineTotal,
-          product.active() && product.stock() >= item.getQuantity(),
-          storeId,
-          storeNames.computeIfAbsent(storeId, catalog::storeName)
+          Math.multiplyExact(product.priceYen(), item.getQuantity()),
+          listing.purchasable() && product.stock() >= item.getQuantity(),
+          product.sellerStoreId(),
+          product.sellerStoreName()
         );
       })
       .toList();
 
-    DeliveryFields details = delivery.pickupFields(
-      cart.getMemberId() == null ? null : pickupContacts.findById(cart.getMemberId()).orElse(null)
-    );
-    int subtotal = lines.stream().mapToInt(CartLine::lineTotalYen).sum();
-    int shipping = lines.isEmpty() ? 0 : delivery.shippingFee(details);
-    String storeName = catalog.storeName(cart.getStoreId());
+    // 店舗受け取りだけで送料がないので、小計と合計は同じ。
+    int total = lines.stream().mapToInt(CartLine::lineTotalYen).sum();
 
     return new CartView(
       cart.getRevision(),
-      cart.getStoreId(),
-      storeName,
       lines,
-      subtotal + shipping,
+      total,
       lines.stream().mapToInt(CartLine::quantity).sum(),
       !lines.isEmpty() && lines.stream().allMatch(CartLine::available),
-      subtotal,
-      shipping,
-      delivery.view(details)
+      total,
+      delivery.pickupDetails(cart.getMemberId(), "NONE")
     );
+  }
+
+  private Map<String, Listing> listingsById(List<String> productIds) {
+    return catalog
+      .listingsByIds(productIds)
+      .stream()
+      .collect(Collectors.toMap(listing -> listing.product().id(), listing -> listing));
   }
 
   private CartEntity requireLockedCart(String id) {

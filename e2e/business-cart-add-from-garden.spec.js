@@ -10,7 +10,7 @@ test('cart adds a garden item through the dashed card dialog and keeps it after 
   await mkdir(evidence, { recursive: true });
   await login(page, 'test.user@example.com');
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
-  const products = await call(page.request, `/products?storeId=${beforeCart.storeId}`).then((r) => r.json());
+  const products = await call(page.request, '/products').then((r) => r.json());
   const inCart = new Set(beforeCart.items.map((item) => item.product.id));
   const [product, other] = products.filter((p) => p.active && p.stock > 2 && !inCart.has(p.id));
   expect(other, 'two active products that are not in the cart').toBeTruthy();

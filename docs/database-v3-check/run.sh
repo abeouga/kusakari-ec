@@ -9,6 +9,7 @@ if [ "$PORT" = 3306 ]; then echo "3306 は開発用の MySQL なので実行し�
 M=("$MYSQL_BIN" --no-defaults -h 127.0.0.1 -P "$PORT" -u root --default-character-set=utf8mb4)
 "${M[@]}" -e "DROP DATABASE IF EXISTS kusakari_v3_check; CREATE DATABASE kusakari_v3_check CHARACTER SET utf8mb4" || exit 1
 "${M[@]}" kusakari_v3_check < schema.sql || { echo "DDL FAILED"; exit 1; }
+"${M[@]}" kusakari_v3_check < store-closure-event.sql || { echo "EVENT FAILED"; exit 1; }
 echo "DDL OK: $("${M[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='kusakari_v3_check'") tables"
 # 値の確認用。偽（0）や NULL を入れると CHECK 制約で拒否される
 "${M[@]}" kusakari_v3_check -e "CREATE TABLE t_assert (ok INT NOT NULL, CONSTRAINT ck_assert CHECK (ok = 1))" || exit 1

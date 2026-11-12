@@ -34,7 +34,7 @@ test('Canvas list button opens the cart dialog for that garden and the added ite
   await mkdir(evidence, { recursive: true });
   await login(page, 'test.user@example.com');
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
-  const products = await call(page.request, `/products?storeId=${beforeCart.storeId}`).then((r) => r.json());
+  const products = await call(page.request, '/products').then((r) => r.json());
   const inCart = new Set(beforeCart.items.map((item) => item.product.id));
   const product = products.find((p) => p.active && p.stock > 2 && !inCart.has(p.id));
   expect(product, 'an active product that is not in the cart').toBeTruthy();

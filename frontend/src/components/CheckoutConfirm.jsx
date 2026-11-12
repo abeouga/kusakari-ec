@@ -118,17 +118,16 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
 }
 
 /**
- * Cart lines grouped by pickup store, in the order the stores first appear (issue #70).
+ * Cart lines grouped by pickup store (the store of each product), in the order the stores first appear (issue #70).
  * @param {import('../types').Cart} cart
  */
 function pickupGroups(cart) {
   /** @type {Map<number,{storeId:number,storeName:string,lines:import('../types').CartLine[]}>} */
   const groups = new Map();
   for (const line of cart.items) {
-    const storeId = line.storeId ?? cart.storeId;
-    const group = groups.get(storeId) ?? { storeId, storeName: line.storeName ?? cart.storeName, lines: [] };
+    const group = groups.get(line.storeId) ?? { storeId: line.storeId, storeName: line.storeName, lines: [] };
     group.lines.push(line);
-    groups.set(storeId, group);
+    groups.set(line.storeId, group);
   }
   return [...groups.values()];
 }

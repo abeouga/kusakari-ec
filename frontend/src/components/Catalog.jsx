@@ -60,7 +60,6 @@ export function Catalog({ shop, onDetail }) {
     nursery,
     useCase,
     maxPrice,
-    shop.cart?.storeId,
   ]);
   function reset() {
     setCategory('すべて');

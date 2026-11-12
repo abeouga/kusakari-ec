@@ -155,12 +155,9 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       .click();
     await expect(buyer.locator('.grand-total')).toContainText('7,000');
     const otherStock = await (await call(page.request, '/products?storeId=2')).json();
-    // Stock was registered only at store 1. The public list omits a product with no inventory row at the store
-    // being viewed (CatalogService/ProductMapper on main), so check both the list and the inventory table.
+    // The product belongs to store 1 only, so another store's list never shows it.
     expect(otherStock.find((item) => item.id === product.id)).toBeUndefined();
-    expect(
-      sql(`SELECT COALESCE(SUM(quantity),0) FROM inventory WHERE product_id='${product.id}' AND store_id=2;`),
-    ).toBe('0');
+    expect(sql(`SELECT store_id FROM products WHERE id='${product.id}';`)).toBe('1');
 
     await dialog.getByTestId(`manage-${product.id}`).getByRole('button', { name: '削除', exact: true }).click();
     await page.getByRole('button', { name: '削除を確定', exact: true }).click();
@@ -176,10 +173,9 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await shoot(buyer, `${dir}/archived-cart-after-reload`);
     await buyer.getByRole('button', { name: `${name}を削除`, exact: true }).click();
     await expect(buyer.getByRole('heading', { name: 'まだ商品が入っていません。' })).toBeVisible();
-    expect(sql(`SELECT active FROM products WHERE id='${product.id}';`)).toBe('1');
-    expect(sql(`SELECT publication_status FROM inventory WHERE product_id='${product.id}' AND store_id=1;`)).toBe(
-      'DELETED',
-    );
+    // A deleted product keeps its row; the deletion is its inventory row's publication status.
+    expect(sql(`SELECT COUNT(*) FROM products WHERE id='${product.id}';`)).toBe('1');
+    expect(sql(`SELECT publication_status FROM inventory WHERE product_id='${product.id}';`)).toBe('DELETED');
   } finally {
     if (product && /^[a-f0-9-]{36}$/.test(product.id)) {
       sql(
