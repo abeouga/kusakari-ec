@@ -40,13 +40,16 @@ export function usePlantPreview(plant, fields, active) {
         setNext('');
         return;
       }
-      const invalid = firstInvalid(fields.current);
-      if (invalid || height === '') {
+      // A missing plant height must not hide the model while the seller is choosing its shape. Render an approximate
+      // preview at the profile's default height, but keep the field required for advancing/saving the product.
+      const invalid = firstInvalid(fields.current, height === '' ? ['modelHeight'] : []);
+      if (invalid) {
         setStale(!!invalid);
         return;
       }
       setStale(false);
-      setNext(modelPreviewUrl({ ...profile, heightCm: Number(height) }));
+      const previewHeight = height === '' ? profile.heightCm : Number(height);
+      setNext(modelPreviewUrl({ ...profile, heightCm: previewHeight }));
     }, PREVIEW_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [profile, height, configured, fields, active, edits]);
@@ -62,6 +65,7 @@ export function usePlantPreview(plant, fields, active) {
     shown: configured ? shown : '',
     pending: configured ? pending : '',
     stale,
+    approximateHeight: configured && height === '' ? profile.heightCm : null,
     loaded,
     edited: () => setEdits((count) => count + 1),
   };
