@@ -26,11 +26,13 @@ const windowsBuild = build && process.platform === 'win32';
 let command = 'java';
 let args = ['-jar', resolve(root, 'backend', 'target', 'kusakari-ec-api-0.1.0.jar')];
 if (build) {
+  // clean: package keeps resources that were deleted from the source in target/, so a removed Flyway migration
+  // would stay in the JAR (two version-1 files after V1-V15 were replaced) and the API would refuse to start.
   command = './mvnw';
-  args = ['-B', '-ntp', 'package', '-DskipTests'];
+  args = ['-B', '-ntp', 'clean', 'package', '-DskipTests'];
   if (windowsBuild) {
     // Explicit path: cmd skips the current directory when NoDefaultCurrentDirectoryInExePath is set.
-    command = '.\\mvnw.cmd -B -ntp package -DskipTests';
+    command = '.\\mvnw.cmd -B -ntp clean package -DskipTests';
     args = [];
   }
 }
