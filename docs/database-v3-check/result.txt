@@ -1,0 +1,162 @@
+DDL OK: 27 tables
+PASS 1 [OK] 準備: 会員を作る
+PASS 2 [NG] 種別: 小文字の種別は拒否  <- ERROR 3819: Check constraint 'ck_members_account_type' is violated.
+PASS 3 [NG] 種別: 旧種別 SHOP は拒否  <- ERROR 3819: Check constraint 'ck_members_account_type' is violated.
+PASS 4 [NG] 会員: 同じ issuer, subject は拒否  <- ERROR 1062: Duplicate entry 'iss-s-u1' for key 'members.uk_members_issuer_subject'
+PASS 5 [OK] 組織: オーナーのいないサンプル組織
+PASS 6 [NG] 組織: 申請中の会員をオーナーにするのは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organizations`, CONSTRAINT `fk_organizations_owner`
+PASS 7 [NG] 組織: 購入者をオーナーにするのは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organizations`, CONSTRAINT `fk_organizations_owner`
+PASS 8 [NG] 組織: 運営をオーナーにするのは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organizations`, CONSTRAINT `fk_organizations_owner`
+PASS 9 [NG] 組織: 子アカウントをオーナーにするのは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organizations`, CONSTRAINT `fk_organizations_owner`
+PASS 10 [OK] 申請: 下書きを作る
+PASS 11 [NG] 申請: 同じ人の「今の申請」の2件目は拒否  <- ERROR 1062: Duplicate entry 'ap1-1' for key 'organization_applications.uk_applications_applicant_latest'
+PASS 12 [NG] 申請: 知らない状態は拒否  <- ERROR 3819: Check constraint 'ck_applications_status' is violated.
+PASS 13 [NG] 申請: 組織なしの承認済みは拒否  <- ERROR 3819: Check constraint 'ck_applications_approved' is violated.
+PASS 14 [OK] 申請: 下書きから審査中へ
+PASS 15 [NG] 申請: 審査中の申請を「前回の申請」にするのは拒否  <- ERROR 3819: Check constraint 'ck_applications_previous' is violated.
+PASS 16 [OK] 申請: 取り下げ
+PASS 17 [OK] 再申請: 取り下げた申請を前回として残し、新しい申請を作る（1トランザクション）
+PASS 18 [OK] 再申請: 今の申請と前回の申請が1行ずつある
+PASS 19 [NG] 再申請: 前回の申請の2行目は拒否  <- ERROR 1062: Duplicate entry 'ap1-0' for key 'organization_applications.uk_applications_applicant_latest'
+PASS 20 [OK] 却下: 理由を付けて却下する
+PASS 21 [OK] 2回目の再申請: 前々回の行を消し、却下された申請を前回として残す（1トランザクション）
+PASS 22 [OK] 2回目の再申請: 前々回の行が消え、前回と今の申請だけがある
+PASS 23 [OK] 承認: 種別変更→組織作成→申請に記録（1トランザクション）
+PASS 24 [OK] 承認後: 前回の申請（却下）が残っている
+PASS 25 [NG] 承認後: 承認済みの申請から組織を外すのは拒否  <- ERROR 3819: Check constraint 'ck_applications_approved' is violated.
+PASS 26 [NG] オーナー: オーナーである間の種別変更は拒否  <- ERROR 1451: Cannot delete or update a parent row: a foreign key constraint fails (`kusakari_v3_check`.`organizations`, CONSTRAINT `fk_organizations_ow
+PASS 27 [NG] オーナー: 2つ目の組織のオーナーは拒否  <- ERROR 1062: Duplicate entry 'ap1' for key 'organizations.uk_organizations_owner'
+PASS 28 [OK] 準備: 2社目を承認
+PASS 29 [OK] 店舗: A社に店舗を2つ、B社に1つ作る
+PASS 30 [NG] 店舗: 同じ組織に同じ名前は拒否  <- ERROR 1062: Duplicate entry '2-A社 本店' for key 'stores.uk_stores_org_name'
+PASS 31 [OK] 店舗: 別の組織なら同じ名前を使える
+PASS 32 [OK] 店舗: 作った直後は非公開で位置なし
+PASS 33 [NG] 店舗: 緯度だけ入れるのは拒否  <- ERROR 3819: Check constraint 'ck_stores_location' is violated.
+PASS 34 [OK] 店舗: 緯度経度を両方入れる
+PASS 35 [NG] 所属: 購入者は所属できない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organization_members`, CONSTRAINT `fk_org_members_m
+PASS 36 [NG] 所属: 運営は所属できない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organization_members`, CONSTRAINT `fk_org_members_m
+PASS 37 [NG] 所属: オーナーは自分の組織の子アカウントになれない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organization_members`, CONSTRAINT `fk_org_members_m
+PASS 38 [NG] 所属: オーナーは別の組織の子アカウントになれない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`organization_members`, CONSTRAINT `fk_org_members_m
+PASS 39 [NG] 所属: 種別の列を SHOP_OWNER にするのは拒否  <- ERROR 3819: Check constraint 'ck_org_members_type' is violated.
+PASS 40 [OK] 招待: A社本店の招待キーを発行
+PASS 41 [NG] 招待: 同じキーのハッシュは拒否  <- ERROR 1062: Duplicate entry 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' for key 'store_invitations.uk_invitations_key'
+PASS 42 [NG] 招待: 上限回数0は拒否  <- ERROR 3819: Check constraint 'ck_invitations_max_uses' is violated.
+PASS 43 [OK] 招待: 1回限りのキーにする
+PASS 44 [OK] 招待キーで登録: 所属→担当（ロールなし）→使用記録（1トランザクション）
+PASS 45 [NG] 招待: 同じ人が同じキーを2回使った記録は拒否  <- ERROR 1062: Duplicate entry 'inv1-st1' for key 'store_invitation_uses.PRIMARY'
+PASS 46 [OK] 招待: A社2号店に、期限内なら何回でも使えるキーを発行
+PASS 47 [NG] 招待: すでにキーで登録した人が別のキーを使った記録は拒否  <- ERROR 1062: Duplicate entry 'st1' for key 'store_invitation_uses.uk_invitation_uses_member'
+PASS 48 [OK] 招待: 何回でも使えるキーで2人が登録する
+PASS 49 [OK] 招待: キーを取り消しても、使った人の記録と所属は残る
+PASS 50 [NG] 招待: 存在しない会員の使用記録は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_invitation_uses`, CONSTRAINT `fk_invitation_u
+PASS 51 [OK] 担当: 登録直後はロール未割り当て
+PASS 52 [NG] 所属: 2つ目の組織への所属は拒否  <- ERROR 1062: Duplicate entry 'st1' for key 'organization_members.uk_org_members_member'
+PASS 53 [NG] 所属: 所属している間の種別変更は拒否  <- ERROR 1451: Cannot delete or update a parent row: a foreign key constraint fails (`kusakari_v3_check`.`organization_members`, CONSTRAINT `fk_org_membe
+PASS 54 [NG] 担当: 小文字のロールは拒否  <- ERROR 3819: Check constraint 'ck_store_members_role' is violated.
+PASS 55 [NG] 担当: OWNER のロールは拒否  <- ERROR 3819: Check constraint 'ck_store_members_role' is violated.
+PASS 56 [OK] 担当: A社本店で MANAGER にする
+PASS 57 [OK] 組織のロール: 所属した直後はロールなし
+PASS 58 [OK] 組織のロール: ORG_ADMIN を付ける
+PASS 59 [NG] 組織のロール: ORG_ADMIN 以外の値は拒否  <- ERROR 3819: Check constraint 'ck_org_members_role' is violated.
+PASS 60 [NG] 組織のロール: 店舗の担当に ORG_ADMIN は付けられない  <- ERROR 3819: Check constraint 'ck_store_members_role' is violated.
+PASS 61 [OK] 担当: 同じ人を A社2号店では STAFF にする
+PASS 62 [NG] 担当: 同じ店舗への二重の割り当ては拒否  <- ERROR 1062: Duplicate entry '10-st1' for key 'store_members.PRIMARY'
+PASS 63 [NG] 担当: 別の組織の店舗は拒否（組織を所属側に合わせる）  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_members`, CONSTRAINT `fk_store_members_store`
+PASS 64 [NG] 担当: 別の組織の店舗は拒否（組織を店舗側に合わせる）  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_members`, CONSTRAINT `fk_store_members_member
+PASS 65 [NG] 担当: オーナーは店舗の担当になれない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_members`, CONSTRAINT `fk_store_members_member
+PASS 66 [NG] 担当: 所属していない子アカウントは担当になれない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_members`, CONSTRAINT `fk_store_members_member
+PASS 67 [OK] 準備: カテゴリー
+PASS 68 [OK] 商品: A社本店とB社本店に同じ商品番号で登録
+PASS 69 [NG] 商品: 同じ店舗に同じ商品番号は拒否  <- ERROR 1062: Duplicate entry '10-OLIVE-001' for key 'products.uk_products_store_sku'
+PASS 70 [NG] 商品: 店舗のない商品は拒否  <- ERROR 1364: Field 'store_id' doesn't have a default value
+PASS 71 [NG] 商品: 存在しない店舗は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`products`, CONSTRAINT `fk_products_store` FOREIGN K
+PASS 72 [NG] 商品: 価格0円は拒否  <- ERROR 3819: Check constraint 'ck_products_price' is violated.
+PASS 73 [NG] 商品: 存在しないカテゴリーは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`products`, CONSTRAINT `fk_products_category` FOREIG
+PASS 74 [NG] 商品: 育てやすさが1〜3以外は拒否  <- ERROR 3819: Check constraint 'ck_products_care_level' is violated.
+PASS 75 [OK] 商品: 説明用の列の初期値が入っている
+PASS 76 [OK] 画像: 画像の本体と、商品の画像の一覧を登録
+PASS 77 [NG] 画像: 存在しない商品の画像は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`product_images`, CONSTRAINT `fk_product_images_prod
+PASS 78 [OK] 素材: 素材コードと商品の対応を登録
+PASS 79 [NG] 素材: 存在しない商品との対応は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`material_products`, CONSTRAINT `fk_material_product
+PASS 80 [OK] 在庫: 商品ごとに1行
+PASS 81 [NG] 在庫: 同じ商品の2行目は拒否  <- ERROR 1062: Duplicate entry 'p-a1' for key 'inventory.PRIMARY'
+PASS 82 [NG] 在庫: 負の数は拒否  <- ERROR 3819: Check constraint 'ck_inventory_quantity' is violated.
+PASS 83 [NG] 在庫: 知らない公開状態は拒否  <- ERROR 3819: Check constraint 'ck_inventory_status' is violated.
+PASS 84 [OK] 公開: 店舗が非公開の間は購入者に見えない（0件）
+PASS 85 [OK] 公開: オーナーが A社本店だけ公開
+PASS 86 [OK] 公開: 運営が A社本店を停止して解除
+PASS 87 [OK] 公開: 停止を解除しても、未公開のB社本店は見えないまま（A社本店の1件だけ）
+PASS 88 [OK] 準備: B社本店を公開
+PASS 89 [OK] 組織の停止: 運営が A社の受付を止めると B社の1件だけ見える（受付停止中）
+PASS 90 [OK] 組織の停止: 受付停止中から停止にする
+PASS 91 [OK] 組織の停止: 再開すると A社の商品がまた見える
+PASS 92 [NG] 組織の停止: 受付停止を経ない停止は拒否  <- ERROR 3819: Check constraint 'ck_organizations_suspension' is violated.
+PASS 93 [NG] 組織の停止: 停止のまま受付停止の日時だけ消すのは拒否  <- ERROR 3819: Check constraint 'ck_organizations_suspension' is violated.
+PASS 94 [OK] 準備: B社を通常に戻す
+PASS 95 [OK] 店舗の閉鎖: オーナーが閉鎖を始めると、閉鎖中の店舗の商品は見えない
+PASS 96 [OK] 店舗の閉鎖: 閉鎖中は取り消して営業に戻せる
+PASS 97 [NG] 店舗の閉鎖: 始めた人のない閉鎖は拒否  <- ERROR 3819: Check constraint 'ck_stores_closing' is violated.
+PASS 98 [NG] 店舗の閉鎖: オーナー・運営以外が始めた閉鎖は拒否  <- ERROR 3819: Check constraint 'ck_stores_closing_by' is violated.
+PASS 99 [NG] 店舗の閉鎖: 閉鎖中を経ない閉鎖済みは拒否  <- ERROR 3819: Check constraint 'ck_stores_closed' is violated.
+PASS 100 [OK] カート: 購入者のカートに2店舗の商品を入れる
+PASS 101 [NG] カート: 1人に2つ目のカートは拒否  <- ERROR 1062: Duplicate entry 'u1' for key 'carts.uk_carts_member'
+PASS 102 [NG] カート: 数量100は拒否  <- ERROR 3819: Check constraint 'ck_cart_items_quantity' is violated.
+PASS 103 [NG] カート: 数量0は拒否  <- ERROR 3819: Check constraint 'ck_cart_items_quantity' is violated.
+PASS 104 [OK] カート: 受取店舗は商品からたどれる（2店舗）
+PASS 105 [OK] 庭の買い物リスト: 庭ごとの一覧と商品
+PASS 106 [NG] 庭の買い物リスト: 一覧のない庭の商品は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`garden_shopping_items`, CONSTRAINT `fk_garden_items
+PASS 107 [OK] 注文: お会計1回で決済を1つ作り、店舗ごとに支払い待ちの注文を作って在庫を確保する（1トランザクション）
+PASS 108 [OK] 注文: 店舗ごとの金額・手数料（8%、1円未満切り捨て）・在庫と、決済の金額が合っている
+PASS 109 [NG] 決済: 同じお会計に決済を2つ作るのは拒否  <- ERROR 1062: Duplicate entry 'c1-req1' for key 'payments.uk_payments_checkout'
+PASS 110 [NG] 決済: 金額0円は拒否  <- ERROR 3819: Check constraint 'ck_payments_amount' is violated.
+PASS 111 [NG] 決済: 知らない状態は拒否  <- ERROR 3819: Check constraint 'ck_payments_status' is violated.
+PASS 112 [OK] 決済: 支払い成功の通知で、通知を記録し、決済を成功に、注文を注文受付にする（1トランザクション）
+PASS 113 [NG] 決済: 同じ通知の2回目は拒否（二重に処理しない）  <- ERROR 1062: Duplicate entry 'evt_1' for key 'stripe_events.PRIMARY'
+PASS 114 [OK] 決済: 2店舗の注文が、同じ決済で注文受付になっている
+PASS 115 [OK] 準備: 別のお会計の決済を作る
+PASS 116 [NG] 決済: 注文は別のお会計の決済を指せない  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`orders`, CONSTRAINT `fk_orders_payment` FOREIGN KEY
+PASS 117 [NG] 決済: 同じ PaymentIntent を2つの決済に付けるのは拒否  <- ERROR 1062: Duplicate entry 'pi_1' for key 'payments.uk_payments_intent'
+PASS 118 [NG] 注文: 知らない状態は拒否  <- ERROR 3819: Check constraint 'ck_orders_status' is violated.
+PASS 119 [NG] 注文: 手数料が合計金額を超えるのは拒否  <- ERROR 3819: Check constraint 'ck_orders_commission' is violated.
+PASS 120 [NG] 注文: 手数料の率が100%を超えるのは拒否  <- ERROR 3819: Check constraint 'ck_orders_commission_rate' is violated.
+PASS 121 [NG] 注文: 同じ購入操作から同じ店舗の注文を2つ作るのは拒否  <- ERROR 1062: Duplicate entry 'c1-req1-10' for key 'orders.uk_orders_request'
+PASS 122 [NG] 注文: 存在しないカートの注文は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`orders`, CONSTRAINT `fk_orders_cart` FOREIGN KEY (`
+PASS 123 [OK] 注文: キャンセルの列の初期値が入っている
+PASS 124 [NG] 注文: 在庫が足りない注文は在庫の制約で止まる  <- ERROR 3819: Check constraint 'ck_inventory_quantity' is violated.
+PASS 125 [OK] キャンセル: 購入者がキャンセルを申請する
+PASS 126 [NG] キャンセル: 知らない申請の状態は拒否  <- ERROR 3819: Check constraint 'ck_orders_cancellation_status' is violated.
+PASS 127 [OK] キャンセル: 店舗が承認し、返金を要求し、在庫を戻す（1トランザクション）
+PASS 128 [OK] 返金: 要求した時点では、その注文の金額だけの返金が要求中になっている
+PASS 129 [NG] 返金: 同じ注文の2つ目の返金は拒否（二重に返金しない）  <- ERROR 1062: Duplicate entry 'o-10' for key 'refunds.uk_refunds_order'
+PASS 130 [NG] 返金: 注文が支払われた決済と違う決済の返金は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`refunds`, CONSTRAINT `fk_refunds_order` FOREIGN KEY
+PASS 131 [NG] 返金: 金額0円は拒否  <- ERROR 3819: Check constraint 'ck_refunds_amount' is violated.
+PASS 132 [OK] 返金: 返金成功の通知で、通知を記録し、返金を成功にする（1トランザクション）
+PASS 133 [NG] 返金: 知らない状態は拒否  <- ERROR 3819: Check constraint 'ck_refunds_status' is violated.
+PASS 134 [OK] キャンセル: 運営が、申請のない注文をまとめてキャンセルして返金を要求する（1トランザクション）
+PASS 135 [OK] キャンセル: 誰がキャンセルしたかが残り、購入者の申請の状態は変わらない
+PASS 136 [OK] 返金: 返金が失敗したことを記録できる
+PASS 137 [OK] 返金: 決済1つに対して、注文ごとの返金が2つある（一部返金）
+PASS 138 [NG] キャンセル: 存在しない会員をキャンセルした人にするのは拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`orders`, CONSTRAINT `fk_orders_cancelled_by` FOREIG
+PASS 139 [NG] 店舗: 注文のある店舗の削除は拒否  <- ERROR 1451: Cannot delete or update a parent row: a foreign key constraint fails (`kusakari_v3_check`.`orders`, CONSTRAINT `fk_orders_store` FOREIGN K
+PASS 140 [OK] 組織から外す: 所属を消すと担当も消える
+PASS 141 [OK] 組織から外した後: 種別を購入者に戻せる
+PASS 142 [OK] オーナー交代: 所属を消す→種別変更→オーナー書き換え→旧オーナーを子アカウントに（1トランザクション）
+PASS 143 [OK] オーナー交代: 結果が合っている
+PASS 144 [OK] 警告: 運営が商品に理由を付けて警告する（公開状態は変えない）
+PASS 145 [NG] 警告: 理由のない警告は拒否  <- ERROR 3819: Check constraint 'ck_product_moderation_reason' is violated.
+PASS 146 [NG] 警告: 知らない操作の種別は拒否  <- ERROR 3819: Check constraint 'ck_product_moderation_type' is violated.
+PASS 147 [NG] 警告: 存在しない商品への警告は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`product_moderation_events`, CONSTRAINT `fk_product_
+PASS 148 [OK] 警告: 警告中にもう一度警告できる
+PASS 149 [OK] 警告: 最新の履歴から「警告中」と分かる
+PASS 150 [OK] 警告: 理由なしで警告を解除でき、解除後は警告中でない
+PASS 151 [OK] 停止: 商品の停止と履歴を一緒に記録し、再開する（1トランザクションずつ）
+PASS 152 [NG] 停止: 理由のない停止の履歴は拒否  <- ERROR 3819: Check constraint 'ck_product_moderation_reason' is violated.
+PASS 153 [OK] 警告: 店舗にも同じ形で警告と停止の履歴を残せる
+PASS 154 [NG] 警告: 店舗でも理由のない警告は拒否  <- ERROR 3819: Check constraint 'ck_store_moderation_reason' is violated.
+PASS 155 [NG] 警告: 存在しない店舗への警告は拒否  <- ERROR 1452: Cannot add or update a child row: a foreign key constraint fails (`kusakari_v3_check`.`store_moderation_events`, CONSTRAINT `fk_store_mode
+PASS 156 [OK] 店舗の閉鎖: 閉鎖済みにし、担当の割り当てを外す（所属は残す）
+PASS 157 [OK] 店舗の閉鎖: 運営が始めた閉鎖で、10日前に閉鎖済みになった店舗
+PASS 158 [OK] 店舗の閉鎖: 連絡先を消すイベントがある
+PASS 159 [OK] 店舗の閉鎖: イベントを今すぐ動かす
+PASS 160 [OK] 店舗の閉鎖: 90日たった店舗の連絡先だけが消え、行と店舗名は残る
+== pass=160 fail=0 total=160
