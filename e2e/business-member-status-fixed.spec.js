@@ -13,7 +13,7 @@ function createWithdrawnMember() {
     throw new Error('Fixtures cannot change the development database.');
   const id = randomUUID();
   const email = `withdrawn-${id}@example.com`;
-  sql(`INSERT INTO auth_members(id,issuer,subject,email,display_name,role,enabled,withdrawn_at)
+  sql(`INSERT INTO members(id,issuer,subject,email,display_name,account_type,enabled,withdrawn_at)
     VALUES('${id}','e2e-fixture','${id}','${email}','E2E退会済み会員','USER',FALSE,CURRENT_TIMESTAMP);`);
   return { id, email };
 }

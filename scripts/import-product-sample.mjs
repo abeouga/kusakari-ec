@@ -51,9 +51,9 @@ function sql(input) {
   if (result.status !== 0) throw new Error('MySQL operation failed; no credentials or row contents printed.');
   return result.stdout.trim();
 }
-const before = sql('SELECT COUNT(*),SUM(active) FROM products; SELECT COUNT(*) FROM cart_items; SELECT COUNT(*) FROM orders; SELECT COUNT(*) FROM order_items;');
-console.log(`Current product/active, cart items, orders, order items:\n${before}`);
-console.log('Validated 31 demo products. Existing catalog will be archived; incoming IDs, models and store-1 stock will be preserved.');
+const before = sql("SELECT COUNT(*),(SELECT COUNT(*) FROM inventory WHERE publication_status<>'DELETED') FROM products; SELECT COUNT(*) FROM cart_items; SELECT COUNT(*) FROM orders; SELECT COUNT(*) FROM order_items;");
+console.log(`Current product/not deleted, cart items, orders, order items:\n${before}`);
+console.log('Validated 31 demo products. The existing store-1 catalog will be marked deleted; incoming IDs, models and stock will be preserved. Other stores are not changed.');
 if (!apply) {
   console.log('Dry run only. Use --apply to back up and replace the development catalog.');
   process.exit(0);
@@ -70,9 +70,10 @@ const literal = (value) => value == null ? 'NULL' : typeof value === 'boolean' ?
 const fields = ['id', 'sku', 'name', 'latinName', 'category', 'description', 'sizeLabel', 'care', 'priceYen', 'unit', 'imageUrl', 'badge',
   'source', 'sourceUpdatedAt', 'nurseryName', 'nurseryAddress', 'sunlight', 'useCase', 'careLevel', 'minTemperatureC',
   'heatTolerant', 'droughtTolerant', 'ageYears', 'heightCm', 'potDiameterCm', 'familyName', 'floweringDescription',
-  'seasonalCare', 'styleDescription', 'publishedAt', 'active', 'plantModelProfile', 'modelComposition'];
-const columns = fields.map((name) => name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
-const statements = ["SET time_zone='+00:00'; START TRANSACTION; SELECT id FROM products FOR UPDATE; UPDATE products SET active=FALSE;"];
+  'seasonalCare', 'styleDescription', 'publishedAt', 'plantModelProfile', 'modelComposition'];
+const columns = fields.map((name) => name === 'category' ? 'category_name' : name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
+// A product belongs to one store and its publication status lives on its inventory row.
+const statements = ["SET time_zone='+00:00'; START TRANSACTION; SELECT id FROM products WHERE store_id=1 FOR UPDATE; UPDATE inventory i JOIN products p ON p.id=i.product_id SET i.publication_status='DELETED' WHERE p.store_id=1;"];
 for (const product of products) {
   const values = fields.map((field) => {
     let value = product[field];
@@ -81,17 +82,17 @@ for (const product of products) {
     return literal(value);
   });
   const id = literal(product.id);
-  // Reject a SKU owned by a different ID instead of allowing an ambiguous upsert.
-  const conflicts = sql(`SELECT COUNT(*) FROM products WHERE sku=${literal(product.sku)} AND id<>${id};`);
-  if (conflicts !== '0') throw new Error('SKU conflict; import cancelled before transaction.');
-  statements.push(`INSERT INTO products (${columns.join(',')}) VALUES (${values.join(',')}) ON DUPLICATE KEY UPDATE ${columns.filter((column) => column !== 'id').map((column) => `${column}=VALUES(${column})`).join(',')};`);
-  statements.push(`INSERT INTO inventory(store_id,product_id,quantity) VALUES(1,${id},${product.stock}) ON DUPLICATE KEY UPDATE quantity=VALUES(quantity);`);
+  // Reject a SKU owned by a different ID, or an ID owned by another store, instead of an ambiguous upsert.
+  const conflicts = sql(`SELECT COUNT(*) FROM products WHERE (store_id=1 AND sku=${literal(product.sku)} AND id<>${id}) OR (id=${id} AND store_id<>1);`);
+  if (conflicts !== '0') throw new Error('SKU or store conflict; import cancelled before transaction.');
+  statements.push(`INSERT INTO products (store_id,${columns.join(',')}) VALUES (1,${values.join(',')}) ON DUPLICATE KEY UPDATE ${columns.filter((column) => column !== 'id').map((column) => `${column}=VALUES(${column})`).join(',')};`);
+  statements.push(`INSERT INTO inventory(product_id,quantity,publication_status) VALUES(${id},${product.stock},'PUBLISHED') ON DUPLICATE KEY UPDATE quantity=VALUES(quantity),publication_status='PUBLISHED';`);
   statements.push(`DELETE FROM product_images WHERE product_id=${id}; DELETE FROM material_products WHERE product_id=${id};`);
   product.images.forEach((url, index) => statements.push(`INSERT INTO product_images VALUES(${id},${index},${literal(url)});`));
 }
 for (const link of links) statements.push(`INSERT INTO material_products(material_code,product_id) VALUES(${literal(link.materialCode)},${literal(link.productId)});`);
 statements.push('COMMIT;');
 sql(statements.join('\n'));
-const after = sql('SELECT COUNT(*),SUM(active) FROM products; SELECT COUNT(*) FROM cart_items; SELECT COUNT(*) FROM orders; SELECT COUNT(*) FROM order_items;');
+const after = sql("SELECT COUNT(*),(SELECT COUNT(*) FROM inventory WHERE publication_status<>'DELETED') FROM products; SELECT COUNT(*) FROM cart_items; SELECT COUNT(*) FROM orders; SELECT COUNT(*) FROM order_items;");
 writeFileSync(join(backupDirectory, 'counts-after.txt'), after);
 console.log(`Import committed. Counts after:\n${after}\nBackup: ${backupDirectory}`);

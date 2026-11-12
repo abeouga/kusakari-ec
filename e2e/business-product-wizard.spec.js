@@ -32,10 +32,16 @@ test('product wizard registers through the progress bar, dialogs and image step 
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  // An administrator manages every enabled store, so the map shows several pins.
+  // An administrator manages every store, published or not, so the map shows several pins.
   prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
-  const stores = await (await call(page.request, '/stores')).json();
-  for (const store of stores) {
+  // The managed list has no positions; the public list of open stores supplies them, as the screen does.
+  const open = await (await call(page.request, '/stores')).json();
+  const stores = (await (await call(page.request, '/seller/stores')).json()).map((store) => ({
+    ...open.find((candidate) => candidate.id === store.id),
+    ...store,
+  }));
+  // The three sample stores have positions; a store an owner added has none.
+  for (const store of stores.filter((candidate) => candidate.id <= 3)) {
     expect(Number.isFinite(store.latitude), store.name).toBe(true);
     expect(Number.isFinite(store.longitude), store.name).toBe(true);
   }
@@ -111,8 +117,8 @@ test('product wizard registers through the progress bar, dialogs and image step 
     const storeButton = info.getByRole('button', { name: '在庫を登録する店舗を選ぶ', exact: true });
     await storeButton.click();
     const storeDialog = page.getByRole('dialog', { name: '在庫を登録する店舗を選ぶ', exact: true });
-    // Stores approved from a store application are saved at (0, 0) without a position; they stay in the list only.
-    const located = stores.filter((store) => store.latitude !== 0 || store.longitude !== 0);
+    // Stores an owner added have no position; they stay in the list only.
+    const located = stores.filter((store) => Number.isFinite(store.latitude) && Number.isFinite(store.longitude));
     await expect(storeDialog.getByRole('button', { name: /^地図のピン：/ })).toHaveCount(located.length);
     await expect(storeDialog.getByRole('list', { name: '店舗一覧' }).getByRole('listitem')).toHaveCount(stores.length);
     await expect(

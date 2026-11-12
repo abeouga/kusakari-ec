@@ -44,13 +44,57 @@ export async function capture(page, path, target) {
   await page.screenshot({ path, mask: [page.locator('.workspace-main').getByText(/@/)], maskColor: '#d9ded6' });
 }
 
+// 'SELLER' is the fixture for a shop account that runs sample store 1: a staff account with the MANAGER role there.
+// 'SHOP_OWNER' takes over the sample organization (id 1), which has no owner after a database reset.
+const accountTypes = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+  SHOP_OWNER_APPLICANT: 'SHOP_OWNER_APPLICANT',
+  SHOP_OWNER: 'SHOP_OWNER',
+  SELLER: 'SHOP_STAFF',
+};
+
 export function prepareMember(member, role) {
   if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
     throw new Error('Fixtures cannot change the development database.');
-  if (!/^[a-f0-9-]{36}$/.test(member.id) || !['USER', 'SELLER', 'ADMIN'].includes(role))
-    throw new Error('Invalid fixture.');
-  sql(`UPDATE auth_members SET role='${role}',store_id=${role === 'SELLER' ? 1 : 'NULL'},enabled=TRUE,withdrawn_at=NULL WHERE id='${member.id}';
-       UPDATE carts SET member_id=NULL WHERE member_id='${member.id}';`);
+  if (!/^[a-f0-9-]{36}$/.test(member.id) || !Object.hasOwn(accountTypes, role)) throw new Error('Invalid fixture.');
+  const id = member.id;
+  // The foreign keys accept an owner only as SHOP_OWNER and a staff row only as SHOP_STAFF,
+  // so the old ties go first and the new ones are added after the account type changes.
+  const ties = {
+    SELLER: `INSERT INTO organization_members(organization_id,member_id) VALUES(1,'${id}');
+       INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES(1,'${id}',1,'MANAGER');`,
+    SHOP_OWNER: `UPDATE organizations SET owner_member_id='${id}' WHERE id=1;`,
+    // An applicant starts without an application; an approved one would refuse a new application.
+    SHOP_OWNER_APPLICANT: `DELETE FROM organization_applications WHERE applicant_member_id='${id}';`,
+  };
+  sql(`UPDATE organizations SET owner_member_id=NULL WHERE owner_member_id='${id}';
+       DELETE FROM organization_members WHERE member_id='${id}';
+       UPDATE members SET account_type='${accountTypes[role]}',enabled=TRUE,withdrawn_at=NULL WHERE id='${id}';
+       ${ties[role] || ''}
+       DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE member_id='${id}');`);
+}
+
+/**
+ * An owner adds a store without an application; a new store is unpublished, so buyers see it only after this.
+ * @param {import('@playwright/test').APIRequestContext} request the owner's session
+ * @param {string} name
+ */
+export async function openStore(request, name) {
+  const created = await call(request, '/seller/stores', 'POST', {
+    revision: 0,
+    name,
+    contact: '',
+    email: '',
+    address: '東京都 検証用店舗',
+    hours: '10:00-18:00',
+    story: '',
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const store = await created.json();
+  const published = await call(request, `/seller/stores/${store.id}/published`, 'PUT', { published: true });
+  expect(published.status(), await published.text()).toBe(200);
+  return store.id;
 }
 
 export function productInput() {
@@ -176,7 +220,7 @@ export function deletePasswordTestAccount(email) {
   if (!/^password-[a-f0-9-]{36}@example\.com$/.test(email)) throw new Error('Not an isolated password-test account.');
   cognitoAccount('admin-delete-user', { Username: email });
   // Retain dedicated-DB records for audit; never delete carts or orders here.
-  sql(`UPDATE auth_members SET enabled=FALSE WHERE email='${email}'`);
+  sql(`UPDATE members SET enabled=FALSE WHERE email='${email}'`);
 }
 
 const applicationPdf = { name: 'application.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
@@ -185,9 +229,9 @@ const applicationPdf = { name: 'application.pdf', mimeType: 'application/pdf', b
  * Walks the EC-B17 application wizard (issue #20) to its confirmation step.
  * @param {import('@playwright/test').Page} page
  * @param {{company:string,contact:string,email:string,address:string,phone:string}} input
- * @param {{plan?:string,file?:any}} [options]
+ * @param {{file?:any}} [options]
  */
-export async function fillApplication(page, input, { plan, file = applicationPdf } = {}) {
+export async function fillApplication(page, input, { file = applicationPdf } = {}) {
   const next = () => page.getByRole('button', { name: '次へ', exact: true }).click();
   await page.getByLabel('会社・事業者名', { exact: true }).fill(input.company);
   await page.getByLabel('所在地', { exact: true }).fill(input.address);
@@ -195,8 +239,6 @@ export async function fillApplication(page, input, { plan, file = applicationPdf
   await page.getByLabel('担当者名', { exact: true }).fill(input.contact);
   await page.getByLabel('連絡先メール', { exact: true }).fill(input.email);
   await page.getByLabel('電話番号', { exact: true }).fill(input.phone);
-  await next();
-  if (plan) await page.getByLabel('希望出店プラン').selectOption(plan);
   await next();
   await page.locator('input[type=file]').setInputFiles(file);
   await page.getByRole('button', { name: '確認画面へ', exact: true }).click();

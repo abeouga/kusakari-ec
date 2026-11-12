@@ -4,7 +4,7 @@ import { ec, capture, login, prepareMember } from './business-helpers.js';
 
 test.use({ trace: 'off' });
 
-const sellerMenu = ['商品管理', '店舗受け取り', '注文実績', '店舗プロフィール', '出店者通知'];
+const sellerMenu = ['商品管理', '店舗受け取り', '注文実績', '店舗一覧', '店舗プロフィール', '出店者通知'];
 const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出店審査', '店舗管理', '全注文管理'];
 
 // Issue #27: seller and operator sidebars can be folded so wide tables get the full width.
@@ -143,8 +143,8 @@ for (const [role, email, group, labels, entry, start, startTitle, next, title] o
       await capture(page, `${dir}/${role}-reloaded-${width}.png`);
     }
     const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
-    expect(me.role).toBe(role);
-    await writeFile(`${dir}/${role}-auth-me.json`, JSON.stringify({ role: me.role }, null, 2));
+    expect(me.accountType).toBe(role === 'SELLER' ? 'SHOP_STAFF' : role);
+    await writeFile(`${dir}/${role}-auth-me.json`, JSON.stringify({ accountType: me.accountType }, null, 2));
     expect(errors).toEqual([]);
   });
 }

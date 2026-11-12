@@ -216,8 +216,8 @@ test('login, seller, operator and buyer forms separate page, card and field colo
     expect(listed?.name).toBe(product.name);
     const roles = {};
     for (const [name, { page }] of Object.entries({ seller, admin, buyer }))
-      roles[name] = (await page.request.get(`${ec}/api/auth/me`).then((r) => r.json())).role;
-    expect(roles).toEqual({ seller: 'SELLER', admin: 'ADMIN', buyer: 'USER' });
+      roles[name] = (await page.request.get(`${ec}/api/auth/me`).then((r) => r.json())).accountType;
+    expect(roles).toEqual({ seller: 'SHOP_STAFF', admin: 'ADMIN', buyer: 'USER' });
     await writeFile(
       `${dir}/api.json`,
       JSON.stringify(
