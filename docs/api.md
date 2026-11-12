@@ -10,6 +10,10 @@
 | GET | `/products?storeId=1` | 商品、SKU、単価、単位、画像、選択店舗の在庫、出所/更新日時 |
 | GET | `/stores?latitude=35.6812&longitude=139.7671` | 指定地点から直線距離順の店舗。座標は両方省略可能。各店舗は`latitude`・`longitude`（店舗の緯度・経度）を含む |
 | GET | `/cart` | Cookieのカート。初回はサーバーが作成。各明細の `storeId`・`storeName` はその商品の受取店舗。カート直下の `storeId`・`storeName` は商品を表示・追加する店舗 |
+| GET | `/cart`（#119） | 開いたときに、店舗の閉鎖・運営の停止・組織の停止・商品の削除で買えなくなった明細を外し、`removedItems`（`productId`・`name`・`storeName`・`quantity`・`reason`）で返す。外さなかったときは空の配列。各明細の `unavailableReason` は今は買えない理由（非公開・商品の停止・組織の受付停止など。買えるなら null） |
+| — | 購入者の API（#108） | `/cart/**`・`/orders`・`/orders/{id}` 系・`/shopping-lists/**`・`/cart/shopping-lists/**` は、店舗側（`SHOP_OWNER`・`SHOP_STAFF`）と申請中（`SHOP_OWNER_APPLICANT`）のアカウントに 403 `BUYER_REQUIRED` を返す。購入者（`USER`）と運営（`ADMIN`）は使える |
+| POST | `/products/references` | `{ "productIds": [...] }`。削除済みも含めて店舗名・在庫・`purchasable` を返す。`unavailableReason` は買えない理由（`purchasable` が true なら null）：`DELETED`・`STORE_CLOSED`・`STORE_SUSPENDED`・`ORGANIZATION_SUSPENDED`（庭の配置を外す）、`STORE_CLOSING`・`STORE_UNPUBLISHED`・`ORGANIZATION_NOT_ACCEPTING`・`PRODUCT_SUSPENDED`・`HIDDEN`・`OUT_OF_STOCK`（配置を残す）。在庫0は `purchasable:false` |
+| GET | `/stores/{id}` | 店舗の公開ページ。購入者・未ログインには公開中と閉鎖予定（`closingStartedAt` あり）の店舗だけを返し、非公開・停止・閉鎖済み・組織の停止は404。オーナー・担当者（ロール未割り当てを含む）・運営は扱える店舗を見られる |
 | PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除。新しい明細は商品の販売店舗（出店者の商品は出店者の店舗、共通商品は表示中の店舗）を受取店舗として記録し、その店舗の在庫で検証 |
 | PUT | `/cart/store` | `{ "storeId": 2, "revision": 1 }`。商品を表示・追加する店舗を変更。カート内の明細の受取店舗は変えない |
 | POST | `/orders` | 下記の確定要求。受取店舗ごとに1件の注文を作り `{ "orders": [...] }`（店舗ID順）を返す。保存済みの同一要求は同じ注文群を返す |

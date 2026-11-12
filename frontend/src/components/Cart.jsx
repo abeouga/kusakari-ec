@@ -56,6 +56,7 @@ export function Cart({ shop }) {
     return (
       <section className="cart-content cart-empty-state">
         <h2>ショッピングカート</h2>
+        <RemovedNotice shop={shop} />
         {shop.error && (
           <p className="error" role="alert">
             {shop.error}
@@ -85,6 +86,7 @@ export function Cart({ shop }) {
         <li aria-current={confirming ? 'step' : undefined}>お支払い・受け取り</li>
         <li>注文完了</li>
       </ol>
+      <RemovedNotice shop={shop} />
       {shop.error && (
         <p className="error" role="alert">
           {shop.error}
@@ -110,7 +112,10 @@ export function Cart({ shop }) {
                       <MapPin size={14} aria-hidden="true" />
                       受取店舗：{line.storeName}
                     </p>
-                    {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
+                    {line.unavailableReason && <p className="error-text">現在は購入できません</p>}
+                    {!line.available && !line.unavailableReason && (
+                      <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>
+                    )}
                     <div className="quantity-control">
                       <button
                         aria-label={`${line.product.name}を1個減らす`}
@@ -204,6 +209,25 @@ export function Cart({ shop }) {
         </aside>
       </div>
     </section>
+  );
+}
+
+/**
+ * Issue #119: lines removed when the cart was opened because their store closed or was suspended, the organization
+ * was suspended, or the product was deleted. The server removes them once, so the note stays until it is closed.
+ * @param {{shop:ReturnType<import('../useShop').useShop>}} props
+ */
+function RemovedNotice({ shop }) {
+  if (!shop.removedLines.length) return null;
+  return (
+    <div className="cart-removed-notice" role="status">
+      {shop.removedLines.map((line) => (
+        <p key={line.productId}>{line.name}は購入できなくなったためカートから外しました。</p>
+      ))}
+      <button type="button" className="text-button" onClick={() => shop.setRemovedLines([])}>
+        閉じる
+      </button>
+    </div>
   );
 }
 

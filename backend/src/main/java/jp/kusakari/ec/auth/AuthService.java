@@ -140,12 +140,66 @@ public class AuthService {
     return List.of();
   }
 
+  /** 店舗の情報と、出店者の商品一覧・在庫を見られる店舗。子アカウントはロール未割り当ての所属店舗も含む。 */
+  public List<Long> viewableStoreIdsOf(AuthMember member) {
+    if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) return storeIdsOf(member);
+    return storeMembers.findAllForMember(member.getId()).stream().map(assignment -> assignment.getId().getStoreId()).toList();
+  }
+
+  /**
+   * 購入者として、カート・注文・庭の買い物リストを使えるか。使えるのは購入者（USER）と運営（ADMIN）だけ。
+   * 店舗側のアカウント（オーナー・子アカウント）と申請中のアカウントは購入できない（#108）。
+   */
+  public AuthMember requireBuyer() {
+    var member = current();
+    if (!AuthMember.USER.equals(member.getAccountType()) && !member.isAdmin()) throw new ApiException(
+      403,
+      "BUYER_REQUIRED",
+      "店舗・出店申請用のアカウントでは購入できません。購入者のアカウントでご利用ください。"
+    );
+    return member;
+  }
+
+  /** 店舗の情報と、出店者の商品一覧・在庫を見られるか（GET だけ）。ロール未割り当ての担当者も、所属店舗なら見られる（#105）。 */
+  public void requireStoreViewer(Long storeId) {
+    if (!enabled()) return;
+    if (!canManageView(current(), storeId == null ? null : stores.findById(storeId).orElse(null))) denied();
+  }
+
+  /**
+   * 店舗の公開ページを、店舗側の立場（オーナー・担当者・運営）で見られるか。ログインしていなければ false。
+   * 運営が停止した店舗は、ほかの操作と同じく運営だけが見られる。
+   */
+  @Transactional(readOnly = true)
+  public boolean canViewAsStaff(StoreEntity store) {
+    if (!enabled()) return true;
+    try {
+      return canManageView(current(), store);
+    } catch (ApiException error) {
+      if (error.status() == 401 || error.status() == 403) return false;
+      throw error;
+    }
+  }
+
+  private boolean canManageView(AuthMember member, StoreEntity store) {
+    if (member.isAdmin()) return true;
+    if (store == null || store.isSuspended()) return false;
+    if (AuthMember.SHOP_OWNER.equals(member.getAccountType())) {
+      var organization = organizations.findByOwnerMemberId(member.getId()).orElse(null);
+      return organization != null && organization.getId().equals(store.getOrganizationId());
+    }
+    return (
+      AuthMember.SHOP_STAFF.equals(member.getAccountType()) &&
+      storeMembers.existsById(new StoreMemberId(store.getId(), member.getId()))
+    );
+  }
+
   /** 店舗の商品・在庫・注文を扱えるか（STAFF 以上）。運営が停止した店舗は、運営だけが扱える。 */
   public void requireSeller(Long storeId) {
     requireStoreRole(storeId, false);
   }
 
-  /** 店舗の情報の編集、商品の登録・削除、キャンセルへの対応ができるか（オーナーか MANAGER）。 */
+  /** 店舗の情報の編集、商品の登録・削除、キャンセルへの対応ができるか（オーナーか MANAGER）。商品の編集は STAFF もできる。 */
   public void requireManager(Long storeId) {
     requireStoreRole(storeId, true);
   }

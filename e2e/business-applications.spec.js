@@ -237,11 +237,12 @@ test('approved applicant manages only the new store; stale stock, confirmations 
     await expect(confirmStatus).toContainText('停止中はログインできません');
     await confirmStatus.getByRole('button', { name: '取消', exact: true }).click();
     await expect(card).toContainText('利用中');
-    expect((await call(user.request, '/orders')).status()).toBe(200);
+    // The approved applicant is a shop owner now, so the buyer APIs refuse it (issue #108); notifications check the session.
+    expect((await call(user.request, '/notifications')).status()).toBe(200);
     await card.getByRole('button', { name: '利用を停止', exact: true }).click();
     await confirmStatus.getByRole('button', { name: '利用停止を確定', exact: true }).click();
     await expect(card).toContainText('利用停止');
-    expect((await call(user.request, '/orders')).status()).toBe(403);
+    expect((await call(user.request, '/notifications').then((r) => r.json())).code).toBe('ACCOUNT_DISABLED');
     await card.getByRole('button', { name: '利用を再開', exact: true }).click();
     await confirmStatus.getByRole('button', { name: '利用再開を確定', exact: true }).click();
     await expect(card).toContainText('利用中');

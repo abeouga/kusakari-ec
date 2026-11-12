@@ -75,7 +75,9 @@ public final class CatalogDtos {
     Long storeId,
     String storeName,
     int stock,
-    boolean purchasable
+    boolean purchasable,
+    // purchasable が false の理由（true なら null）。CatalogService の UNAVAILABLE_* の値。
+    String unavailableReason
   ) {}
 
   public record ProductReferenceRequest(

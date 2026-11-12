@@ -148,3 +148,17 @@
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* Issue #119: lines the server removed because they can no longer be bought. */
+.cart-removed-notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #e0c9a6;
+  border-radius: 8px;
+  background: #fbf4e8;
+  color: #5b4320;
+  font-size: 14px;
+}
+.cart-removed-notice p {
+  margin: 0 0 4px;
+}

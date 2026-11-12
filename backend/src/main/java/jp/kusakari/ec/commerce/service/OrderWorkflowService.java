@@ -42,6 +42,7 @@ public class OrderWorkflowService {
 
   @Transactional(readOnly = true)
   public OrderView buyerOrder(String id) {
+    auth.requireBuyer();
     var order = orders.findById(id).orElseThrow(this::missing);
     requireBuyer(order);
     return view(order);
@@ -72,6 +73,7 @@ public class OrderWorkflowService {
   }
 
   public OrderView requestCancellation(String id, String reason) {
+    auth.requireBuyer();
     var order = orders.lockOrder(id).orElseThrow(this::missing);
     requireBuyer(order);
     if (!order.getStatus().equals("ACCEPTED") || order.getCancellationStatus().equals("PENDING")) conflict();
@@ -114,7 +116,7 @@ public class OrderWorkflowService {
   }
 
   private void requireBuyer(OrderEntity order) {
-    if (!auth.current().getId().equals(order.getBuyerMemberId())) throw missing();
+    if (!auth.requireBuyer().getId().equals(order.getBuyerMemberId())) throw missing();
   }
 
   // ほかの店舗の注文は、ないものとして返す（注文の有無を知らせない）。

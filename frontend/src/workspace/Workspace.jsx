@@ -25,7 +25,7 @@ import { ProductManager } from '../components/ProductManager';
 import { SellerStoreSelect } from '../components/SellerStoreSelect';
 import { SellerStoresPage } from './SellerStores';
 import { PageLink } from './Common';
-import { canSell } from '../auth';
+import { buyerOnlyMessage, canSell, isShopAccount } from '../auth';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
@@ -141,7 +141,15 @@ export function Workspace({ shop, path, header }) {
   let content;
   const action = accountActions.find((a) => a[0] === path);
   if (path === '/account' || action) content = <AccountPage key={path} tab={action?.[1] || 'アカウント情報'} />;
-  else if (path === '/purchases') content = <BuyerOrders />;
+  else if (path === '/purchases')
+    // Issue #108: orders are for buyers; the API refuses shop accounts and applicants.
+    content = isShopAccount(session) ? (
+      <p className="buyer-only-note" role="note">
+        {buyerOnlyMessage}
+      </p>
+    ) : (
+      <BuyerOrders />
+    );
   else if (path.endsWith('/notifications')) content = <Notices />;
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller/products')} embedded />;

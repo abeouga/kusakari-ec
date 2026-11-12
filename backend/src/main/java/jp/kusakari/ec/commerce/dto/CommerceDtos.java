@@ -21,17 +21,24 @@ public final class CommerceDtos {
   /** One checkout creates one order per store (issue #70), ordered by store ID. */
   public record CheckoutResult(List<OrderView> orders) {}
 
-  /** storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。 */
+  /**
+   * storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。
+   * unavailableReason は今は買えない理由（非公開・商品の停止など。買えるなら null）。在庫不足だけなら null で available が false。
+   */
   public record CartLine(
     ProductView product,
     int quantity,
     int lineTotalYen,
     boolean available,
     long storeId,
-    String storeName
+    String storeName,
+    String unavailableReason
   ) {}
 
-  /** 送料はないので、subtotalYen と totalYen は同じ値。受取店舗は明細ごとの {@link CartLine#storeId()}。 */
+  /**
+   * 送料はないので、subtotalYen と totalYen は同じ値。受取店舗は明細ごとの {@link CartLine#storeId()}。
+   * removedItems は、カートを開いたときに買えなくなったため外した明細（#119）。外さなかったときは空。
+   */
   public record CartView(
     long revision,
     List<CartLine> items,
@@ -39,8 +46,12 @@ public final class CommerceDtos {
     int itemCount,
     boolean canCheckout,
     int subtotalYen,
-    DeliveryDtos.DetailsView details
+    DeliveryDtos.DetailsView details,
+    List<RemovedLine> removedItems
   ) {}
+
+  /** 外した明細。reason は DELETED / STORE_CLOSED / STORE_SUSPENDED / ORGANIZATION_SUSPENDED のどれか。 */
+  public record RemovedLine(String productId, String name, String storeName, int quantity, String reason) {}
 
   public record OrderLine(
     String productId,

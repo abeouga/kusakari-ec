@@ -93,8 +93,10 @@
 .garden-item:has(input:checked) { border-color: #285746; background: #f1f5ee; }
 .garden-item:has(input:focus-visible) { outline: 3px solid #b98b42; outline-offset: 2px; }
 .garden-item.is-unavailable { cursor: default; opacity: .6; }
-.garden-item > input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: #285746; }
-.garden-item > img, .garden-item-noimage { flex: 0 0 auto; width: 56px; height: 70px; border-radius: 8px; object-fit: cover; background: #f2f5ee; }
+.garden-item-pick { display: contents; }
+.garden-item-pick > input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: #285746; }
+.garden-item-name { display: grid; gap: 4px; cursor: inherit; }
+.garden-item-pick > img, .garden-item-noimage { flex: 0 0 auto; width: 56px; height: 70px; border-radius: 8px; object-fit: cover; background: #f2f5ee; }
 .garden-item-info { display: grid; flex: 1; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
 .garden-item-info strong { font-size: 14px; font-weight: 600; }
 .garden-item-info small { color: #7c8777; font-size: 12px; }
@@ -109,7 +111,7 @@
   .garden-items-footer { margin: 14px -18px -22px; padding: 14px 18px; }
   .garden-items-footer button { flex: 1; padding: 12px; white-space: nowrap; }
   .garden-item { gap: 10px; padding: 10px; }
-  .garden-item > img, .garden-item-noimage { width: 48px; height: 60px; }
+  .garden-item-pick > img, .garden-item-noimage { width: 48px; height: 60px; }
   .garden-item-price { font-size: 13px; }
   .garden-items-dialog .dialog-heading h2 { font-size: 18px; }
 }

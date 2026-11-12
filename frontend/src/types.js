@@ -40,8 +40,9 @@
  *
  * @typedef {{id:number, name:string, address:string, hours:string, latitude:number|null, longitude:number|null, distanceKm:number|null}} Store
  * storeId/storeName: the line's pickup store, which is the product's store (issue #70).
- * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean, storeId:number, storeName:string}} CartLine
- * @typedef {{revision:number, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, details:DeliveryDetails}} Cart
+ * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean, storeId:number, storeName:string, unavailableReason:string|null}} CartLine
+ * @typedef {{productId:string, name:string, storeName:string, quantity:number, reason:string}} RemovedCartLine
+ * @typedef {{revision:number, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, details:DeliveryDetails, removedItems:RemovedCartLine[]}} Cart
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number, imageUrl:string|null}} OrderLine
  * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], details:DeliveryDetails}} Order
  * @typedef {{orders:Order[]}} CheckoutResult One order per pickup store (issue #70).

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError, request } from './api';
-import { canSell, login, readSession } from './auth';
+import { canSell, isShopAccount, login, readSession } from './auth';
 import { useAuth } from './useAuth';
 
 export function useShop() {
@@ -18,6 +18,10 @@ export function useShop() {
   );
   // Issue #10: the cart is for signed-in members only. Signed-out visitors browse the public catalog.
   const [signedOut, setSignedOut] = useState(false);
+  // Issue #108: the server refuses the cart for shop accounts and applicants; they browse the catalog only.
+  const [refusedBuyer, setRefusedBuyer] = useState(false);
+  // Issue #119: lines the server took out of the cart because they can no longer be bought.
+  const [removedLines, setRemovedLines] = useState(/** @type {import('./types').RemovedCartLine[]} */ ([]));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -30,15 +34,19 @@ export function useShop() {
     try {
       nextCart = await api.cart();
     } catch (reason) {
-      if (!(reason instanceof ApiError) || reason.status !== 401) throw reason;
-      setSignedOut(true);
+      const refused = reason instanceof ApiError && reason.status === 403 && reason.code === 'BUYER_REQUIRED';
+      if (!(reason instanceof ApiError) || (reason.status !== 401 && !refused)) throw reason;
+      setSignedOut(!refused);
+      setRefusedBuyer(refused);
       setCart(null);
       setOrders([]);
       setProducts(await api.products());
       return;
     }
     setSignedOut(false);
+    setRefusedBuyer(false);
     setCart(nextCart);
+    if (nextCart.removedItems?.length) setRemovedLines(nextCart.removedItems);
     const nextProducts = await api.products();
     const nextOrders = await api.orders();
     setProducts(nextProducts);
@@ -138,15 +146,21 @@ export function useShop() {
 
   async function checkoutCart() {
     const session = await readSession();
-    if (!session.authenticated) { login(); return null; }
+    if (!session.authenticated) {
+      login();
+      return null;
+    }
     const current = await api.cart();
     setCart(current);
+    if (current.removedItems?.length) setRemovedLines(current.removedItems);
     return current;
   }
 
   async function beginCheckout() {
     let ready = false;
-    await run(async () => { ready = !!(await checkoutCart()); });
+    await run(async () => {
+      ready = !!(await checkoutCart());
+    });
     return ready;
   }
 
@@ -250,6 +264,9 @@ export function useShop() {
 
   return {
     signedOut,
+    buyerBlocked: refusedBuyer || isShopAccount(session),
+    removedLines,
+    setRemovedLines,
     beginCheckout,
     sellerStoreId,
     sellerStores,
