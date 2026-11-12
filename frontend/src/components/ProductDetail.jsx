@@ -6,8 +6,9 @@ import { ShoppingBag, MapPin, Eye, ArrowUpRight } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { yen } from '../api';
 
-/** @param {{product:import('../types').Product,storeName:string,storeId?:number,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
-export function ProductDetail({ product, storeName, storeId = 1, onClose, onAdd, busy, notice, error }) {
+/** The pickup store is the product's store. @param {{product:import('../types').Product,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
+export function ProductDetail({ product, onClose, onAdd, busy, notice, error }) {
+  const storeName = product.sellerStoreName;
   const [image, setImage] = useState(product.imageUrl);
   const [quantity, setQuantity] = useState(1);
 
@@ -50,7 +51,7 @@ export function ProductDetail({ product, storeName, storeId = 1, onClose, onAdd,
           <div className="spec-chips">
             <div>
               <small>出店者・生産者</small>
-              <PageLink href={`/store/${product.sellerStoreId ?? storeId}`}>販売店舗の紹介を見る</PageLink>
+              <PageLink href={`/store/${product.sellerStoreId}`}>販売店舗の紹介を見る</PageLink>
               <strong>{catalogText(product.nurseryName) || '未設定'}</strong>
               <small>{catalogText(product.nurseryAddress)}</small>
             </div>

@@ -79,8 +79,8 @@ export const api = {
   cart: () => request('/cart'),
   /** @param {number} id @returns {Promise<import('./types').Store>} */
   store: (id) => request(`/stores/${id}`),
-  /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
-  products: (storeId) => request(`/products?storeId=${storeId}`),
+  /** The products buyers can see at every open store. @returns {Promise<import('./types').Product[]>} */
+  products: () => request('/products'),
   /** @param {number} storeId @returns {Promise<import('./types').Product[]>} */
   sellerProducts: (storeId) => request(`/seller/products?storeId=${storeId}`),
   /** @param {number} storeId @param {string[]} productIds @param {string} status */
@@ -91,8 +91,6 @@ export const api = {
   /** @param {string} id @param {number} quantity @param {number} revision @returns {Promise<import('./types').Cart>} */
   setItem: (id, quantity, revision) =>
     request(`/cart/items/${encodeURIComponent(id)}`, 'PUT', JSON.stringify({ quantity, revision })),
-  /** @param {number} storeId @param {number} revision @returns {Promise<import('./types').Cart>} */
-  setStore: (storeId, revision) => request('/cart/store', 'PUT', JSON.stringify({ storeId, revision })),
   /** @param {import('./types').Checkout} payload @returns {Promise<import('./types').CheckoutResult>} */
   checkout: (payload) => request('/orders', 'POST', JSON.stringify(payload)),
   /** @returns {Promise<import('./types').Order[]>} */

@@ -80,11 +80,6 @@ export function Cart({ shop }) {
   return (
     <section className="cart-content">
       <h2>{title}</h2>
-      {shop.isGuest && (
-        <p role="status" className="fine-print">
-          このカートは一時的なものです。再読み込みやECを離れると消えます。ログイン後に価格・在庫を再確認します。
-        </p>
-      )}
       <ol className="checkout-steps" aria-label="購入の手順">
         <li aria-current={confirming ? undefined : 'step'}>カート</li>
         <li aria-current={confirming ? 'step' : undefined}>お支払い・受け取り</li>
@@ -113,7 +108,7 @@ export function Cart({ shop }) {
                     <p>{yen(line.product.priceYen)} / 1鉢</p>
                     <p className="cart-line-store">
                       <MapPin size={14} aria-hidden="true" />
-                      受取店舗：{line.storeName ?? cart.storeName}
+                      受取店舗：{line.storeName}
                     </p>
                     {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
                     <div className="quantity-control">
@@ -160,10 +155,6 @@ export function Cart({ shop }) {
                 商品小計（税込）<small> / 内税10%</small>
               </span>
               <span>{yen(cart.subtotalYen)}</span>
-            </div>
-            <div>
-              <span>受取料金</span>
-              <span>{yen(cart.shippingFeeYen)}</span>
             </div>
             <div>
               <span>うち消費税（内税10%）</span>
@@ -245,7 +236,6 @@ export function OrderSummary({ order }) {
           <strong>{yen(item.lineTotalYen)}</strong>
         </div>
       ))}
-      <p className="fine-print">商品小計 {yen(order.subtotalYen)}</p>
       <div className="grand-total">
         <strong>合計（税込）</strong>
         <strong>{yen(order.totalYen)}</strong>

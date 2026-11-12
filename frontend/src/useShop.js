@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError } from './api';
-import { login, readSession } from './auth';
-import { repriceGuestCart } from './guestCart';
+import { api, ApiError, request } from './api';
+import { canSell, login, readSession } from './auth';
 import { useAuth } from './useAuth';
 
 export function useShop() {
   const { session } = useAuth();
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
   const [chosenSellerStoreId, setSellerStoreId] = useState(0);
+  const [ownStores, setOwnStores] = useState(/** @type {{id:number,name:string,address:string}[]|null} */ (null));
   const [products, setProducts] = useState(/** @type {import('./types').Product[]} */ ([]));
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
@@ -24,13 +24,6 @@ export function useShop() {
   const [locationLabel, setLocationLabel] = useState('東京駅');
   const checkoutRequest = useRef(/** @type {import('./types').Checkout|null} */ (null));
   const operation = useRef(false);
-  const guestCart = useRef(/** @type {import('./types').Cart|null} */ (null));
-  const guestPlan = useRef(/** @type {import('./types').GuestCartPlan|null} */ (null));
-
-  const rememberGuest = useCallback(/** @param {import('./types').Cart} next */ (next) => {
-    guestCart.current = next;
-    setCart(next);
-  }, []);
 
   const refresh = useCallback(async () => {
     let nextCart;
@@ -41,12 +34,12 @@ export function useShop() {
       setSignedOut(true);
       setCart(null);
       setOrders([]);
-      setProducts(await api.products(1));
+      setProducts(await api.products());
       return;
     }
     setSignedOut(false);
     setCart(nextCart);
-    const nextProducts = await api.products(nextCart.storeId);
+    const nextProducts = await api.products();
     const nextOrders = await api.orders();
     setProducts(nextProducts);
     setOrders(nextOrders);
@@ -99,6 +92,20 @@ export function useShop() {
     void initialize();
   }, [initialize]);
 
+  const sellerAccount = canSell(session);
+  const reloadSellerStores = useCallback(async () => {
+    if (!sellerAccount) return;
+    try {
+      setOwnStores(await request('/seller/stores'));
+    } catch {
+      // The seller pages then report that no store can be managed.
+      setOwnStores([]);
+    }
+  }, [sellerAccount]);
+  useEffect(() => {
+    void reloadSellerStores();
+  }, [reloadSellerStores]);
+
   /** @param {string} id @param {number} quantity */
   function setQuantity(id, quantity) {
     return run(async () => {
@@ -127,27 +134,6 @@ export function useShop() {
     const line = cart.items.find((item) => item.product.id === id);
     if (line) currentQuantity = line.quantity;
     return setQuantity(id, currentQuantity + quantity);
-  }
-
-  /** @param {number} id */
-  function selectStore(id) {
-    return run(async () => {
-      if (!cart) return;
-      if (cart.guest) {
-        if (guestPlan.current) throw new Error('引き継ぎ結果を確認中です。注文手続きを再試行してください。');
-        const [nextProducts, store] = await Promise.all([api.products(id), api.store(id)]);
-        rememberGuest(repriceGuestCart(cart, store, nextProducts));
-        setProducts(nextProducts);
-        setNotice('受取店舗を変更しました。在庫を確認してください。');
-        return;
-      }
-      const next = await api.setStore(id, cart.revision);
-      setCart(next);
-      checkoutRequest.current = null;
-      setProducts(await api.products(id));
-      // Issue #70: lines already in the cart keep the store they were added from.
-      setNotice('店舗を変更しました。これから追加する商品はこの店舗で受け取ります。');
-    });
   }
 
   async function checkoutCart() {
@@ -254,25 +240,22 @@ export function useShop() {
     return result;
   }
 
-  // Sellers manage only the store recorded on their member account; administrators may choose any store.
-  const ownStoreIds = session?.role === 'ADMIN' ? null : (session?.storeIds ?? []);
-  /** @type {{id:number,name:string,address?:string,latitude?:number,longitude?:number}[]} */
-  const sellerStores = ownStoreIds
-    ? ownStoreIds.map((id) => stores.find((store) => store.id === id) ?? { id, name: `店舗 ${id}` })
-    : stores;
+  // The server lists what this account operates: the owner's stores (unpublished ones too), the staff's assigned
+  // stores, or every store for the operator. The public list only adds each store's position for the map.
+  /** @type {{id:number,name:string,address?:string,latitude?:number|null,longitude?:number|null}[]} */
+  const sellerStores = (ownStores ?? []).map((own) => ({ ...stores.find((store) => store.id === own.id), ...own }));
   const sellerStoreId = sellerStores.some((store) => store.id === chosenSellerStoreId)
     ? chosenSellerStoreId
     : (sellerStores[0]?.id ?? 0);
 
   return {
-    // Always false now that guest carts are gone; Cart/CartPage still read it; remove with the selectStore guest branch.
-    isGuest: !!cart?.guest,
     signedOut,
     beginCheckout,
     sellerStoreId,
     sellerStores,
-    sellerStoresLoading: !session || (!ownStoreIds && !stores.length),
+    sellerStoresLoading: !session || (sellerAccount && ownStores === null),
     setSellerStoreId,
+    reloadSellerStores,
     refreshProducts: refresh,
     transferShoppingList,
     shoppingTransfer,
@@ -296,7 +279,6 @@ export function useShop() {
     initialize,
     add,
     setQuantity,
-    selectStore,
     checkout,
     locate,
     geolocate,

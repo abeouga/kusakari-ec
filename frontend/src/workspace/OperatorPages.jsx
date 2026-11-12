@@ -4,21 +4,21 @@ import { ResourceStatus, Input, values } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 /** @type {Record<string,string>} */
-const applicationLabels = { PENDING: '審査中', APPROVED: '承認', REJECTED: '却下' };
+const applicationLabels = { SUBMITTED: '審査中', APPROVED: '承認', REJECTED: '却下', WITHDRAWN: '取り下げ済み' };
 
 /** Pending applications first, oldest first (review queue); reviewed ones follow, newest first.
  * @param {import('../businessTypes').Review} a @param {import('../businessTypes').Review} b */
 function reviewOrder(a, b) {
-  const pending = Number(b.status === 'PENDING') - Number(a.status === 'PENDING');
+  const pending = Number(b.status === 'SUBMITTED') - Number(a.status === 'SUBMITTED');
   if (pending) return pending;
   const time = Date.parse(a.createdAt ?? '') - Date.parse(b.createdAt ?? '');
-  return a.status === 'PENDING' ? time : -time;
+  return a.status === 'SUBMITTED' ? time : -time;
 }
 
 /** @param {{products?:boolean}} props */
 export function ReviewPage({ products = false }) {
   const resource = useResource(products ? '/operator/products' : '/operator/applications');
-  const [scope, setScope] = useState('PENDING');
+  const [scope, setScope] = useState('SUBMITTED');
   const rows = /** @type {import('../businessTypes').Review[]} */ (resource.data ?? []);
   const shown = products ? rows : rows.filter((row) => scope === 'ALL' || row.status === scope).sort(reviewOrder);
   return (
@@ -28,7 +28,7 @@ export function ReviewPage({ products = false }) {
         <label>
           表示する申請
           <select value={scope} onChange={(e) => setScope(e.target.value)}>
-            <option value="PENDING">審査中</option>
+            <option value="SUBMITTED">審査中</option>
             <option value="ALL">すべて</option>
           </select>
         </label>
@@ -44,7 +44,7 @@ export function ReviewPage({ products = false }) {
         <p>
           {products
             ? '対象の商品はありません。'
-            : scope === 'PENDING'
+            : scope === 'SUBMITTED'
               ? '審査待ちの出店申請はありません。'
               : '出店申請はありません。'}
         </p>
@@ -59,6 +59,7 @@ function ProductModerationRow({ row, resource }) {
   return (
     <section className="workspace-card">
       <h3>{row.name}</h3>
+      <p>店舗：{row.storeName}</p>
       <p>{row.suspended ? '公開停止中' : row.active ? '公開可能' : '販売終了'}</p>
       <label>
         理由・コメント
@@ -102,13 +103,13 @@ function ApplicationRow({ row, resource }) {
         申請者：{row.contact} / 申請日：{row.createdAt ? new Date(row.createdAt).toLocaleDateString('ja-JP') : '不明'}
       </p>
       <p>
-        {row.email} / {row.address} / {row.phone} / {row.plan}
+        {row.email} / {row.address} / {row.phone}
       </p>
       <p>
         {applicationLabels[row.status] || row.status} {row.reason}
       </p>
       <a href={`/api/account/store-applications/${row.id}/document`}>提出書類を確認</a>
-      {row.status === 'PENDING' && (
+      {row.status === 'SUBMITTED' && (
         <div>
           <label>
             却下理由
@@ -166,7 +167,7 @@ export function MembersPage({ sellers = false }) {
         <section className="workspace-card" key={m.id}>
           <h3>{m.name}</h3>
           <p>
-            {m.email} / {m.role || m.address}
+            {m.email} / {sellers ? m.address : m.accountType}
           </p>
           <p>{m.withdrawnAt ? '退会済み' : m.enabled ? '利用中' : '利用停止'}</p>
           {/* EC-A02 6a: administrators and withdrawn members also go through the dialog; the server rejects the

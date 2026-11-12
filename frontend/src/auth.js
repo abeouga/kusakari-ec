@@ -1,6 +1,14 @@
 import { navigate, redirect } from './workspace/navigation';
 
-/** @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,role:string|null,storeIds:number[]}} AuthSession */
+/**
+ * accountType is USER, SHOP_OWNER_APPLICANT, SHOP_OWNER, SHOP_STAFF or ADMIN.
+ * storeIds are the stores the account may operate: every store of the owner's organization, or the staff's assigned stores.
+ * @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,accountType:string|null,organizationId:number|null,storeIds:number[]}} AuthSession
+ */
+
+/** Accounts that may open the seller pages: the shop's owner and staff, and the operator. @param {AuthSession|null} session */
+export const canSell = (session) =>
+  !!session?.authenticated && ['SHOP_OWNER', 'SHOP_STAFF', 'ADMIN'].includes(session.accountType || '');
 
 let signedIn = false;
 
@@ -55,7 +63,7 @@ export class AuthError extends Error {
   }
 }
 
-/** @param {string} url @param {Record<string,string>} body @param {string} fallback */
+/** @param {string} url @param {Record<string,string|boolean>} body @param {string} fallback */
 async function postAuth(url, body, fallback) {
   const response = await authFetch(url, {
     method: 'POST',
@@ -80,12 +88,13 @@ export async function passwordLogin(email, password, returnTo) {
 
 /**
  * Issue #87: Cognito sends a confirmation code to the address; the card then asks for it.
- * @param {string} email @param {string} password @param {string} confirmPassword
+ * A business sign-up creates the account that may apply to open a shop.
+ * @param {string} email @param {string} password @param {string} confirmPassword @param {boolean} business
  */
-export async function signUp(email, password, confirmPassword) {
+export async function signUp(email, password, confirmPassword, business) {
   await postAuth(
     '/api/auth/signup',
-    { email, password, confirmPassword },
+    { email, password, confirmPassword, business },
     '登録できませんでした。時間をおいて再試行してください。',
   );
 }

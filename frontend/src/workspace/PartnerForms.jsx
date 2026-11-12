@@ -26,9 +26,10 @@ export function ProfilePage({ storeId, readOnly = false }) {
             </>
           ) : (
             <form key={p.revision} className="workspace-form" onSubmit={save}>
+              {/* The company is the organization's name, set by the approved application. */}
+              <p className="full-width">会社名：{p.company}</p>
               {[
                 ['name', '店舗名', 100],
-                ['company', '会社名', 100],
                 ['contact', '担当者', 100],
                 ['email', '問い合わせメール', 200],
                 ['address', '所在地', 200],

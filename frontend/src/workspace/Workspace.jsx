@@ -3,7 +3,18 @@ import { ProfilePage } from './PartnerForms';
 import { ApplicationPage, ApplicationStatusPage, applicationPaths, applicationsChanged } from './StoreApplication';
 import { useResource } from './useResource';
 import { useEffect, useState } from 'react';
-import { Bell, ChartColumn, ClipboardCheck, Package, ReceiptText, Store, Tags, UserRound, Users } from 'lucide-react';
+import {
+  Bell,
+  Building2,
+  ChartColumn,
+  ClipboardCheck,
+  Package,
+  ReceiptText,
+  Store,
+  Tags,
+  UserRound,
+  Users,
+} from 'lucide-react';
 import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -11,6 +22,10 @@ import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
 import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
+import { SellerStoreSelect } from '../components/SellerStoreSelect';
+import { SellerStoresPage } from './SellerStores';
+import { PageLink } from './Common';
+import { canSell } from '../auth';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
@@ -21,6 +36,7 @@ const sellerMenu = [
   ['/seller/products', '商品管理', Package],
   ['/seller/orders', '店舗受け取り', Store],
   ['/seller/sales', '注文実績', ChartColumn],
+  ['/seller/stores', '店舗一覧', Building2],
   ['/seller/profile', '店舗プロフィール', UserRound],
   ['/seller/notifications', '出店者通知', Bell],
 ];
@@ -49,16 +65,17 @@ const pageTitles = {
   // Issue #44: the new-product page has no sidebar link; show what the page is for.
   '/seller/products/new': '商品登録',
 };
+// Pages that work on one store: an account with several stores chooses which one above the page.
+const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile']);
 // Issue #71: these pages show their heading inside the card instead of above it.
 const cardTitlePaths = new Set(['/seller/products', '/seller/products/new']);
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
 export function Workspace({ shop, path, header }) {
   const { session, error } = useAuth();
   const [sidebarClosed, setSidebarClosed] = useState(false);
-  // EC-B18: buyers see "出店申請" until they apply, then "出店申請状況" (also after a rejection).
-  const applications = useResource(
-    session?.authenticated && session.role === 'USER' ? '/account/store-applications' : null,
-  );
+  // EC-B18: an applicant sees "出店申請" until they apply, then "出店申請状況" (also after a rejection).
+  const applicant = !!session?.authenticated && session.accountType === 'SHOP_OWNER_APPLICANT';
+  const applications = useResource(applicant ? '/account/store-applications' : null);
   const reloadApplications = applications.reload;
   useEffect(() => {
     const reload = () => void reloadApplications();
@@ -98,7 +115,7 @@ export function Workspace({ shop, path, header }) {
         </main>
       </>
     );
-  if ((seller && !['SELLER', 'ADMIN'].includes(session.role || '')) || (operator && session.role !== 'ADMIN'))
+  if ((seller && !canSell(session)) || (operator && session.accountType !== 'ADMIN'))
     return (
       <>
         {header}
@@ -107,7 +124,7 @@ export function Workspace({ shop, path, header }) {
         </main>
       </>
     );
-  const storeId = session.storeIds[0] ?? shop.sellerStoreId;
+  const storeId = shop.sellerStoreId;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
@@ -115,7 +132,7 @@ export function Workspace({ shop, path, header }) {
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
-          ...(session.role === 'USER' ? [{ label: '出店をご検討の方', items: [applicationLink] }] : []),
+          ...(applicant ? [{ label: '出店をご検討の方', items: [applicationLink] }] : []),
         ];
   const menu = groups.flatMap((group) => group.items);
   // Issue #27: seller and operator pages hold wide tables, so their sidebar can be folded away.
@@ -129,9 +146,21 @@ export function Workspace({ shop, path, header }) {
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller/products')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
-  else if (path === '/seller/profile') content = <ProfilePage storeId={storeId} />;
-  else if (path === applicationPaths.status) content = <ApplicationStatusPage role={session.role} />;
-  else if (application) content = <ApplicationPage role={session.role} />;
+  else if (path === '/seller/stores')
+    content = <SellerStoresPage shop={shop} owner={session.accountType === 'SHOP_OWNER'} />;
+  else if (storePaths.has(path) && shop.sellerStoresLoading)
+    content = <p role="status">管理する店舗を確認しています。</p>;
+  else if (storePaths.has(path) && !storeId)
+    // An owner has no store right after the approval; a staff account has none until a store is assigned.
+    content = (
+      <section className="workspace-card">
+        <p>管理できる店舗がまだありません。</p>
+        <PageLink href="/seller/stores">店舗一覧を開く</PageLink>
+      </section>
+    );
+  else if (path === '/seller/profile') content = <ProfilePage key={storeId} storeId={storeId} />;
+  else if (path === applicationPaths.status) content = <ApplicationStatusPage accountType={session.accountType} />;
+  else if (application) content = <ApplicationPage accountType={session.accountType} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
     content = <OrderPage storeId={storeId} operator={operator} />;
   else if (path === '/seller/sales') content = <SalesPage storeId={storeId} />;
@@ -162,6 +191,7 @@ export function Workspace({ shop, path, header }) {
           />
           <main className="workspace-main">
             {!cardTitlePaths.has(path) && <h1>{title}</h1>}
+            {storePaths.has(path) && shop.sellerStores.length > 1 && <SellerStoreSelect shop={shop} disabled={false} />}
             {content}
           </main>
         </div>

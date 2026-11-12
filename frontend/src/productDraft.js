@@ -31,6 +31,8 @@ export const emptyProduct = {
   publishedAt: '',
   active: true,
   publicationStatus: 'PUBLISHED',
+  sellerStoreId: 0,
+  sellerStoreName: '',
   images: [],
 };
 

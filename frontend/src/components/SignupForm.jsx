@@ -38,7 +38,7 @@ export function SignupForm({ step, initialEmail = '', initialPassword = '', retu
     const address = String(data.get('email') || '').trim();
     const secret = String(data.get('password') || '');
     void run(async () => {
-      await signUp(address, secret, String(data.get('confirmPassword') || ''));
+      await signUp(address, secret, String(data.get('confirmPassword') || ''), data.get('business') === 'on');
       setEmail(address);
       setPassword(secret);
       onStep('confirm');
@@ -153,6 +153,10 @@ export function SignupForm({ step, initialEmail = '', initialPassword = '', retu
             maxLength={256}
             disabled={busy}
           />
+        </label>
+        <label className="auth-check">
+          <input name="business" type="checkbox" disabled={busy} />
+          企業様向け：出店を申請するアカウントとして登録する
         </label>
         <button className="auth-submit" type="submit" disabled={busy}>
           {busy ? '登録中…' : '確認コードを送信'}
