@@ -3,11 +3,14 @@
  * control the plant type does not use) are skipped: they keep their last usable value in the profile and cannot be
  * focused. Hidden wizard steps (`data-step`) are still checked, because the form reveals that step.
  * @param {Element|null|undefined} root
+ * @param {string[]} [ignoredNames] input names to skip for a specific validation pass
  * @returns {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null}
  */
-export function firstInvalid(root) {
+export function firstInvalid(root, ignoredNames = []) {
   if (!root) return null;
+  const ignored = new Set(ignoredNames);
   for (const element of root.querySelectorAll('input:invalid,select:invalid,textarea:invalid')) {
+    if (ignored.has(/** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} */ (element).name)) continue;
     const hidden = element.closest('[hidden]');
     if (!hidden || hidden.hasAttribute('data-step'))
       return /** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} */ (element);

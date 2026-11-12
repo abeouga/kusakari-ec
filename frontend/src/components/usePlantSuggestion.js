@@ -55,9 +55,9 @@ export function usePlantSuggestion(product, editing, category) {
     setHeightValue(value);
     setEstimated(false);
   }
-  /** @param {import('../types').PlantModelProfile} value */
+  /** @param {import('../types').PlantModelProfile | ((current:import('../types').PlantModelProfile)=>import('../types').PlantModelProfile)} value */
   function changeProfile(value) {
-    setProfile(value);
+    setProfile((current) => (typeof value === 'function' ? value(current) : value));
     setTouched(true);
   }
   /** The profile to save, or null when this product keeps no garden object. */

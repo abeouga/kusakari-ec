@@ -68,7 +68,7 @@ function inputName(field) {
 /**
  * Fine adjustments, folded by default (issue #52). Each control is either automatic (null: Canvas follows the plant
  * type and species) or manual, chosen with a two-way switch instead of a checkbox and an explanation per field.
- * @param {{profile:import('../types').PlantModelProfile,group:'stem'|'leaf',onChange:(value:import('../types').PlantModelProfile)=>void}} props
+ * @param {{profile:import('../types').PlantModelProfile,group:'stem'|'leaf',onChange:(value:import('../types').PlantModelProfile|((current:import('../types').PlantModelProfile)=>import('../types').PlantModelProfile))=>void}} props
  */
 export function PlantShapeFields({ profile, group, onChange }) {
   const fields = fieldsFor(profile, group);
@@ -107,7 +107,7 @@ function AutoSwitch({ label, auto, onChange }) {
   );
 }
 
-/** @param {{field:string,profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile)=>void}} props */
+/** @param {{field:string,profile:import('../types').PlantModelProfile,onChange:(value:import('../types').PlantModelProfile|((current:import('../types').PlantModelProfile)=>import('../types').PlantModelProfile))=>void}} props */
 function AutoField({ field, profile, onChange }) {
   const id = useId();
   const value = /** @type {Record<string,any>} */ (profile)[field] ?? null;
@@ -117,7 +117,7 @@ function AutoField({ field, profile, onChange }) {
   if (field === 'branchDroop' && LEAFY_DROOP.has(profile.plantType)) label = '葉の垂れ下がり';
   if (field === 'branchStart' && ['flower', 'vine'].includes(profile.plantType)) label = '葉が付き始める位置';
   /** @param {any} next */
-  const set = (next) => onChange({ ...profile, [field]: next });
+  const set = (next) => onChange((current) => ({ ...current, [field]: next }));
   const toggle = (
     <AutoSwitch
       label={label}
