@@ -17,7 +17,7 @@ import { Stores } from './components/Stores';
 import { LoginPage } from './components/LoginPage';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { StickyHeader } from './components/StickyHeader';
-import { canSell, login, redirectToLogin } from './auth';
+import { buyerOnlyMessage, canSell, login, redirectToLogin } from './auth';
 import { useAuth } from './useAuth';
 
 const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin)
@@ -54,6 +54,9 @@ export default function App() {
   const [flash, setFlash] = useState(flashNotice);
   const detail = shop.products.find((product) => product.id === detailId);
   const itemCount = shop.cart?.itemCount ?? 0;
+  // Issue #108: shop accounts and applicants cannot buy. The shared header has no switch for the cart link,
+  // so the wrapper hides it (header.css) and a note takes its place.
+  const canBuy = !shop.buyerBlocked;
   /** @param {string} id */
   function openDetail(id) {
     shop.setError('');
@@ -94,19 +97,26 @@ export default function App() {
   }
   const header = (
     <>
-      <StickyHeader>
+      <StickyHeader className={canBuy ? '' : 'no-cart'}>
         <KusakariHeader
           ecUrl={window.location.origin}
           canvasUrl={canvasUrl}
           logoUrl="/icon/kusakari_ico.png"
           activeSection={path === '/' ? 'plants' : ''}
-          cartCount={itemCount}
+          cartCount={canBuy ? itemCount : null}
           authenticated={session?.authenticated ?? false}
-          showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.accountType === 'ADMIN'}
+          showAdmin={
+            session?.authenticated && session.email === 'test.admin@example.com' && session.accountType === 'ADMIN'
+          }
           showSeller={canSell(session)}
           onPanel={openHeaderPanel}
           onNavigate={navigateFromHeader}
         />
+        {!canBuy && (
+          <p className="buyer-only-note header-buyer-note" role="note">
+            {buyerOnlyMessage}
+          </p>
+        )}
         <SessionNotice />
       </StickyHeader>
       {flash && (
@@ -135,9 +145,7 @@ export default function App() {
     );
   }
   if (path === '/cart') {
-    return (
-      <CartPage shop={shop} header={header} />
-    );
+    return <CartPage shop={shop} header={header} />;
   }
 
   return (
@@ -253,6 +261,7 @@ export default function App() {
           canvasUrl={canvasUrl}
           onClose={close}
           onAdd={(quantity) => shop.add(detail.id, quantity)}
+          canBuy={canBuy}
           busy={shop.busy}
           notice={shop.notice}
           error={shop.error}

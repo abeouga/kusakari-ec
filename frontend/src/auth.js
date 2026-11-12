@@ -10,6 +10,16 @@ import { navigate, redirect } from './workspace/navigation';
 export const canSell = (session) =>
   !!session?.authenticated && ['SHOP_OWNER', 'SHOP_STAFF', 'ADMIN'].includes(session.accountType || '');
 
+/**
+ * Issue #108: shop accounts (owner and staff) and applicants cannot use the cart, orders or garden shopping lists.
+ * Buyers (USER) and the operator (ADMIN) can. @param {AuthSession|null} session
+ */
+export const isShopAccount = (session) =>
+  !!session?.authenticated && ['SHOP_OWNER', 'SHOP_STAFF', 'SHOP_OWNER_APPLICANT'].includes(session.accountType || '');
+
+export const buyerOnlyMessage =
+  '店舗・出店申請用のアカウントでは購入できません。購入は購入者のアカウントでご利用ください。';
+
 let signedIn = false;
 
 /** A later 401 means the login expired only if this page had a signed-in session; signed-out visitors just are not logged in. */

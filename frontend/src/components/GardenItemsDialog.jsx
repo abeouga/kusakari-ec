@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { yen } from '../api';
 import { navigate } from '../workspace/navigation';
@@ -122,6 +122,7 @@ function GardenItemsDialog({ shop, initialGarden, onClose }) {
 /** @param {{shop:ReturnType<import('../useShop').useShop>,gardenId:string,onAdded:()=>void,onCancel:()=>void}} props */
 function GardenItems({ shop, gardenId, onAdded, onCancel }) {
   const data = useShoppingData(gardenId);
+  const idPrefix = useId();
   const [selection, setSelection] = useState(/** @type {Record<string,string>} */ ({}));
   const [choices, setChoices] = useState(/** @type {Record<string,string>} */ ({}));
   const [failed, setFailed] = useState(false);
@@ -189,30 +190,37 @@ function GardenItems({ shop, gardenId, onAdded, onCancel }) {
             </button>
           </div>
           <div className="garden-items-list">
-            {lines.map(({ line, product, inCart, reason }) => (
-              <label
+            {/* canvas#69: the product select sits outside the checkbox's label, so it is not part of the label's
+                control and Playwright does not read it as disabled together with the checkbox. */}
+            {lines.map(({ line, product, inCart, reason }, index) => (
+              <div
                 key={line.key}
                 className={inCart || reason ? 'garden-item is-unavailable' : 'garden-item'}
                 data-testid={`garden-item-${line.key}`}
               >
-                <input
-                  type="checkbox"
-                  aria-label={`${product?.name ?? line.name}を選択`}
-                  checked={!!selection[line.key]}
-                  disabled={blocked || !!inCart || (!!reason && !selection[line.key])}
-                  onChange={(event) => {
-                    const next = { ...selection };
-                    if (event.target.checked && product) next[line.key] = product.id;
-                    else delete next[line.key];
-                    setSelection(next);
-                  }}
-                />
-                {product ? <img src={product.imageUrl} alt="" /> : <span className="garden-item-noimage" />}
+                <label className="garden-item-pick">
+                  <input
+                    id={`${idPrefix}-${index}`}
+                    type="checkbox"
+                    aria-label={`${product?.name ?? line.name}を選択`}
+                    checked={!!selection[line.key]}
+                    disabled={blocked || !!inCart || (!!reason && !selection[line.key])}
+                    onChange={(event) => {
+                      const next = { ...selection };
+                      if (event.target.checked && product) next[line.key] = product.id;
+                      else delete next[line.key];
+                      setSelection(next);
+                    }}
+                  />
+                  {product ? <img src={product.imageUrl} alt="" /> : <span className="garden-item-noimage" />}
+                </label>
                 <span className="garden-item-info">
-                  <strong>{product?.name ?? line.name}</strong>
-                  <small>
-                    必要数 {line.quantity}点{product && `・店舗在庫 ${product.stock}点`}
-                  </small>
+                  <label htmlFor={`${idPrefix}-${index}`} className="garden-item-name">
+                    <strong>{product?.name ?? line.name}</strong>
+                    <small>
+                      必要数 {line.quantity}点{product && `・店舗在庫 ${product.stock}点`}
+                    </small>
+                  </label>
                   {line.products.length > 1 && (
                     <select
                       aria-label={`${line.name}の購入商品`}
@@ -237,7 +245,7 @@ function GardenItems({ shop, gardenId, onAdded, onCancel }) {
                   {reason && <span className="garden-item-reason">{reason}</span>}
                 </span>
                 {product && <span className="garden-item-price">{yen(product.priceYen * line.quantity)}</span>}
-              </label>
+              </div>
             ))}
           </div>
         </>

@@ -22,7 +22,8 @@ export function ProfilePage({ storeId, readOnly = false }) {
                 {p.address} / {p.hours}
               </p>
               <p>{p.story}</p>
-              <p>{p.enabled ? '営業中' : '受付休止'}</p>
+              {/* A closing store is still shown to buyers until it has closed, marked as closing. */}
+              <p>{p.closingStartedAt ? '閉店予定' : p.enabled ? '営業中' : '受付休止'}</p>
             </>
           ) : (
             <form key={p.revision} className="workspace-form" onSubmit={save}>
