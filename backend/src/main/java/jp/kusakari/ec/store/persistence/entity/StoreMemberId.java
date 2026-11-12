@@ -1,4 +1,4 @@
-package jp.kusakari.ec.catalog.persistence.entity;
+package jp.kusakari.ec.store.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -11,11 +11,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class InventoryId {
+public class StoreMemberId implements java.io.Serializable {
 
   @Column(name = "store_id")
   private Long storeId;
 
-  @Column(name = "product_id", length = 40)
-  private String productId;
+  @Column(name = "member_id", length = 36, columnDefinition = "CHAR(36)")
+  private String memberId;
 }

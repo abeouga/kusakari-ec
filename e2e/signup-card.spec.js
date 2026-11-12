@@ -61,7 +61,7 @@ test('sign-up opens inside the login card without leaving the page and reports r
   expect(documents.length).toBe(navigations);
 
   const missingCsrf = await page.request.post('/api/auth/signup', {
-    data: { email: 'x@example.com', password: 'abcdefgh', confirmPassword: 'abcdefgh' },
+    data: { email: 'x@example.com', password: 'abcdefgh', confirmPassword: 'abcdefgh', business: false },
   });
   expect(missingCsrf.status()).toBe(403);
   const hosted = await page.request.get('/api/auth/login?signup=true&returnTo=%2F', { maxRedirects: 0 });

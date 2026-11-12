@@ -46,16 +46,17 @@ export function replenishOrder(order, storeId) {
     if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 99)
       throw new Error('Unexpected quantity.');
     sql(
-      `UPDATE inventory SET quantity=quantity+${line.quantity} WHERE product_id=${literal(line.productId)} AND store_id=${storeId};`,
+      `UPDATE inventory SET quantity=quantity+${line.quantity} WHERE product_id=${literal(line.productId)};`,
     );
   }
 }
 
 export function createScarceProduct() {
   const id = `test-${randomUUID().slice(0, 8)}`;
-  sql(`INSERT INTO products(id,sku,name,latin_name,category,description,size_label,care,price_yen,image_url,badge)
-    SELECT ${literal(id)},${literal(id)},'Concurrency fixture',latin_name,category,description,size_label,care,1200,image_url,badge FROM products WHERE id='olive';
-    INSERT INTO inventory(store_id,product_id,quantity) VALUES(1,${literal(id)},1);`);
+  // A product belongs to one store (store 1 here); a new inventory row is hidden unless it says otherwise.
+  sql(`INSERT INTO products(id,store_id,sku,name,latin_name,category_name,description,size_label,care,price_yen,image_url,badge)
+    SELECT ${literal(id)},1,${literal(id)},'Concurrency fixture',latin_name,category_name,description,size_label,care,1200,image_url,badge FROM products WHERE id='olive';
+    INSERT INTO inventory(product_id,quantity,publication_status) VALUES(${literal(id)},1,'PUBLISHED');`);
   return id;
 }
 
@@ -66,7 +67,7 @@ export function removeScarceProduct(id) {
     .split(/\r?\n/)
     .filter(Boolean);
   sql(`DELETE FROM order_items WHERE product_id=${literal(id)};
-    ${orders.map((order) => `DELETE FROM order_details WHERE order_id=${literal(order)}; DELETE FROM orders WHERE id=${literal(order)};`).join('\n')}
+    ${orders.map((order) => `DELETE FROM orders WHERE id=${literal(order)};`).join('\n')}
     DELETE FROM cart_items WHERE product_id=${literal(id)};
     DELETE FROM inventory WHERE product_id=${literal(id)};
     DELETE FROM products WHERE id=${literal(id)};`);

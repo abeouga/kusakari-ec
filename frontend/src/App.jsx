@@ -17,7 +17,7 @@ import { Stores } from './components/Stores';
 import { LoginPage } from './components/LoginPage';
 import { SessionNotice, flashNotice } from './components/SessionNotice';
 import { StickyHeader } from './components/StickyHeader';
-import { login, redirectToLogin } from './auth';
+import { canSell, login, redirectToLogin } from './auth';
 import { useAuth } from './useAuth';
 
 const canvasUrl = new URL(import.meta.env.VITE_KUSAKARI_CANVAS_URL || 'http://127.0.0.1:5173/', window.location.origin)
@@ -53,12 +53,7 @@ export default function App() {
   const [detailId, setDetailId] = useState('');
   const [flash, setFlash] = useState(flashNotice);
   const detail = shop.products.find((product) => product.id === detailId);
-  let itemCount = 0;
-  let storeName = '';
-  if (shop.cart) {
-    itemCount = shop.cart.itemCount;
-    storeName = shop.cart.storeName;
-  }
+  const itemCount = shop.cart?.itemCount ?? 0;
   /** @param {string} id */
   function openDetail(id) {
     shop.setError('');
@@ -107,8 +102,8 @@ export default function App() {
           activeSection={path === '/' ? 'plants' : ''}
           cartCount={itemCount}
           authenticated={session?.authenticated ?? false}
-          showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.role === 'ADMIN'}
-          showSeller={session?.authenticated && ['SELLER', 'ADMIN'].includes(session.role || '')}
+          showAdmin={session?.authenticated && session.email === 'test.admin@example.com' && session.accountType === 'ADMIN'}
+          showSeller={canSell(session)}
           onPanel={openHeaderPanel}
           onNavigate={navigateFromHeader}
         />
@@ -187,7 +182,6 @@ export default function App() {
           </div>
           <HeroProductCarousel
             products={shop.products}
-            storeId={shop.cart?.storeId ?? 1}
             onDetail={openDetail}
             paused={Boolean(detail) || Boolean(panel)}
             loading={shop.busy}
@@ -256,8 +250,6 @@ export default function App() {
         <ProductDetail
           key={detail.id}
           product={detail}
-          storeName={storeName}
-          storeId={shop.cart?.storeId}
           canvasUrl={canvasUrl}
           onClose={close}
           onAdd={(quantity) => shop.add(detail.id, quantity)}
@@ -276,7 +268,7 @@ export default function App() {
             <p>Kusakariは、庭木・草花・ハーブ・観葉植物を探し、店舗ごとの価格と在庫を確認できるECサイトです。</p>
             <h4>お買い物の流れ</h4>
             <ol>
-              <li>受取店舗を選び、植物をカートに追加します。</li>
+              <li>植物を選び、カートに追加します。受取店舗は商品ごとに決まっています。</li>
               <li>カートで購入個数と合計金額を確認します。</li>
               <li>確認画面から注文を確定します。</li>
             </ol>

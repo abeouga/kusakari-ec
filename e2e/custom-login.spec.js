@@ -81,17 +81,18 @@ test('custom EC login shares a real Cognito session with Canvas and redirects ag
   expect(after?.value).not.toBe(before);
   expect(after?.httpOnly).toBe(true);
   const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
-  expect(me).toMatchObject({ authenticated: true, email: 'test.user@example.com', role: 'USER' });
+  expect(me).toMatchObject({ authenticated: true, email: 'test.user@example.com', accountType: 'USER' });
   await page.reload();
-  await expect(page.getByRole('heading', { name: '新しい庭をつくる', exact: true })).toBeVisible();
+  // Canvas shows 新しい庭をつくる as the first card's button in the garden list.
+  await expect(page.getByRole('button', { name: '新しい庭をつくる', exact: true })).toBeVisible();
   await expect(page.locator('.kusakari-site-header')).toBeVisible();
   await expect(page.locator('.kusakari-site-header .login-entry')).toHaveCount(0);
   await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '出店者', exact: true })).toHaveCount(0);
   await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '管理者画面' })).toHaveCount(0);
   const csrf = await (await page.request.get(`${ec}/api/auth/csrf`)).json();
   const headers = { [csrf.headerName]: csrf.token };
-  await page.getByLabel('庭の名前', { exact: true }).fill(`Custom login E2E ${Date.now()}`);
-  await page.getByRole('button', { name: '庭を作成', exact: true }).click();
+  // Canvas creates a garden from the list's first card; its name is edited later in the editor.
+  await page.getByRole('button', { name: '新しい庭をつくる', exact: true }).click();
   await expect(page).toHaveURL(/\/gardens\/[a-z0-9-]+$/);
   const gardenId = new URL(page.url()).pathname.split('/').at(-1);
   await page.getByRole('button', { name: '3D庭', exact: true }).click();
@@ -200,7 +201,7 @@ test('only the designated admin sees the admin header link in EC and Canvas', as
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
     authenticated: true,
     email: 'test.admin@example.com',
-    role: 'ADMIN',
+    accountType: 'ADMIN',
   });
   for (const url of [ec + '/', ec + '/account', ec + '/operator', canvas + '/']) {
     await page.goto(url);
@@ -226,7 +227,7 @@ test('account entry from Canvas shows member settings without guest or technical
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
     authenticated: true,
     email: 'test.user@example.com',
-    role: 'USER',
+    accountType: 'USER',
   });
   for (const [name, url] of [
     ['ec', ec],
@@ -255,8 +256,8 @@ test('account entry from Canvas shows member settings without guest or technical
     await expect(sidebar.getByRole('navigation', { name: 'アカウント設定', exact: true }).getByRole('link')).toHaveText(
       ['受取連絡先', 'パスワード変更', '退会'],
     );
-    // EC-B18: the label becomes 出店申請状況 once this shared account has applied in another spec.
-    await expect(sidebar.getByRole('link', { name: /^出店申請(状況)?$/ })).toBeVisible();
+    // A buyer account does not apply to open a shop; only an account from the business sign-up sees the link.
+    await expect(sidebar.getByRole('link', { name: /^出店申請(状況)?$/ })).toHaveCount(0);
     for (const name of ['ログイン', '新規登録', 'パスワードリセット', '配置素材の商品候補']) {
       await expect(sidebar.getByRole('link', { name, exact: true })).toHaveCount(0);
     }

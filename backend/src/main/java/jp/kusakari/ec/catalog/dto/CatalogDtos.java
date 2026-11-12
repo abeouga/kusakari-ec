@@ -44,18 +44,38 @@ public final class CatalogDtos {
     PlantModelProfile plantModelProfile,
     JsonNode modelComposition,
     String canvasMaterialCode,
-    Long sellerStoreId
+    Long sellerStoreId,
+    String sellerStoreName
   ) {}
 
-  /** Latitude and longitude place the store on the seller's in-page store map (issue #46). */
+  /**
+   * Latitude and longitude place the store on the seller's in-page store map (issue #46).
+   * 位置を登録していない店舗は、緯度・経度・距離が null。
+   */
   public record StoreView(
     long id,
     String name,
     String address,
     String hours,
-    double latitude,
-    double longitude,
+    Double latitude,
+    Double longitude,
     Double distanceKm
+  ) {}
+
+  /**
+   * 庭に置いた商品の参照。販売を終えた商品も返す（active = false）。
+   * purchasable は、購入者に見えていて今カートに入れられるか。
+   */
+  public record ProductReferenceView(
+    String id,
+    String name,
+    String imageUrl,
+    boolean active,
+    boolean hasPlantModel,
+    Long storeId,
+    String storeName,
+    int stock,
+    boolean purchasable
   ) {}
 
   public record ProductReferenceRequest(
@@ -68,8 +88,9 @@ public final class CatalogDtos {
     @NotBlank @Pattern(regexp = "piece") String unit
   ) {}
 
+  /** storeId が null なら、全店舗の商品から候補を出す。 */
   public record MaterialRequest(
-    @Positive long storeId,
+    @Positive Long storeId,
     @NotEmpty @Size(max = 50) List<@NotNull @Valid MaterialItem> items
   ) {}
 

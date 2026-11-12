@@ -2,9 +2,9 @@ package jp.kusakari.ec.shopping;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.persistence.repository.MaterialProductRepository;
 import jp.kusakari.ec.catalog.service.CatalogService;
+import jp.kusakari.ec.catalog.service.CatalogService.Listing;
 import jp.kusakari.ec.commerce.service.CartService;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.shopping.ShoppingDtos.*;
@@ -55,7 +55,7 @@ public class ShoppingService {
     var source = canvas.detail(gardenId);
     saved.add(cartId, gardenId, productId);
     var snapshot = saved.read(cartId, gardenId);
-    return resolve(supplement(source, snapshot), carts.read(cartId).storeId(), snapshot.revision());
+    return resolve(supplement(source, snapshot), snapshot.revision());
   }
 
   /** Creates a garden named "買い物リストN" for the member and puts the product in its list. */
@@ -88,10 +88,9 @@ public class ShoppingService {
   }
 
   public Detail detail(String gardenId, String cartId) {
-    long storeId = carts.read(cartId).storeId();
     var source = canvas.detail(gardenId);
     var snapshot = saved.read(cartId, gardenId);
-    return resolve(supplement(source, snapshot), storeId, snapshot.revision());
+    return resolve(supplement(source, snapshot), snapshot.revision());
   }
 
   // Canvas HTTP finishes before acquiring the cart write lock.
@@ -99,7 +98,6 @@ public class ShoppingService {
   public TransferResult transfer(String gardenId, String cartId, TransferRequest request) {
     var source = canvas.detail(gardenId);
     var snapshot = saved.lockAndRead(cartId, gardenId);
-    var cart = carts.read(cartId);
     if (source.revision() != request.gardenRevision()) {
       throw new ApiException(
         409,
@@ -113,7 +111,7 @@ public class ShoppingService {
       "SHOPPING_LIST_CHANGED",
       "買い物リストが更新されました。最新の内容から選び直してください。"
     );
-    var detail = resolve(supplement(source, snapshot), cart.storeId(), snapshot.revision());
+    var detail = resolve(supplement(source, snapshot), snapshot.revision());
     Map<String, String> selected = new HashMap<>();
     for (var selection : request.items()) {
       if (selected.put(selection.key(), selection.productId()) != null) invalidSelection();
@@ -136,7 +134,6 @@ public class ShoppingService {
     return carts.addShoppingItems(
       cartId,
       request.cartRevision(),
-      cart.storeId(),
       gardenId,
       source.name(),
       new ArrayList<>(additions.values())
@@ -161,7 +158,7 @@ public class ShoppingService {
     );
   }
 
-  private Detail resolve(SourceList source, long storeId, long listRevision) {
+  private Detail resolve(SourceList source, long listRevision) {
     Map<String, Set<String>> byCode = new HashMap<>();
     var codes = source
       .items()
@@ -183,20 +180,32 @@ public class ShoppingService {
       .filter(Objects::nonNull)
       .collect(Collectors.toSet());
     byCode.values().forEach(requestedIds::addAll);
-    // Issue #70: show each product's stock at its sale store, where it is added to the cart and picked up.
-    Map<String, ProductView> products = catalog
-      .productsAtSaleStores(storeId, requestedIds)
+    // 在庫と受取店舗は、商品の店舗のもの。
+    Map<String, Listing> listings = catalog
+      .listingsByIds(requestedIds)
       .stream()
-      .collect(Collectors.toMap(ProductView::id, p -> p));
+      .collect(Collectors.toMap(listing -> listing.product().id(), listing -> listing));
     List<Line> lines = new ArrayList<>();
     for (var row : source.items()) {
       Set<String> ids =
         row.productId() == null ? byCode.getOrDefault(row.materialCode(), Set.of()) : Set.of(row.productId());
       var candidates = ids
         .stream()
-        .map(products::get)
+        .map(listings::get)
         .filter(Objects::nonNull)
-        .map(p -> new Product(p.id(), p.name(), p.imageUrl(), p.priceYen(), p.stock(), p.active()))
+        .map(listing -> {
+          var p = listing.product();
+          return new Product(
+            p.id(),
+            p.name(),
+            p.imageUrl(),
+            p.priceYen(),
+            p.stock(),
+            listing.purchasable(),
+            p.sellerStoreId(),
+            p.sellerStoreName()
+          );
+        })
         .toList();
       lines.add(new Line(row.key(), row.name(), row.quantity(), row.unit(), candidates));
     }
@@ -205,8 +214,6 @@ public class ShoppingService {
       source.name(),
       source.revision(),
       source.updatedAt(),
-      storeId,
-      catalog.storeName(storeId),
       lines,
       listRevision
     );

@@ -32,8 +32,8 @@ public class MemberService {
     String id,
     String name,
     String email,
-    String role,
-    Long storeId,
+    String accountType,
+    List<Long> storeIds,
     boolean enabled,
     Instant withdrawnAt
   ) {}
@@ -60,7 +60,7 @@ public class MemberService {
   public void withdraw() {
     var id = auth.current().getId();
     var m = members.lockMember(id).orElseThrow();
-    if (m.getRole().equals("ADMIN")) throw new ApiException(
+    if (m.isAdmin()) throw new ApiException(
       409,
       "ADMIN_REQUIRED",
       "管理者はこの画面から退会できません。"
@@ -71,15 +71,17 @@ public class MemberService {
       "受け渡しが完了していない注文があるため退会できません。",
       purchases
     );
-    if (m.getRole().equals("SELLER") && m.getStoreId() != null) {
-      // Checkout locks the same store row, so no new order for this store can slip past the check.
-      stores.lock(m.getStoreId());
-      if (withdrawalGuard.hasListedProducts(m.getStoreId())) throw new WithdrawalBlockedException(
+    // オーナーは、組織の店舗に出品中の商品か未完了の注文が残っている間は退会できない。
+    List<Long> storeIds = AuthMember.SHOP_OWNER.equals(m.getAccountType()) ? auth.storeIdsOf(m) : List.of();
+    if (!storeIds.isEmpty()) {
+      // Checkout locks the same store rows in the same ascending order, so no new order can slip past the check.
+      storeIds.forEach(stores::lock);
+      if (withdrawalGuard.hasListedProducts(storeIds)) throw new WithdrawalBlockedException(
         "WITHDRAWAL_LISTED_PRODUCTS",
         "出品中の商品があるため退会できません。すべての商品を販売停止にしてから再度お試しください。",
         List.of()
       );
-      if (withdrawalGuard.hasOpenStoreOrders(m.getStoreId())) throw new WithdrawalBlockedException(
+      if (withdrawalGuard.hasOpenStoreOrders(storeIds)) throw new WithdrawalBlockedException(
         "WITHDRAWAL_STORE_ORDERS",
         "引き渡しが完了していない注文、または処理していないキャンセル申請があるため退会できません。",
         List.of()
@@ -99,8 +101,8 @@ public class MemberService {
           m.getId(),
           m.getDisplayName(),
           m.getEmail(),
-          m.getRole(),
-          m.getStoreId(),
+          m.getAccountType(),
+          auth.storeIdsOf(m),
           m.isEnabled(),
           m.getWithdrawnAt()
         )
@@ -113,7 +115,7 @@ public class MemberService {
     var m = members
       .lockMember(id)
       .orElseThrow(() -> new ApiException(404, "MEMBER_NOT_FOUND", "会員が見つかりません。"));
-    if (m.getRole().equals("ADMIN") || m.getWithdrawnAt() != null) throw new ApiException(
+    if (m.isAdmin() || m.getWithdrawnAt() != null) throw new ApiException(
       409,
       "MEMBER_FIXED",
       "管理者または退会済み会員の状態は変更できません。"

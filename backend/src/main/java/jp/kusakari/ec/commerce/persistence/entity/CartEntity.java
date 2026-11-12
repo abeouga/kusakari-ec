@@ -21,11 +21,9 @@ public class CartEntity {
   @Column(length = 36, columnDefinition = "CHAR(36)")
   private String id;
 
-  @Column(name = "member_id", length = 36, columnDefinition = "CHAR(36)")
+  /** カートは会員ごとに1つ。未ログインではカートを使えない。 */
+  @Column(name = "member_id", nullable = false, length = 36, columnDefinition = "CHAR(36)")
   private String memberId;
-
-  @Column(name = "store_id", nullable = false)
-  private long storeId = 1;
 
   @Column(nullable = false)
   private long revision;
@@ -35,11 +33,6 @@ public class CartEntity {
 
   public CartEntity(String id) {
     this.id = id;
-  }
-
-  public void selectStore(long storeId) {
-    this.storeId = storeId;
-    revision++;
   }
 
   public void incrementRevision() {

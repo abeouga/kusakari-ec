@@ -11,8 +11,6 @@ public final class CommerceDtos {
 
   public record ItemRequest(@Min(0) @Max(99) int quantity, @PositiveOrZero long revision) {}
 
-  public record StoreRequest(@Positive long storeId, @PositiveOrZero long revision) {}
-
   public record CheckoutRequest(
     @NotNull UUID requestId,
     @PositiveOrZero long revision,
@@ -20,10 +18,10 @@ public final class CommerceDtos {
     @NotNull @Pattern(regexp = "CREDIT_CARD|PAYPAY|RAKUTEN_PAY|PAY_AT_STORE") String paymentMethod
   ) {}
 
-  /** One checkout creates one order per pickup store (issue #70), ordered by store ID. */
+  /** One checkout creates one order per store (issue #70), ordered by store ID. */
   public record CheckoutResult(List<OrderView> orders) {}
 
-  /** Issue #70: storeId/storeName are this line's pickup store, which sells and stocks the product. */
+  /** storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。 */
   public record CartLine(
     ProductView product,
     int quantity,
@@ -33,20 +31,14 @@ public final class CommerceDtos {
     String storeName
   ) {}
 
-  /**
-   * storeId/storeName are the browsing store that sells Kusakari's shared products. Kept for API compatibility;
-   * the pickup store of each line is {@link CartLine#storeId()}.
-   */
+  /** 送料はないので、subtotalYen と totalYen は同じ値。受取店舗は明細ごとの {@link CartLine#storeId()}。 */
   public record CartView(
     long revision,
-    long storeId,
-    String storeName,
     List<CartLine> items,
     int totalYen,
     int itemCount,
     boolean canCheckout,
     int subtotalYen,
-    int shippingFeeYen,
     DeliveryDtos.DetailsView details
   ) {}
 
@@ -77,8 +69,6 @@ public final class CommerceDtos {
     String storeName,
     int totalYen,
     List<OrderLine> items,
-    int subtotalYen,
-    int shippingFeeYen,
     DeliveryDtos.DetailsView details
   ) {}
 }

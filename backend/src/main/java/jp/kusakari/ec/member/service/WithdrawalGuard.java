@@ -35,28 +35,29 @@ class WithdrawalGuard {
       .toList();
   }
 
-  boolean hasListedProducts(long storeId) {
+  /** 出品中（在庫の公開状態が PUBLISHED）の商品があるか。非公開・削除済みの商品は数えない。 */
+  boolean hasListedProducts(List<Long> storeIds) {
     return (
       entityManager
         .createQuery(
-          "select count(i) from InventoryEntity i, ProductEntity p where p.id = i.id.productId " +
-            "and i.id.storeId = :store and i.publicationStatus = 'PUBLISHED' and p.active = true",
+          "select count(i) from InventoryEntity i, ProductEntity p where p.id = i.productId " +
+            "and p.storeId in :stores and i.publicationStatus = 'PUBLISHED'",
           Long.class
         )
-        .setParameter("store", storeId)
+        .setParameter("stores", storeIds)
         .getSingleResult() > 0
     );
   }
 
-  boolean hasOpenStoreOrders(long storeId) {
+  boolean hasOpenStoreOrders(List<Long> storeIds) {
     return (
       entityManager
         .createQuery(
-          "select count(o) from OrderEntity o where o.storeId = :store " +
+          "select count(o) from OrderEntity o where o.storeId in :stores " +
             "and (o.status in :open or o.cancellationStatus = 'PENDING')",
           Long.class
         )
-        .setParameter("store", storeId)
+        .setParameter("stores", storeIds)
         .setParameter("open", OPEN_STATUSES)
         .getSingleResult() > 0
     );

@@ -19,7 +19,7 @@ public class OrderItemEntity {
   @EmbeddedId
   private OrderItemId id;
 
-  @Column(nullable = false, length = 50)
+  @Column(nullable = false, length = 64)
   private String sku;
 
   @Column(name = "product_name", nullable = false, length = 120)

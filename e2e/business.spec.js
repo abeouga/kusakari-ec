@@ -12,6 +12,7 @@ import {
   createPasswordTestAccount,
   deletePasswordTestAccount,
   fillApplication,
+  openStore,
 } from './business-helpers.js';
 
 test.use({ trace: 'off' });
@@ -48,15 +49,54 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await expect.poll(async () => (await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(1);
     await buyer.getByRole('link', { name: 'Canvasでイメージする' }).click();
     await expect(buyer).toHaveURL(new RegExp(`productId=${product.id}`));
-    await buyer.locator('#garden-name').fill(`購入確認 ${randomUUID().slice(0, 8)}`);
-    await buyer.getByRole('button', { name: '庭を作成', exact: true }).click();
+    // Canvas creates a garden from the list's first card; its name is edited later in the editor.
+    await buyer.getByRole('button', { name: '新しい庭をつくる', exact: true }).click();
+    await expect(buyer).toHaveURL(new RegExp(`/gardens/[a-z0-9-]+\\?productId=${product.id}$`));
+    const gardenId = new URL(buyer.url()).pathname.split('/').pop();
     await buyer.getByRole('button', { name: '3D庭', exact: true }).click();
     await expect(buyer.getByTestId('garden-canvas')).toBeVisible();
-    const gardenId = new URL(buyer.url()).pathname.split('/').pop();
-    await expect(buyer.getByTestId(`asset-product:${product.id}`)).toHaveAttribute('aria-pressed', 'true');
-    const surface = buyer.locator('[data-testid="garden-canvas"] canvas');
-    const box = await surface.boundingBox();
-    await surface.click({ position: { x: box.width * 0.5, y: box.height * 0.55 } });
+    // Canvas places products only after a garden photo is uploaded and its outline is confirmed.
+    await buyer.getByTestId('photo-required').getByRole('button', { name: '写真をアップロード', exact: true }).click();
+    const photo = await buyer.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 400;
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#b7d0dc';
+      context.fillRect(0, 0, 600, 400);
+      context.fillStyle = '#8eaa71';
+      context.fillRect(0, 180, 600, 220);
+      return canvas.toDataURL('image/png');
+    });
+    await buyer
+      .getByLabel('庭の写真を選択')
+      .setInputFiles({ name: 'garden.png', mimeType: 'image/png', buffer: Buffer.from(photo.split(',')[1], 'base64') });
+    for (const [x, y] of [
+      [0.15, 0.8],
+      [0.85, 0.8],
+      [0.8, 0.2],
+      [0.2, 0.2],
+    ]) {
+      const point = await buyer.locator('.photo-stage').evaluate(
+        (node, target) => {
+          const screen = new DOMPoint(target.x * 600, target.y * 400).matrixTransform(node.getScreenCTM());
+          return { x: screen.x, y: screen.y };
+        },
+        { x, y },
+      );
+      await buyer.mouse.click(point.x, point.y);
+    }
+    await buyer.getByRole('button', { name: '始点につないで輪郭を確定', exact: true }).click();
+    await expect(buyer.getByTestId('save-status')).toHaveText('保存済み');
+    // Opening the garden again with the product id selects the product that came from the EC product page.
+    await buyer.reload();
+    await buyer.getByRole('button', { name: '3D庭', exact: true }).click();
+    await buyer.getByRole('button', { name: '上から見る', exact: true }).click();
+    await buyer.waitForTimeout(400); // Orbit controls settle after the explicit top-view command.
+    await expect(buyer.getByTestId('photo-required')).toHaveCount(0);
+    await expect(buyer.getByTestId(`browse-${product.id}`)).toHaveClass(/is-selected/);
+    const box = await buyer.getByTestId('garden-canvas').locator('canvas').boundingBox();
+    await buyer.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await expect
       .poll(async () => {
         const garden = await call(buyer.request, `/gardens/${gardenId}`, 'GET', undefined, canvas).then((r) =>
@@ -90,7 +130,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
       await expect(buyer.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
       await buyer.getByRole('tab', { name: '買い物リスト（1）', exact: true }).click();
       await expect(
-        buyer.getByText('この店舗の販売対象ではないため購入できません。保存済みの配置は維持されます。'),
+        buyer.getByText('現在は販売されていないため購入できません。保存済みの配置は維持されます。'),
       ).toBeVisible();
       await buyer.screenshot({ path: 'artifacts/business/suspended-garden.png' });
     } finally {
@@ -109,8 +149,9 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await buyer.getByRole('button', { name: '注文内容を確認する' }).click();
     // The confirmation step replaces the editable cart with the pickup store and a demo payment choice.
     await expect(buyer.getByRole('heading', { name: 'お支払い・受け取りの確認' })).toBeVisible();
+    // The pickup store is the store of the product in the cart.
     await expect(buyer.getByTestId('checkout-store')).toContainText(
-      (await call(buyer.request, '/cart').then((r) => r.json())).storeName,
+      (await call(buyer.request, '/cart').then((r) => r.json())).items[0].storeName,
     );
     await expect(buyer.getByRole('button', { name: /を1個増やす$/ })).toHaveCount(0);
     await expect(buyer.getByRole('radio', { name: /店舗でお支払い/ })).toBeChecked();
@@ -271,7 +312,8 @@ test('account, applications with private documents, store profile, categories an
   let member;
   try {
     member = await login(user, 'test.user@example.com');
-    prepareMember(member, 'USER');
+    // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
+    prepareMember(member, 'SHOP_OWNER_APPLICANT');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     await user.goto(`${ec}/seller/application`);
     await fillApplication(user, {
@@ -300,12 +342,14 @@ test('account, applications with private documents, store profile, categories an
     expect(approved.status(), await approved.text()).toBe(200);
     await expect(row.getByRole('button', { name: '承認', exact: true })).toHaveCount(0);
     const me = await call(user.request, '/auth/me').then((r) => r.json());
-    expect(me.role).toBe('SELLER');
+    // The approval creates the organization; the owner then opens a store without another review.
+    expect(me).toMatchObject({ accountType: 'SHOP_OWNER', storeIds: [] });
+    const storeId = await openStore(user.request, application.company);
     await user.goto(`${ec}/seller/profile`);
     await user.getByLabel('店舗紹介').fill('保存した店舗紹介');
     await user.getByRole('button', { name: '店舗情報を保存' }).click();
     await expect(user.getByRole('status')).toContainText('保存しました');
-    await user.goto(`${ec}/store/${me.storeIds[0]}`);
+    await user.goto(`${ec}/store/${storeId}`);
     await expect(user.getByText('保存した店舗紹介')).toBeVisible();
     const name = `検証分類${randomUUID().slice(0, 8)}`;
     await admin.goto(`${ec}/operator/categories`);

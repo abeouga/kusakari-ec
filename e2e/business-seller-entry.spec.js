@@ -26,6 +26,7 @@ test('seller screen opens on product management without a dashboard', async ({ p
     '商品管理',
     '店舗受け取り',
     '注文実績',
+    '店舗一覧',
     '店舗プロフィール',
     '出店者通知',
   ]);
@@ -54,7 +55,7 @@ test('seller screen opens on product management without a dashboard', async ({ p
   await capture(page, `${dir}/seller-sales-reloaded.png`);
 
   const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
-  expect(me.role).toBe('SELLER');
+  expect(me.accountType).toBe('SHOP_STAFF');
   const storeId = me.storeIds[0];
   const productsResponse = await call(page.request, `/seller/products?storeId=${storeId}`);
   const ordersResponse = await call(page.request, `/seller/orders?storeId=${storeId}`);
@@ -66,7 +67,7 @@ test('seller screen opens on product management without a dashboard', async ({ p
     `${dir}/seller-api.json`,
     JSON.stringify(
       {
-        role: me.role,
+        accountType: me.accountType,
         storeId,
         products: sellerProducts.map((p) => ({ id: p.id, name: p.name, stock: p.stock })),
         orders: orders.map((o) => ({ id: o.id, status: o.status })),

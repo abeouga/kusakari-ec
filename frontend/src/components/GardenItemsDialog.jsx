@@ -128,16 +128,12 @@ function GardenItems({ shop, gardenId, onAdded, onCancel }) {
   const previousRevision = useRef(/** @type {string|null} */ (null));
   const detail = data.detail;
   const cart = shop.cart;
-  const initialize = shop.initialize;
   useEffect(() => {
     if (!detail) return;
     const revision = `${detail.revision}:${detail.listRevision}`;
     if (previousRevision.current !== null && previousRevision.current !== revision) setSelection({});
     previousRevision.current = revision;
   }, [detail]);
-  useEffect(() => {
-    if (detail && cart && detail.storeId !== cart.storeId) void initialize();
-  }, [detail, cart, initialize]);
 
   const lines = (detail?.items ?? []).map((line) => {
     const product = chosenProduct(line, choices[line.key]);
@@ -147,7 +143,7 @@ function GardenItems({ shop, gardenId, onAdded, onCancel }) {
   const selectable = lines.filter((item) => item.product && !item.inCart && !item.reason);
   const picked = lines.filter((item) => selection[item.line.key]);
   const quantity = picked.reduce((sum, item) => sum + item.line.quantity, 0);
-  const blocked = shop.busy || !!data.error || !cart || !detail || detail.storeId !== cart.storeId;
+  const blocked = shop.busy || !!data.error || !cart || !detail;
 
   function selectAll() {
     setSelection(Object.fromEntries(selectable.map((item) => [item.line.key, item.product?.id ?? ''])));

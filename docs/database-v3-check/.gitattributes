@@ -1,0 +1,4 @@
+# Git Bash で実行するので、改行を LF のままにする（CRLF だと run.sh が失敗し、cases.txt の SQL の末尾に余分な文字が付く）
+run.sh text eol=lf
+cases.txt text eol=lf
+schema.sql text eol=lf

@@ -35,21 +35,19 @@
  * @property {PlantModelProfile|null} [plantModelProfile]
  * @property {object|null} [modelComposition]
  * @property {string|null} [canvasMaterialCode]
- * @property {number|null} [sellerStoreId] Store that introduces this product (EC-B05).
+ * @property {number} sellerStoreId The store the product belongs to; it is also the pickup store.
+ * @property {string} sellerStoreName
  *
- * @typedef {{id:number, name:string, address:string, hours:string, latitude:number, longitude:number, distanceKm:number|null}} Store
- * storeId/storeName: the line's pickup store from the API (issue #70). The in-memory guest cart omits them and
- * uses the cart's store.
- * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean, storeId?:number, storeName?:string}} CartLine
- * @typedef {{guest?:boolean,revision:number, storeId:number, storeName:string, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Cart
- * Legacy guest-cart plan, read only by the selectStore guest branch.
- * @typedef {{revision:number,storeId:number,items:{productId:string,quantity:number}[]}} GuestCartPlan
+ * @typedef {{id:number, name:string, address:string, hours:string, latitude:number|null, longitude:number|null, distanceKm:number|null}} Store
+ * storeId/storeName: the line's pickup store, which is the product's store (issue #70).
+ * @typedef {{product:Product, quantity:number, lineTotalYen:number, available:boolean, storeId:number, storeName:string}} CartLine
+ * @typedef {{revision:number, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, details:DeliveryDetails}} Cart
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number, imageUrl:string|null}} OrderLine
- * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], subtotalYen:number, shippingFeeYen:number, details:DeliveryDetails}} Order
+ * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], details:DeliveryDetails}} Order
  * @typedef {{orders:Order[]}} CheckoutResult One order per pickup store (issue #70).
  * @typedef {{recipientName:string,recipientPhone:string,contactEmail:string}} PickupInput
- * @typedef {{fulfillmentMethod:string, paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string, postalCode:string, addressLine1:string, addressLine2:string, requestedDate:string, timeSlot:string}} DeliveryDetails
- * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'> & {storeId:number}} ProductInput
+ * @typedef {{paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string}} DeliveryDetails
+ * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'|'sellerStoreId'|'sellerStoreName'> & {storeId:number}} ProductInput
  * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number} & PlantShape} PlantModelProfile
  * Shape controls; null (or absent in older profiles) lets Canvas use the plant type / species value.
  * @typedef {{stemCount?:number|null,stemCurve?:number|null,stemTaper?:number|null,twigLength?:number|null,branchLevels?:number|null,branchDroop?:number|null,branchStart?:number|null,leafSizeVariation?:number|null,leafTipRatio?:number|null,leafArrangement?:string|null}} PlantShape
@@ -57,9 +55,9 @@
  * @typedef {{profile:PlantModelProfile,estimatedFields:string[],warnings:string[]}} PlantSuggestion
  * @typedef {{requestId:string, revision:number, expectedTotalYen:number, paymentMethod:string}} Checkout
  * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,productCount:number,itemCount:number,thumbnailVersion:string}} ShoppingSummary
- * @typedef {{id:string,name:string,imageUrl:string,priceYen:number,stock:number,active:boolean}} ShoppingProduct
+ * @typedef {{id:string,name:string,imageUrl:string,priceYen:number,stock:number,active:boolean,storeId:number,storeName:string}} ShoppingProduct
  * @typedef {{key:string,name:string,quantity:number,unit:string,products:ShoppingProduct[]}} ShoppingLine
- * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,storeId:number,storeName:string,items:ShoppingLine[],listRevision:number}} ShoppingDetail
+ * @typedef {{gardenId:string,name:string,revision:number,updatedAt:string,items:ShoppingLine[],listRevision:number}} ShoppingDetail
  * @typedef {{key:string,productId:string}} ShoppingSelection
  * @typedef {{gardenRevision:number,cartRevision:number,listRevision:number,items:ShoppingSelection[]}} ShoppingTransferInput
  * @typedef {{productId:string,name:string,quantity:number,code:string,message:string}} ShoppingOutcome

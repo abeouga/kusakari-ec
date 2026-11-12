@@ -37,8 +37,8 @@ test('existing olive: seller publication, buyer placement and one retained picku
         )
         .toBe(1);
       await buyer.getByRole('link', { name: 'Canvasでイメージする' }).click();
-      await buyer.locator('#garden-name').fill('オリーブ購入確認 2026-10-20');
-      await buyer.getByRole('button', { name: '庭を作成', exact: true }).click();
+      // Canvas creates a garden from the list's first card; its name is edited later in the editor.
+      await buyer.getByRole('button', { name: '新しい庭をつくる', exact: true }).click();
       await expect(buyer.getByTestId(`asset-product:${product.id}`)).toHaveAttribute('aria-pressed', 'true');
       const gardenId = new URL(buyer.url()).pathname.split('/').pop();
       const surface = buyer.locator('[data-testid="garden-canvas"] canvas');

@@ -6,7 +6,6 @@ import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.dto.ProductRequest;
 import jp.kusakari.ec.catalog.mapper.ProductMapper;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
-import jp.kusakari.ec.catalog.persistence.entity.InventoryId;
 import jp.kusakari.ec.catalog.persistence.entity.MaterialProductEntity;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
@@ -35,41 +34,33 @@ public class ProductEditorService {
   private final ProductSkuGenerator skus;
 
   public ProductView create(ProductRequest input) {
-    auth.requireSeller(input.getStoreId());
+    auth.requireManager(input.getStoreId());
     catalog.requireStore(input.getStoreId());
     categories.require(input.getCategory());
     // A new product is listed with at least one in stock; only an edit may set 0 to mark it sold out (issue #72).
     if (input.getStock() < 1) throw new ApiException(400, "STOCK_REQUIRED", "在庫は1以上にしてください。");
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
-    if (auth.enabled()) product.setOwnerMemberId(auth.current().getId());
-    if (product.getSku() == null || product.getSku().isBlank()) product.setSku(skus.next());
-    else if (products.existsBySku(product.getSku())) throw duplicateSku();
+    // 商品番号は店舗の中で一意なので、重複も店舗の中だけで確かめる。
+    if (product.getSku() == null || product.getSku().isBlank()) product.setSku(skus.next(input.getStoreId()));
+    else if (products.existsByStoreIdAndSku(input.getStoreId(), product.getSku())) throw duplicateSku();
     resolveModel(product, input, null, true);
     saveProduct(product, true);
-    java.util.List.of(input.getStoreId())
-      .stream()
-      .forEach(storeId ->
-        inventory.save(
-          new InventoryEntity(
-            new InventoryId(storeId, product.getId()),
-            storeId.equals(input.getStoreId()) ? input.getStock() : 0
-          )
-        )
-      );
+    inventory.save(new InventoryEntity(product.getId(), input.getStock()));
     linkMaterial(product);
-    return catalog.product(product.getId(), input.getStoreId());
+    return catalog.product(product.getId());
   }
 
   public ProductView update(String id, ProductRequest input) {
-    auth.requireSeller(input.getStoreId());
-    catalog.requireStore(input.getStoreId());
     categories.require(input.getCategory());
     ProductEntity product = products
       .findLocked(id)
       .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-    auth.requireProductOwner(product.getOwnerMemberId());
-    if (!product.isActive()) throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
+    auth.requireProductStore(product.getStoreId(), true);
+    // 注文の店舗と商品の店舗を一致させるため、商品をほかの店舗へ移すことはできない。
+    if (!product.getStoreId().equals(input.getStoreId())) {
+      throw new ApiException(400, "STORE_IMMUTABLE", "商品の店舗は変更できません。");
+    }
     // The product number is assigned on registration and cannot be changed afterwards (issue #46).
     if (input.getSku() == null || input.getSku().isBlank()) input.setSku(product.getSku());
     else if (!input.getSku().equals(product.getSku())) {
@@ -77,11 +68,9 @@ public class ProductEditorService {
     }
     // Check the store stock before changing anything: a form opened before an order or a cancellation
     // restock must not overwrite the current quantity (EC-S05 5b).
-    InventoryEntity stock = inventory
-      .lockAtStore(input.getStoreId(), id)
-      .orElseGet(() -> new InventoryEntity(new InventoryId(input.getStoreId(), id), 0));
-    if (stock.getPublicationStatus().equals("DELETED")) {
-      throw new ApiException(409, "PRODUCT_ARCHIVED", "この店舗では取り扱いを終了しています。");
+    InventoryEntity stock = inventory.lock(id).orElse(null);
+    if (stock == null || stock.getPublicationStatus().equals(InventoryEntity.DELETED)) {
+      throw new ApiException(409, "PRODUCT_ARCHIVED", "削除済みの商品は編集できません。");
     }
     int expected = input.getExpectedStock() == null ? input.getStock() : input.getExpectedStock();
     if (stock.getQuantity() != expected) throw SellerProductService.stockChanged(stock.getQuantity());
@@ -95,7 +84,7 @@ public class ProductEditorService {
     stock.setQuantity(input.getStock());
     inventory.save(stock);
     linkMaterial(product);
-    return catalog.product(id, input.getStoreId());
+    return catalog.product(id);
   }
 
   private void resolveModel(
@@ -127,17 +116,15 @@ public class ProductEditorService {
     }
   }
 
+  /** 商品の行は注文や庭の記録から参照されるので消さず、在庫の公開状態を DELETED にする。 */
   public void delete(String id) {
-    if (auth.enabled()) {
-      var product = products
-        .findLocked(id)
-        .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
-      auth.requireProductOwner(product.getOwnerMemberId());
-      auth.requireSeller(auth.current().getStoreId());
-    }
-    if (products.archiveById(id) == 0 && !products.existsById(id)) {
-      throw new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。");
-    }
+    var product = products
+      .findLocked(id)
+      .orElseThrow(() -> new ApiException(404, "PRODUCT_NOT_FOUND", "商品が見つかりません。"));
+    auth.requireProductStore(product.getStoreId(), true);
+    InventoryEntity stock = inventory.lock(id).orElseGet(() -> new InventoryEntity(id, 0));
+    stock.setPublicationStatus(InventoryEntity.DELETED);
+    inventory.save(stock);
   }
 
   private void saveProduct(ProductEntity product, boolean isNew) {
