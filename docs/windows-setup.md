@@ -64,7 +64,7 @@ Mavenはリポジトリ内のWrapperを使います。システムPATHの変更�
 
 ### DBを作り直すとき
 
-`setup.bat` は既存のDBを削除しません。開発用・E2E用のDBを消して作り直すときは、`DB-reset.bat` を使います。対象の決め方、実行のしかた、確かめた内容は [database-reset.md](database-reset.md) にあります。
+`setup.bat` は既存のDBを削除しません。開発用・E2E用のDBを消して作り直すときは、`DB-reset.bat` を使います。対象の決め方、実行のしかた、確かめた内容は [database-reset.md](database-reset.md) にあります。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは、EC と Canvas の初期化の順番・権限の付け直しを含めた [他の PC の移行手順](migration-other-pc.md) に従います。
 
 ## Alternatives
 

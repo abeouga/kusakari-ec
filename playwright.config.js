@@ -7,17 +7,16 @@ const fromRoot = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
   testDir: fromRoot('e2e'),
-  testIgnore: [
-    'business*.spec.js',
-    'acceptance.spec.js',
-    'canvas-integration.spec.js',
-    'canvas-commerce.spec.js',
-    'auth.spec.js',
-    'custom-login.spec.js',
-  ],
+  // Issue #113: only the signed-out catalog suite runs on these servers; every other suite has its own config in
+  // e2e/configs (the cart, orders, Canvas and seller screens need a signed-in member and real Cognito).
+  // sticky-header.spec.js runs in playwright.catalog.config.js on the built bundle: on this dev server the catalogue
+  // loads after the browser has jumped to #plants, so the anchor check fails depending on timing (2026-11-14).
+  testMatch: ['catalog-pagination.spec.js'],
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
+  // The catalogue of the shared E2E database grows with every run; the first product list can take over 5 seconds.
+  expect: { timeout: 20000 },
   reporter: [['list'], ['html', { outputFolder: fromRoot('artifacts/playwright-report'), open: 'never' }]],
   outputDir: fromRoot('artifacts/playwright-results'),
   use: {

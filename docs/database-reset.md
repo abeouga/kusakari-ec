@@ -24,6 +24,8 @@
 5. 「EC の DB の初期化が完了しました」と表示されたら、`start.bat` で起動する
 6. Canvas を使っている PC では、続けて Canvas 側の DB も初期化する（abeouga/kusakari-canvas#63）
 
+他の PC を新しい構成へ移すときの通しの手順（`main` の取得、`npm install`、EC と Canvas の初期化の順番、権限の付け直し、Stripe）は [他の PC の移行手順](migration-other-pc.md) にある。
+
 | 引数 | 動き |
 | --- | --- |
 | なし | 対象を表示し、確認の文字の入力を求める |

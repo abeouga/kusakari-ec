@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { ec, login, prepareMember } from './business-helpers.js';
 
-test('unconfigured Cognito does not claim registration or login success', async ({ page }) => {
+// Issue #113: the workspace runs on real Cognito and MySQL; the demo screens with shared mock data are gone.
+
+// No longer valid, kept for the decision whether to delete it: every E2E config starts the API with Cognito configured
+// (the normal start requires it, 2026-10-20), so the unconfigured message cannot appear. The configured login page is
+// covered by auth-dialog.spec.js.
+test.skip('unconfigured Cognito does not claim registration or login success', async ({ page }) => {
   await page.goto('/account');
   await expect(page.getByText('Cognitoが未設定のため、ログイン・新規登録は利用できません。')).toBeVisible();
   await page.getByRole('link', { name: '新規登録', exact: true }).click();
@@ -12,7 +18,10 @@ test('unconfigured Cognito does not claim registration or login success', async 
   expect((await (await page.request.get('/api/auth/me')).json()).authenticated).toBe(false);
 });
 
-test('seller application, review, store pickup and buyer notifications share mock state', async ({ page }) => {
+// No longer valid, kept for the decision whether to delete it: it relies on the removed mock state (sample orders
+// SAMPLE-1001/1002 and one demo session that is buyer, seller and operator at once). The same flow with real accounts is
+// covered by business.spec.js, business-applications.spec.js and business-pickup-store.spec.js.
+test.skip('seller application, review, store pickup and buyer notifications share mock state', async ({ page }) => {
   await page.goto('/seller/application');
   await page.getByLabel('会社・事業者名').fill('モック申請園芸店');
   await page.getByLabel('担当者名', { exact: true }).fill('確認 担当者');
@@ -91,23 +100,28 @@ test('seller application, review, store pickup and buyer notifications share moc
 });
 
 test('operator category CRUD and responsive navigation', async ({ page }) => {
-  await page.goto('/operator/categories');
-  await page.getByLabel('カテゴリ名').fill('確認用カテゴリ');
-  await page.getByRole('button', { name: 'カテゴリを追加' }).click();
-  const row = page.getByRole('row').filter({ hasText: '確認用カテゴリ' });
-  await row.getByRole('button', { name: '編集', exact: true }).click();
-  await page.getByLabel('カテゴリ名').fill('変更済みカテゴリ');
-  await page.getByRole('button', { name: '変更を保存' }).click();
-  await page
-    .getByRole('row')
-    .filter({ hasText: '変更済みカテゴリ' })
-    .getByRole('button', { name: '削除', exact: true })
-    .click();
+  prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
+  const name = `確認用カテゴリ${Date.now().toString(36)}`;
+  await page.goto(`${ec}/operator/categories`);
+  const main = page.locator('.workspace-main');
+  await main.getByLabel('カテゴリ名').fill(name);
+  await main.getByRole('button', { name: '保存', exact: true }).click();
+  const card = main.locator('section.workspace-card').filter({ hasText: name });
+  await expect(card).toHaveCount(1);
+  await page.reload();
+  await card.getByRole('button', { name: '編集', exact: true }).click();
+  await main.getByLabel('カテゴリ名').fill(`${name}変更`);
+  await main.getByRole('button', { name: '保存', exact: true }).click();
+  const renamed = main.locator('section.workspace-card').filter({ hasText: `${name}変更` });
+  await expect(renamed).toHaveCount(1);
+  await renamed.getByRole('button', { name: '削除', exact: true }).click();
   await page.getByRole('button', { name: '削除を確定' }).click();
-  await expect(page.locator('table')).not.toContainText('変更済みカテゴリ');
+  await expect(main.getByText('カテゴリを削除しました。')).toBeVisible();
+  await page.reload();
+  await expect(main).not.toContainText(name);
+  await mkdir('artifacts/e2e', { recursive: true });
   await page.screenshot({ path: 'artifacts/e2e/workspace-operator.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByLabel('デモ画面の切り替え')).toHaveCount(0);
   await expect(page.locator('.kusakari-site-header')).toContainText('管理者画面');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'artifacts/e2e/workspace-mobile.png', fullPage: true });
@@ -116,44 +130,45 @@ test('operator category CRUD and responsive navigation', async ({ page }) => {
 test('buyer, seller and operator routes render without script errors', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  await mkdir('artifacts/e2e', { recursive: true });
+  // The operator may open the buyer, seller and operator pages (#108); the seller pages act on the sample stores.
+  prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
   const routes = [
     '/account',
     '/notifications',
     '/purchases',
     '/store/1',
-    '/seller',
     '/seller/products',
     '/seller/orders',
     '/seller/sales',
+    '/seller/stores',
     '/seller/profile',
-    '/seller/application',
     '/seller/notifications',
-    '/operator',
     '/operator/applications',
     '/operator/members',
     '/operator/sellers',
+    '/operator/organizations',
     '/operator/products',
     '/operator/categories',
     '/operator/orders',
   ];
   for (const route of routes) {
-    await page.goto(route);
-    await expect(page.locator('.workspace-main h1')).toBeVisible();
+    await page.goto(`${ec}${route}`);
+    await expect(page.locator('.workspace-main').getByRole('heading').first()).toBeVisible();
     await expect(page.locator('.workspace-main')).not.toContainText('ページが見つかりません');
+    await expect(page.locator('.workspace-main')).not.toContainText('この画面を利用する権限がありません。');
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto('/seller');
+  await page.goto(`${ec}/seller`);
+  await expect(page).toHaveURL(`${ec}/seller/products`);
   await expect(page.locator('.workspace-sidebar')).toBeVisible();
   const sidebar = await page.locator('.workspace-sidebar').boundingBox();
   expect(sidebar.x).toBe(0);
-  await expect(page.locator('.workspace-header select')).toHaveCount(0);
-  await expect(page.locator('.workspace-sidebar nav a svg')).toHaveCount(7);
   await page.screenshot({ path: 'artifacts/e2e/workspace-dashboard.png', fullPage: true });
-  await page.getByRole('button', { name: '戻る', exact: true }).click();
+  await page.getByRole('link', { name: '商品一覧へ戻る', exact: true }).click();
+  await expect(page).toHaveURL(`${ec}/`);
   const navigation = page.getByRole('navigation', { name: 'メインナビゲーション' });
-  await expect(navigation.locator('button').filter({ hasText: 'Kusakariについて' }).locator('+ a')).toHaveText(
-    '出店者',
-  );
+  await expect(navigation.getByRole('link', { name: '出店者', exact: true })).toBeVisible();
   await expect(page.locator('.history-button svg')).toHaveCount(1);
   await expect(page.locator('.account-entry svg')).toHaveCount(1);
   await expect(page.locator('.site-header .bag-text')).toHaveText('カート');
@@ -173,6 +188,11 @@ test('buyer, seller and operator routes render without script errors', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'artifacts/e2e/ec-header-mobile.png', fullPage: false });
   await page.getByRole('link', { name: 'アカウント', exact: true }).click();
-  await expect(page.locator('.workspace-main h1')).toHaveText('ユーザーアカウント');
+  await expect(page.locator('.workspace-main h1')).toHaveText('アカウント情報');
+  await page.reload();
+  await expect(page.locator('.workspace-main h1')).toHaveText('アカウント情報');
+  const session = await page.request.get(`${ec}/api/auth/me`).then((r) => r.json());
+  expect(session.accountType).toBe('ADMIN');
+  await writeFile('artifacts/e2e/workspace-session.json', JSON.stringify(session, null, 2));
   expect(errors).toEqual([]);
 });
