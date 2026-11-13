@@ -3,6 +3,7 @@ import { useResource, write } from './useResource';
 import { ResourceStatus } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { stateOf } from './SellerStores';
+import { PageLink } from './Common';
 
 /** @typedef {import('./SellerStores').StoreProfile} StoreProfile */
 /** @typedef {{kind:'enabled'|'close'|'reopen'|'cancel-orders',store:StoreProfile}} Pending */
@@ -66,6 +67,8 @@ export function OperatorStoresPage() {
             {store.company} / {store.address}
           </p>
           <p>{stateOf(store)}</p>
+          {/* Issue #130: the operator opens each store's sales, closed stores included. */}
+          <PageLink href={`/operator/stores/${store.id}/sales`}>注文実績を見る</PageLink>
           {!store.closedAt && (
             <div className="workspace-actions">
               <button disabled={resource.busy} onClick={() => setPending({ kind: 'enabled', store })}>
