@@ -144,18 +144,6 @@ test('login, seller, operator and buyer forms separate page, card and field colo
         false,
         (p) => p.getByRole('row').filter({ hasText: product.name }),
       ],
-      // The moderation row of the product created above; the list holds every product, so only the viewport is saved.
-      [
-        admin.page,
-        'operator-products',
-        '/operator/products',
-        (p) =>
-          p
-            .locator('.workspace-card')
-            .filter({ has: p.getByRole('heading', { name: product.name, exact: true }) })
-            .getByLabel('理由・コメント'),
-        false,
-      ],
       [buyer.page, 'buyer-pickup-contact', '/account/pickup-contact', (p) => p.locator('input[name="recipientName"]')],
     ];
     for (const width of [1440, 390]) {
@@ -177,6 +165,24 @@ test('login, seller, operator and buyer forms separate page, card and field colo
       await expect(admin.page.locator('.workspace-form input[name="name"]')).toBeVisible();
       await admin.page.evaluate(() => scrollTo(0, 0));
       await admin.page.screenshot({ path: `${dir}/after-reload-operator-categories-${width}.png`, fullPage: true });
+
+      // Issue #16: the operator enters the reason in the warning dialog of the product created above, not in its card,
+      // so the field is checked against the dialog; the list holds every product, so only the viewport is saved.
+      await admin.page.goto(`${ec}/operator/products`);
+      await admin.page.reload();
+      await admin.page
+        .getByTestId(`operator-product-${product.id}`)
+        .getByRole('button', { name: '警告する', exact: true })
+        .click();
+      const warning = admin.page.getByRole('alertdialog', { name: '警告の確認' });
+      const reason = warning.getByRole('textbox');
+      await expect(reason).toBeVisible();
+      const dialogColors = await formColors(reason, { pageSelector: 'html', cardSelector: '.seller-confirm' });
+      expectFieldContrast(dialogColors);
+      report[`operator-product-warning-${width}`] = dialogColors;
+      await admin.page.screenshot({ path: `${dir}/after-reload-operator-product-warning-${width}.png` });
+      await warning.getByRole('button', { name: '取消', exact: true }).click();
+      await expect(warning).toHaveCount(0);
 
       // The pickup confirmation is a step inside the cart page, so it is reopened after the reload.
       await buyer.page.setViewportSize({ width, height: 900 });

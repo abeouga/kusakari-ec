@@ -4,6 +4,7 @@
 
 - [decisions/2026-11-11-shop-organization-db-v3.md](decisions/2026-11-11-shop-organization-db-v3.md)：構成（v3）の採用
 - [decisions/2026-11-12-db-v3-payments-closure-roles.md](decisions/2026-11-12-db-v3-payments-closure-roles.md)：決済と返金、手数料、店舗の閉鎖、組織のロール、招待キー、警告の履歴の追加
+- [decisions/2026-11-13-moderation-warnings.md](decisions/2026-11-13-moderation-warnings.md)：運営の警告と、商品・店舗の停止の履歴（`product_moderation_events`・`store_moderation_events`）の使い方。マイグレーションは足していない
 - [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）の追加と、連絡先の削除をアプリの定期処理にしたこと
 
 この文書の前提は次のとおりです。

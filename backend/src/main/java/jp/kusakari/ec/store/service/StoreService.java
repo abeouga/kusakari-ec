@@ -6,11 +6,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import jp.kusakari.ec.auth.AuthMember;
 import jp.kusakari.ec.auth.AuthService;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.moderation.dto.ModerationDtos;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class StoreService {
   private final OrganizationRepository organizations;
   private final AuthService auth;
   private final OpenOrders openOrders;
+  private final StoreModerationService moderation;
 
   /**
    * company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。
@@ -34,6 +37,7 @@ public class StoreService {
    * openOrderCount は閉鎖を止めている未完了の注文の件数で、出店者と運営の店舗一覧だけで返す（公開ページは null）。
    * memberRole は出店者画面の店舗一覧（GET /api/seller/stores）だけで返す、その店舗での自分の立場
    * （OWNER・MANAGER・STAFF・NONE＝所属でロールなし・ADMIN＝運営。空＝担当外で、ORG_ADMIN の人事の画面だけ）。
+   * warning は運営の今出ている警告（#16）。出店者と運営にだけ返し、購入者・未ログインの公開ページは null。
    */
   public record Profile(
     long id,
@@ -52,7 +56,8 @@ public class StoreService {
     String memberRole,
     String closingStartedBy,
     Instant closedAt,
-    Long openOrderCount
+    Long openOrderCount,
+    ModerationDtos.Warning warning
   ) {}
 
   public record Input(
@@ -72,8 +77,10 @@ public class StoreService {
   @Transactional(readOnly = true)
   public Profile get(long id) {
     var store = require(id);
-    if (!publiclyVisible(store) && !auth.canViewAsStaff(store)) throw notFound();
-    return view(store);
+    boolean staff = auth.canViewAsStaff(store);
+    if (!publiclyVisible(store) && !staff) throw notFound();
+    if (!staff) return view(store);
+    return withWarning(view(store), moderation.warnings(List.of(id)).get(id));
   }
 
   private boolean publiclyVisible(StoreEntity store) {
@@ -87,13 +94,13 @@ public class StoreService {
   @Transactional(readOnly = true)
   public List<Profile> list() {
     auth.requireAdmin();
-    return stores.findAllByOrderByIdAsc().stream().map(this::withOpenOrders).toList();
+    return managedList(stores.findAllByOrderByIdAsc());
   }
 
   /** 閉鎖の操作の後に返す店舗（未完了の注文の件数つき）。操作の権限は呼ぶ前に確かめている。 */
   @Transactional(readOnly = true)
   public Profile managed(long id) {
-    return withOpenOrders(require(id));
+    return managedList(List.of(require(id))).get(0);
   }
 
   /** ログインしている店舗側のアカウントが操作できる店舗。運営には全店舗を返す。 */
@@ -101,14 +108,20 @@ public class StoreService {
   public List<Profile> mine() {
     auth.requireSellerRole();
     AuthMember member = auth.current();
-    if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::withOpenOrders).toList();
+    if (member.isAdmin()) return managedList(stores.findAllByOrderByIdAsc());
     // ロール未割り当ての担当者も、所属店舗の店舗情報は見られる（#105）。ORG_ADMIN には組織の全店舗を候補に出す（#112）。
     // 変更の API は、それぞれロールを確かめる。
-    return stores
+    List<StoreEntity> mine = stores
       .findAllById(auth.candidateStoreIdsOf(member))
       .stream()
       .sorted(java.util.Comparator.comparing(StoreEntity::getId))
-      .map(store -> withRole(withOpenOrders(store), auth.memberRoleAt(member, store)))
+      .toList();
+    Map<Long, ModerationDtos.Warning> warnings = moderation.warnings(mine.stream().map(StoreEntity::getId).toList());
+    return mine
+      .stream()
+      .map(store ->
+        withRole(withWarning(withOpenOrders(store), warnings.get(store.getId())), auth.memberRoleAt(member, store))
+      )
       .toList();
   }
 
@@ -157,12 +170,6 @@ public class StoreService {
     return view(s);
   }
 
-  /** 運営による停止・再開。 */
-  public void enable(long id, boolean enabled) {
-    auth.requireAdmin();
-    require(id).changeSuspended(!enabled);
-  }
-
   private static void requireNotClosed(StoreEntity store) {
     if (store.getClosedAt() != null) throw new ApiException(409, "STORE_CLOSED", "この店舗は閉鎖済みです。");
   }
@@ -194,8 +201,15 @@ public class StoreService {
       null,
       s.getClosingStartedBy(),
       s.getClosedAt(),
+      null,
       null
     );
+  }
+
+  // 出店者・運営の一覧：未完了の注文の件数と、運営の警告をつける。
+  private List<Profile> managedList(List<StoreEntity> list) {
+    Map<Long, ModerationDtos.Warning> warnings = moderation.warnings(list.stream().map(StoreEntity::getId).toList());
+    return list.stream().map(s -> withWarning(withOpenOrders(s), warnings.get(s.getId()))).toList();
   }
 
   private Profile withOpenOrders(StoreEntity s) {
@@ -204,10 +218,18 @@ public class StoreService {
   }
 
   private static Profile withRole(Profile p, String role) {
-    return withRole(p, role, p.openOrderCount());
+    return copy(p, role, p.openOrderCount(), p.warning());
   }
 
   private static Profile withRole(Profile p, String role, Long openOrderCount) {
+    return copy(p, role, openOrderCount, p.warning());
+  }
+
+  private static Profile withWarning(Profile p, ModerationDtos.Warning warning) {
+    return copy(p, p.memberRole(), p.openOrderCount(), warning);
+  }
+
+  private static Profile copy(Profile p, String role, Long openOrderCount, ModerationDtos.Warning warning) {
     return new Profile(
       p.id(),
       p.revision(),
@@ -225,7 +247,8 @@ public class StoreService {
       role,
       p.closingStartedBy(),
       p.closedAt(),
-      openOrderCount
+      openOrderCount,
+      warning
     );
   }
 }

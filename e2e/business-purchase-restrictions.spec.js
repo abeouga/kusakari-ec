@@ -222,7 +222,10 @@ test('cart removes unbuyable lines, references explain why and closed stores are
       moderation,
     );
     expect(moderated.status()).toBe(200);
-    const off = await call(admin.request, `/operator/stores/${stores.suspended}/enabled`, 'PUT', { enabled: false });
+    const off = await call(admin.request, `/operator/stores/${stores.suspended}/enabled`, 'PUT', {
+      enabled: false,
+      reason: '購入制限の確認',
+    });
     expect(off.status()).toBe(200);
     sql(`UPDATE inventory SET quantity=0 WHERE product_id='${products.soldOut.id}';
       UPDATE stores SET closing_started_at=NOW(6),closing_started_by='OWNER',closed_at=NOW(6) WHERE id=${Number(stores.closed)};
