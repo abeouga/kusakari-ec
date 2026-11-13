@@ -76,6 +76,22 @@ export function prepareMember(member, role) {
 }
 
 /**
+ * Issue #111: a staff account of the sample organization with the given store roles ('NONE' = member without a role).
+ * @param {{id:string}} member @param {Record<number,'MANAGER'|'STAFF'|'NONE'>} stores @param {boolean} [organizationAdmin]
+ */
+export function prepareStaff(member, stores, organizationAdmin = false) {
+  prepareMember(member, 'USER');
+  const rows = Object.entries(stores).map(([store, role]) => {
+    if (![1, 2, 3].includes(Number(store)) || !['MANAGER', 'STAFF', 'NONE'].includes(role))
+      throw new Error('Invalid fixture.');
+    return `(${Number(store)},'${member.id}',1,${role === 'NONE' ? 'NULL' : `'${role}'`})`;
+  });
+  sql(`UPDATE members SET account_type='SHOP_STAFF' WHERE id='${member.id}';
+       INSERT INTO organization_members(organization_id,member_id,role) VALUES(1,'${member.id}',${organizationAdmin ? "'ORG_ADMIN'" : 'NULL'});
+       ${rows.length ? `INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES ${rows.join(',')};` : ''}`);
+}
+
+/**
  * An owner adds a store without an application; a new store is unpublished, so buyers see it only after this.
  * @param {import('@playwright/test').APIRequestContext} request the owner's session
  * @param {string} name
@@ -216,6 +232,20 @@ export function createPasswordTestAccount() {
     throw error;
   }
   return { email, secret };
+}
+
+/**
+ * Issue #111: an account registered through the real sign-up (SignUp) has an unconfirmed address. The test cannot
+ * read the code sent to example.com, so the administrator API confirms it, as the code would.
+ * @param {string} email
+ */
+export function confirmSignUpTestAccount(email) {
+  if (!/^password-[a-f0-9-]{36}@example\.com$/.test(email)) throw new Error('Not an isolated password-test account.');
+  cognitoAccount('admin-confirm-sign-up', { Username: email });
+  cognitoAccount('admin-update-user-attributes', {
+    Username: email,
+    UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
+  });
 }
 
 export function deletePasswordTestAccount(email) {
