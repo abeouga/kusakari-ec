@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { StaffAccountsPage } from './StaffAccounts';
 import { StoreInvitationsPage } from './StoreInvitations';
-import { SalesPage } from './OrderPages';
+import { SalesPage, SalesReport } from './SalesReport';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
@@ -121,6 +121,7 @@ export function Workspace({ shop, path, header }) {
       </>
     );
   const publicStore = path.startsWith('/store/');
+  const operatorSales = path.match(/^\/operator\/stores\/(\d+)\/sales$/);
   const application = path === applicationPaths.form || path === applicationPaths.status;
   const seller = path.startsWith('/seller') && !application;
   const operator = path.startsWith('/operator');
@@ -176,6 +177,16 @@ export function Workspace({ shop, path, header }) {
       <BuyerOrders />
     );
   else if (path.endsWith('/notifications')) content = <Notices />;
+  // Issue #130: the sales page decides by the API which stores the account may read, including closed ones.
+  else if (path === '/seller/sales' && !shop.sellerStoresLoading)
+    content = <SalesPage key={storeId ?? 0} storeId={storeId ?? null} />;
+  else if (operatorSales)
+    content = (
+      <>
+        <PageLink href="/operator/sellers">店舗管理へ戻る</PageLink>
+        <SalesReport storeId={Number(operatorSales[1])} operator />
+      </>
+    );
   else if (personnelOnly)
     content = (
       <section className="workspace-card">
@@ -207,7 +218,6 @@ export function Workspace({ shop, path, header }) {
   else if (application) content = <ApplicationPage accountType={session.accountType} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
     content = <OrderPage storeId={storeId} operator={operator} />;
-  else if (path === '/seller/sales') content = <SalesPage storeId={storeId} />;
   else if (path === '/operator/applications') content = <ReviewPage />;
   else if (path === '/operator/products') content = <ReviewPage products />;
   else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')
@@ -220,6 +230,7 @@ export function Workspace({ shop, path, header }) {
     action?.[1] ||
     menu.find(([url]) => url === path)?.[1] ||
     pageTitles[path] ||
+    (operatorSales ? '店舗の注文実績' : '') ||
     (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
     <>

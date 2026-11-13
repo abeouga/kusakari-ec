@@ -130,9 +130,8 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
       await buyer.getByRole('button', { name: '3D庭', exact: true }).click();
       await expect(buyer.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
       await buyer.getByRole('tab', { name: '買い物リスト（1）', exact: true }).click();
-      await expect(
-        buyer.getByText('現在は販売されていないため購入できません。保存済みの配置は維持されます。'),
-      ).toBeVisible();
+      // A product suspended by the operator stays placed (canvas#72); the shopping list says it cannot be bought now.
+      await expect(buyer.getByText('現在は購入できません', { exact: true })).toBeVisible();
       await buyer.screenshot({ path: 'artifacts/business/suspended-garden.png' });
     } finally {
       expect(

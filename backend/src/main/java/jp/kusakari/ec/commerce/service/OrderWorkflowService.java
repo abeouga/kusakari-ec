@@ -29,13 +29,13 @@ public class OrderWorkflowService {
   @Transactional(readOnly = true)
   public List<OrderView> sellerOrders(long storeId) {
     auth.requireSeller(storeId);
-    return orders.findByStoreIdOrderByCreatedAtDesc(storeId).stream().map(this::view).toList();
+    return orders.findByStoreIdOrderByCreatedAtDesc(storeId).stream().map(this::storeView).toList();
   }
 
   @Transactional(readOnly = true)
   public List<OrderView> allOrders() {
     auth.requireAdmin();
-    return orders.findAllByOrderByCreatedAtDesc().stream().map(this::view).toList();
+    return orders.findAllByOrderByCreatedAtDesc().stream().map(this::storeView).toList();
   }
 
   @Transactional(readOnly = true)
@@ -50,7 +50,7 @@ public class OrderWorkflowService {
   public OrderView sellerOrder(String id) {
     var order = orders.findById(id).orElseThrow(this::missing);
     requireStore(order);
-    return view(order);
+    return storeView(order);
   }
 
   public OrderView changeStatus(String id, String expectedStatus, String status) {
@@ -67,7 +67,7 @@ public class OrderWorkflowService {
       ready ? "受取準備が完了しました" : "商品をお渡ししました",
       order.getId() + " / " + order.getStoreName()
     );
-    return view(order);
+    return storeView(order);
   }
 
   public OrderView requestCancellation(String id, String reason) {
@@ -97,11 +97,16 @@ public class OrderWorkflowService {
       approved ? "注文をキャンセルしました" : "キャンセル申請の結果",
       id + " " + reason
     );
-    return view(order);
+    return storeView(order);
   }
 
   private OrderView view(OrderEntity order) {
     return mapper.toView(order, items.findAllForOrder(order.getId()));
+  }
+
+  /** 店舗・運営向けの応答。販売手数料を含める（#130）。 */
+  private OrderView storeView(OrderEntity order) {
+    return mapper.toStoreView(order, items.findAllForOrder(order.getId()));
   }
 
   private void requireBuyer(OrderEntity order) {

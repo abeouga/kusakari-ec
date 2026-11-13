@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { PageLink } from './Common';
 
 /** @type {Record<string,string>} */
 const applicationLabels = { SUBMITTED: '審査中', APPROVED: '承認', REJECTED: '却下', WITHDRAWN: '取り下げ済み' };
@@ -175,6 +176,8 @@ export function MembersPage({ sellers = false }) {
           <button disabled={resource.busy} onClick={() => setTarget(m)}>
             {m.enabled ? '利用を停止' : '利用を再開'}
           </button>
+          {/* Issue #130: the operator reads each store's sales and commission from the store list. */}
+          {sellers && <PageLink href={`/operator/stores/${m.id}/sales`}>注文実績を見る</PageLink>}
         </section>
       ))}
       {resource.data && shown.length === 0 && (

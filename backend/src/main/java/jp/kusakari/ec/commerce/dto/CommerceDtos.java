@@ -90,6 +90,8 @@ public final class CommerceDtos {
     // カードの注文の決済の状態（PENDING / SUCCEEDED / FAILED / EXPIRED）。店頭払いは null。
     String paymentStatus,
     // 返金の状態（REQUESTED / SUCCEEDED / FAILED）。返金がなければ null。
-    String refundStatus
+    String refundStatus,
+    // 販売手数料（#130）。店舗・運営の注文の応答だけで返し、購入者には null。
+    SalesDtos.SalesFigures sales
   ) {}
 }
