@@ -206,7 +206,7 @@ erDiagram
         char36 request_id UK
         char36 buyer_member_id FK
         varchar payment_intent_id UK "Stripe の PaymentIntent"
-        varchar status "PENDING / SUCCEEDED / FAILED / EXPIRED（仮）"
+        varchar status "PENDING / SUCCEEDED / FAILED / EXPIRED"
         int amount_yen "お会計の合計。1円以上"
         timestamp created_at
         timestamp updated_at
@@ -258,7 +258,7 @@ erDiagram
         char36 order_id FK, UK "注文1件につき1行"
         char36 payment_id FK "その注文が支払われた決済"
         varchar stripe_refund_id UK "Stripe の Refund"
-        varchar status "REQUESTED / SUCCEEDED / FAILED（仮）"
+        varchar status "REQUESTED / SUCCEEDED / FAILED"
         int amount_yen "注文の合計。1円以上"
         char36 requested_by_member_id FK "NULL = Stripe の管理画面から"
         timestamp created_at
@@ -444,7 +444,7 @@ erDiagram
 
 ## 5. 注文・決済・返金の流れ
 
-決済は Stripe のテストモードだけを使います（#131〜#133）。状態の名前と細かいルールは、#131 の「決めること」が決まるまで仮です。
+決済は Stripe のテストモードだけを使います（#131〜#133）。状態の名前とルールは [残りの決定](decisions/2026-11-12-remaining-decisions.md) の 1-1〜1-17 で確定し、実装の流れは [決済の決定](decisions/2026-11-13-stripe-card-payment.md) にあります。店頭払いのお会計は決済を作らず、注文を `ACCEPTED` で作ります。
 
 | 場面 | DB で起きること |
 | --- | --- |
