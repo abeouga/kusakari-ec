@@ -4,8 +4,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { DataTable } from './Common';
 import { navigate } from './navigation';
+import { WarningBadge } from './Moderation';
 
-/** @typedef {{id:number,revision:number,organizationId:number,name:string,company:string,address:string,hours:string,enabled:boolean,published:boolean,closingStartedAt:string|null,closingStartedBy:'OWNER'|'ADMIN'|null,closedAt:string|null,openOrderCount:number|null}} StoreProfile */
+/** @typedef {{id:number,revision:number,organizationId:number,name:string,company:string,address:string,hours:string,enabled:boolean,published:boolean,closingStartedAt:string|null,closingStartedBy:'OWNER'|'ADMIN'|null,closedAt:string|null,openOrderCount:number|null,warning?:import('./Moderation').Warning|null}} StoreProfile */
 
 /**
  * Issue #79: a closing store takes no new orders and becomes closed once its open orders are done.
@@ -58,7 +59,11 @@ export function SellerStoresPage({ shop, owner }) {
               store.name,
               store.address,
               store.hours,
-              stateOf(store),
+              // Issue #16: the operator's warning and its reason are shown to the store's people.
+              <div key="state">
+                {stateOf(store)}
+                <WarningBadge warning={store.warning} />
+              </div>,
               <div key="actions" className="workspace-actions">
                 {!store.closedAt && (
                   <button type="button" onClick={() => edit(store)}>

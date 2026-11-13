@@ -15,9 +15,16 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class SellerProductController {
   private final SellerProductService service;
+  private final jp.kusakari.ec.catalog.service.ProductModerationService moderation;
 
   @GetMapping
   public List<ProductView> list(@RequestParam long storeId) { return service.list(storeId); }
+
+  /** 運営が警告・停止している自分の店舗の商品と、警告の理由（#16）。 */
+  @GetMapping("/moderation")
+  public List<jp.kusakari.ec.moderation.dto.ModerationDtos.ProductNotice> moderation(@RequestParam long storeId) {
+    return moderation.noticesAt(storeId);
+  }
 
   @PatchMapping("/status")
   public Map<String, Boolean> update(@Valid @RequestBody ProductStatusRequest request) {

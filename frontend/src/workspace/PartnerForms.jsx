@@ -1,5 +1,6 @@
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
+import { WarningBadge } from './Moderation';
 /** @param {{storeId:number,readOnly?:boolean}} props */
 export function ProfilePage({ storeId, readOnly = false }) {
   const resource = useResource(`/stores/${storeId}`);
@@ -27,6 +28,9 @@ export function ProfilePage({ storeId, readOnly = false }) {
             </>
           ) : (
             <form key={p.revision} className="workspace-form" onSubmit={save}>
+              <div className="full-width">
+                <WarningBadge warning={p.warning} />
+              </div>
               {/* The company is the organization's name, set by the approved application. */}
               <p className="full-width">会社名：{p.company}</p>
               {[

@@ -8,11 +8,12 @@ import './seller-products.css';
 const statusLabels = { PUBLISHED: '公開中', HIDDEN: '非表示', DELETED: '削除' };
 /**
  * @param {{products:import('../types').Product[],storeName:string,busy:boolean,
+ * notices:Record<string,import('./ProductManager').ProductNotice>,
  * onEdit:(product:import('../types').Product)=>void,
  * onStock:(product:import('../types').Product)=>void,
  * onStatus:(ids:string[],status:string)=>Promise<boolean>}} props
  */
-export function SellerProductList({ products, storeName, busy, onEdit, onStock, onStatus }) {
+export function SellerProductList({ products, storeName, busy, notices, onEdit, onStock, onStatus }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
@@ -193,6 +194,8 @@ export function SellerProductList({ products, storeName, busy, onEdit, onStock, 
                   <div>
                     <strong>{p.name}</strong>
                     <small>{p.sku}</small>
+                    {notices[p.id]?.warning && <span className="moderation-badge">警告中</span>}
+                    {notices[p.id]?.suspended && <span className="moderation-badge">運営により公開停止中</span>}
                   </div>
                 </div>
               </td>

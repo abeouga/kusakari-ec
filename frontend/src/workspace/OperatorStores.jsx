@@ -4,13 +4,13 @@ import { ResourceStatus } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { stateOf } from './SellerStores';
 import { PageLink } from './Common';
+import { ModerationControls } from './Moderation';
 
 /** @typedef {import('./SellerStores').StoreProfile} StoreProfile */
-/** @typedef {{kind:'enabled'|'close'|'reopen'|'cancel-orders',store:StoreProfile}} Pending */
+/** @typedef {{kind:'close'|'reopen'|'cancel-orders',store:StoreProfile}} Pending */
 
 /** @type {Record<Pending['kind'],{title:string,confirm:string,done:string}>} */
 const actions = {
-  enabled: { title: '利用状況変更の確認', confirm: '変更を確定', done: '店舗の利用状況を変更しました。' },
   close: {
     title: '店舗の閉鎖の確認',
     confirm: '閉鎖を始める',
@@ -26,15 +26,14 @@ const actions = {
 
 /** @param {Pending} pending @param {string} reason */
 function send({ kind, store }, reason) {
-  if (kind === 'enabled') return write(`/operator/stores/${store.id}/enabled`, 'PUT', { enabled: !store.enabled });
   if (kind === 'close') return write(`/operator/stores/${store.id}/closure`, 'POST');
   if (kind === 'reopen') return write(`/operator/stores/${store.id}/closure`, 'DELETE');
   return write(`/operator/stores/${store.id}/order-cancellations`, 'POST', { reason });
 }
 
 /**
- * The operator's store management (issue #79): suspend or resume a store, close it, and cancel its open orders in
- * one step when the store cannot hand them over (refund, stock and notices follow).
+ * The operator's store management (issue #79): close a store and cancel its open orders in one step when the store
+ * cannot hand them over (refund, stock and notices follow). Warning, suspension and resumption follow issue #16.
  */
 export function OperatorStoresPage() {
   const resource = useResource('/operator/stores');
@@ -71,9 +70,6 @@ export function OperatorStoresPage() {
           <PageLink href={`/operator/stores/${store.id}/sales`}>注文実績を見る</PageLink>
           {!store.closedAt && (
             <div className="workspace-actions">
-              <button disabled={resource.busy} onClick={() => setPending({ kind: 'enabled', store })}>
-                {store.enabled ? '利用を停止' : '利用を再開'}
-              </button>
               {store.closingStartedAt ? (
                 <>
                   <button disabled={resource.busy} onClick={() => setPending({ kind: 'reopen', store })}>
@@ -91,6 +87,16 @@ export function OperatorStoresPage() {
                 </button>
               )}
             </div>
+          )}
+          {!store.closedAt && (
+            <ModerationControls
+              target="stores"
+              id={store.id}
+              name={store.name}
+              suspended={!store.enabled}
+              warning={store.warning}
+              resource={resource}
+            />
           )}
         </section>
       ))}
@@ -133,14 +139,6 @@ export function OperatorStoresPage() {
 
 /** @param {{pending:Pending}} props */
 function PendingText({ pending: { kind, store } }) {
-  if (kind === 'enabled')
-    return store.enabled ? (
-      <p>
-        この店舗の利用を停止します。商品は購入者向けの画面に表示されなくなります。確定済みの注文はキャンセルされず、そのまま受け渡しを続けます。
-      </p>
-    ) : (
-      <p>利用停止を解除し、再び利用できるようにします。</p>
-    );
   if (kind === 'close')
     return (
       <p>

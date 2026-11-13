@@ -3,6 +3,7 @@ import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageLink } from './Common';
+import { ModerationControls } from './Moderation';
 
 /** @type {Record<string,string>} */
 const applicationLabels = { SUBMITTED: '審査中', APPROVED: '承認', REJECTED: '却下', WITHDRAWN: '取り下げ済み' };
@@ -54,28 +55,22 @@ export function ReviewPage({ products = false }) {
   );
 }
 
-/** @param {{row:import('../businessTypes').Review,resource:ReturnType<typeof useResource>}} props */
+/** EC-A10 and issue #16: warn, suspend and resume a product, with its history.
+ * @param {{row:import('../businessTypes').Review,resource:ReturnType<typeof useResource>}} props */
 function ProductModerationRow({ row, resource }) {
-  const [reason, setReason] = useState('');
   return (
-    <section className="workspace-card">
+    <section className="workspace-card" data-testid={`operator-product-${row.id}`} aria-label={row.name}>
       <h3>{row.name}</h3>
       <p>店舗：{row.storeName}</p>
       <p>{row.suspended ? '公開停止中' : row.active ? '公開可能' : '販売終了'}</p>
-      <label>
-        理由・コメント
-        <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} />
-      </label>
-      <button
-        disabled={resource.busy || !reason.trim()}
-        onClick={() =>
-          void resource.run(() =>
-            write(`/operator/products/${row.id}/moderation`, 'PUT', { suspended: !row.suspended, reason }),
-          )
-        }
-      >
-        {row.suspended ? '公開停止を解除' : '公開を停止'}
-      </button>
+      <ModerationControls
+        target="products"
+        id={row.id}
+        name={row.name ?? row.id}
+        suspended={!!row.suspended}
+        warning={row.warning}
+        resource={resource}
+      />
     </section>
   );
 }

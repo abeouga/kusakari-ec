@@ -19,8 +19,6 @@ public class StoreController {
   /** 運営のまとめてキャンセルの理由。購入者への通知と、注文の回答の欄に入る。 */
   public record CancellationRequest(@NotBlank @Size(max = 500) String reason) {}
 
-  public record EnabledRequest(boolean enabled) {}
-
   @GetMapping("/api/stores/{id}")
   public StoreService.Profile get(@PathVariable long id) {
     return service.get(id);
@@ -52,12 +50,6 @@ public class StoreController {
   @GetMapping("/api/operator/stores")
   public List<StoreService.Profile> list() {
     return service.list();
-  }
-
-  @PutMapping("/api/operator/stores/{id}/enabled")
-  public Map<String, Boolean> enabled(@PathVariable long id, @RequestBody EnabledRequest in) {
-    service.enable(id, in.enabled());
-    return Map.of("enabled", in.enabled());
   }
 
   // 店舗の閉鎖（#79）。オーナーは出店者の API、運営は運営の API から操作する。どちらも同じ処理で、操作した人の種別で記録する。
