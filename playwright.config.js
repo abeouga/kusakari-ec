@@ -7,9 +7,11 @@ const fromRoot = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
   testDir: fromRoot('e2e'),
-  // Issue #113: only the signed-out catalog suites run on these servers; every other suite has its own config in
+  // Issue #113: only the signed-out catalog suite runs on these servers; every other suite has its own config in
   // e2e/configs (the cart, orders, Canvas and seller screens need a signed-in member and real Cognito).
-  testMatch: ['catalog-pagination.spec.js', 'sticky-header.spec.js'],
+  // sticky-header.spec.js runs in playwright.catalog.config.js on the built bundle: on this dev server the catalogue
+  // loads after the browser has jumped to #plants, so the anchor check fails depending on timing (2026-11-14).
+  testMatch: ['catalog-pagination.spec.js'],
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
