@@ -6,15 +6,19 @@ import { useEffect, useState } from 'react';
 import {
   Bell,
   Building2,
+  KeyRound,
   ChartColumn,
   ClipboardCheck,
   Package,
   ReceiptText,
   Store,
   Tags,
+  UserCog,
   UserRound,
   Users,
 } from 'lucide-react';
+import { StaffAccountsPage } from './StaffAccounts';
+import { StoreInvitationsPage } from './StoreInvitations';
 import { SalesPage } from './OrderPages';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -39,6 +43,12 @@ const sellerMenu = [
   ['/seller/stores', '店舗一覧', Building2],
   ['/seller/profile', '店舗プロフィール', UserRound],
   ['/seller/notifications', '出店者通知', Bell],
+];
+// Issue #111: personnel pages, shown to the owner, ORG_ADMIN and MANAGER only.
+/** @type {MenuItem[]} */
+const personnelMenu = [
+  ['/seller/accounts', 'アカウント', UserCog],
+  ['/seller/invitations', '招待キー', KeyRound],
 ];
 /** @type {MenuItem[]} */
 const operatorMenu = [
@@ -66,7 +76,15 @@ const pageTitles = {
   '/seller/products/new': '商品登録',
 };
 // Pages that work on one store: an account with several stores chooses which one above the page.
-const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile']);
+const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile', '/seller/invitations']);
+// Issue #112: pages that need a role at the chosen store. An ORG_ADMIN's store without a role offers personnel pages only.
+const rolePaths = new Set([
+  '/seller/products',
+  '/seller/products/new',
+  '/seller/orders',
+  '/seller/sales',
+  '/seller/profile',
+]);
 // Issue #71: these pages show their heading inside the card instead of above it.
 const cardTitlePaths = new Set(['/seller/products', '/seller/products/new']);
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
@@ -125,10 +143,17 @@ export function Workspace({ shop, path, header }) {
       </>
     );
   const storeId = shop.sellerStoreId;
+  const chosenStore = shop.sellerStores.find((store) => store.id === storeId);
+  const personnel =
+    session.accountType === 'SHOP_OWNER' ||
+    session.organizationRole === 'ORG_ADMIN' ||
+    shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  const personnelOnly =
+    seller && rolePaths.has(path) && session.accountType !== 'ADMIN' && !!chosenStore && chosenStore.memberRole == null;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
-      ? [{ label: '出店者メニュー', items: sellerMenu }]
+      ? [{ label: '出店者メニュー', items: personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu }]
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
@@ -151,6 +176,15 @@ export function Workspace({ shop, path, header }) {
       <BuyerOrders />
     );
   else if (path.endsWith('/notifications')) content = <Notices />;
+  else if (personnelOnly)
+    content = (
+      <section className="workspace-card">
+        <p role="note">
+          {chosenStore?.name}では担当のロールがないため、人事（アカウント・招待キー）の画面だけを使えます。
+        </p>
+      </section>
+    );
+  else if (path === '/seller/accounts') content = <StaffAccountsPage />;
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller/products')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
@@ -167,6 +201,8 @@ export function Workspace({ shop, path, header }) {
       </section>
     );
   else if (path === '/seller/profile') content = <ProfilePage key={storeId} storeId={storeId} />;
+  else if (path === '/seller/invitations')
+    content = <StoreInvitationsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage accountType={session.accountType} />;
   else if (application) content = <ApplicationPage accountType={session.accountType} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
@@ -199,7 +235,9 @@ export function Workspace({ shop, path, header }) {
           />
           <main className="workspace-main">
             {!cardTitlePaths.has(path) && <h1>{title}</h1>}
-            {storePaths.has(path) && shop.sellerStores.length > 1 && <SellerStoreSelect shop={shop} disabled={false} />}
+            {(storePaths.has(path) || personnelOnly) && shop.sellerStores.length > 1 && (
+              <SellerStoreSelect shop={shop} disabled={false} />
+            )}
             {content}
           </main>
         </div>

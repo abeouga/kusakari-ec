@@ -3,7 +3,7 @@ import { navigate, redirect } from './workspace/navigation';
 /**
  * accountType is USER, SHOP_OWNER_APPLICANT, SHOP_OWNER, SHOP_STAFF or ADMIN.
  * storeIds are the stores the account may operate: every store of the owner's organization, or the staff's assigned stores.
- * @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,accountType:string|null,organizationId:number|null,storeIds:number[]}} AuthSession
+ * @typedef {{mode:'demo'|'cognito',authenticated:boolean,id:string|null,email:string|null,name:string|null,accountType:string|null,organizationId:number|null,organizationRole:string|null,storeIds:number[]}} AuthSession
  */
 
 /** Accounts that may open the seller pages: the shop's owner and staff, and the operator. @param {AuthSession|null} session */
@@ -73,7 +73,7 @@ export class AuthError extends Error {
   }
 }
 
-/** @param {string} url @param {Record<string,string|boolean>} body @param {string} fallback */
+/** @param {string} url @param {Record<string,string|boolean|null>} body @param {string} fallback */
 async function postAuth(url, body, fallback) {
   const response = await authFetch(url, {
     method: 'POST',
@@ -98,13 +98,15 @@ export async function passwordLogin(email, password, returnTo) {
 
 /**
  * Issue #87: Cognito sends a confirmation code to the address; the card then asks for it.
- * A business sign-up creates the account that may apply to open a shop.
+ * A business sign-up creates the account that may apply to open a shop. Issue #111: a store's invitation key
+ * creates a staff account of that store (without a role until a manager assigns one).
  * @param {string} email @param {string} password @param {string} confirmPassword @param {boolean} business
+ * @param {string|null} [invitationKey]
  */
-export async function signUp(email, password, confirmPassword, business) {
+export async function signUp(email, password, confirmPassword, business, invitationKey = null) {
   await postAuth(
     '/api/auth/signup',
-    { email, password, confirmPassword, business },
+    { email, password, confirmPassword, business, invitationKey },
     '登録できませんでした。時間をおいて再試行してください。',
   );
 }

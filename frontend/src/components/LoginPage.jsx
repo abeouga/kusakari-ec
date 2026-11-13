@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { AuthPanel } from './AuthPanel';
+import { AuthPanel, invitationInUrl } from './AuthPanel';
 import { useAuth } from '../useAuth';
 import { flashNotice } from './SessionNotice';
 
 const headings = {
   login: ['ログイン', '植物選びも、庭づくりも。', 'ひとつのアカウントでご利用いただけます。'],
   signup: ['新規登録', 'メールアドレスとパスワードで、', 'Kusakariのアカウントを作成します。'],
+  invite: ['招待キーで登録', '店舗から受け取った招待キーで、', '店舗の担当者のアカウントを作成します。'],
   confirm: ['メールアドレスの確認', 'ご登録のメールアドレスに届いた', '確認コードで登録を完了します。'],
 };
 
@@ -14,7 +15,9 @@ const headings = {
  */
 export function LoginPage() {
   const { session } = useAuth();
-  const [mode, setMode] = useState(/** @type {import('./AuthPanel').AuthMode} */ ('login'));
+  const [mode, setMode] = useState(
+    /** @type {import('./AuthPanel').AuthMode} */ (invitationInUrl() !== null ? 'invite' : 'login'),
+  );
   const [title, first, second] = headings[mode];
   return (
     <div className="login-page">

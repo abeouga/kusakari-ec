@@ -3,11 +3,32 @@ import { api, ApiError, request } from './api';
 import { canSell, isShopAccount, login, readSession } from './auth';
 import { useAuth } from './useAuth';
 
+// Issue #112: the store chosen on the seller pages survives a reload (a per-browser convenience only).
+const storeChoiceKey = 'kusakari.sellerStoreId';
+function savedStoreChoice() {
+  try {
+    return Number(window.localStorage.getItem(storeChoiceKey)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function useShop() {
   const { session } = useAuth();
   const [cart, setCart] = useState(/** @type {import('./types').Cart|null} */ (null));
-  const [chosenSellerStoreId, setSellerStoreId] = useState(0);
-  const [ownStores, setOwnStores] = useState(/** @type {{id:number,name:string,address:string}[]|null} */ (null));
+  const [chosenSellerStoreId, setChosenSellerStoreId] = useState(savedStoreChoice);
+  const setSellerStoreId = useCallback((/** @type {number} */ id) => {
+    setChosenSellerStoreId(id);
+    try {
+      window.localStorage.setItem(storeChoiceKey, String(id));
+    } catch {
+      /* The choice then lasts until the page is reloaded. */
+    }
+  }, []);
+  // memberRole: OWNER, MANAGER, STAFF, NONE (member without a role), ADMIN, or null (an ORG_ADMIN's store without a role).
+  const [ownStores, setOwnStores] = useState(
+    /** @type {{id:number,name:string,address:string,memberRole?:string|null}[]|null} */ (null),
+  );
   const [products, setProducts] = useState(/** @type {import('./types').Product[]} */ ([]));
   const [stores, setStores] = useState(/** @type {import('./types').Store[]} */ ([]));
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
@@ -256,7 +277,7 @@ export function useShop() {
 
   // The server lists what this account operates: the owner's stores (unpublished ones too), the staff's assigned
   // stores, or every store for the operator. The public list only adds each store's position for the map.
-  /** @type {{id:number,name:string,address?:string,latitude?:number|null,longitude?:number|null}[]} */
+  /** @type {{id:number,name:string,address?:string,latitude?:number|null,longitude?:number|null,memberRole?:string|null}[]} */
   const sellerStores = (ownStores ?? []).map((own) => ({ ...stores.find((store) => store.id === own.id), ...own }));
   const sellerStoreId = sellerStores.some((store) => store.id === chosenSellerStoreId)
     ? chosenSellerStoreId
