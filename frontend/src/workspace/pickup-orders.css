@@ -242,3 +242,33 @@
     width: 100%;
   }
 }
+/* Issue #130: commission on the operator's order cards and the sales page. */
+.pickup-commission,
+.pickup-commission-total {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.sales-report h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sales-totals {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 4px 16px;
+  margin: 8px 0;
+}
+.sales-totals dt {
+  font-weight: 600;
+}
+.sales-totals dd {
+  margin: 0;
+  text-align: right;
+}
+.sales-store-select {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  margin-bottom: 12px;
+}

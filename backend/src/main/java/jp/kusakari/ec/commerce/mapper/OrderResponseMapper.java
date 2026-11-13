@@ -8,6 +8,7 @@ import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderLine;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
+import jp.kusakari.ec.commerce.dto.SalesDtos.SalesFigures;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsView;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
@@ -26,7 +27,29 @@ public class OrderResponseMapper {
   private final PaymentRepository payments;
   private final RefundRepository refunds;
 
+  /** 購入者向け。販売手数料は返さない。 */
   public OrderView toView(OrderEntity order, List<OrderItemEntity> items) {
+    return toView(order, items, false);
+  }
+
+  /** 店舗・運営向け。注文ごとの販売手数料を含める（#130）。 */
+  public OrderView toStoreView(OrderEntity order, List<OrderItemEntity> items) {
+    return toView(order, items, true);
+  }
+
+  /**
+   * 注文1件の手数料と差引額。キャンセルの注文は手数料なし（保存した額は残し、表示で 0 にする）。
+   * 支払い待ちは、支払われるまで合計に含めない。
+   */
+  public SalesFigures figures(OrderEntity order) {
+    boolean cancelled = "CANCELLED".equals(order.getStatus());
+    int commission = cancelled ? 0 : order.getCommissionYen();
+    int net = cancelled ? 0 : order.getTotalYen() - commission;
+    boolean counted = !cancelled && !"PENDING_PAYMENT".equals(order.getStatus());
+    return new SalesFigures(order.getCommissionRateBp(), commission, net, counted);
+  }
+
+  private OrderView toView(OrderEntity order, List<OrderItemEntity> items, boolean store) {
     Map<String, String> images = products
       .findImageReferences(
         items
@@ -76,7 +99,8 @@ public class OrderResponseMapper {
       order.getPaymentId() == null
         ? null
         : payments.findById(order.getPaymentId()).map(PaymentEntity::getStatus).orElse(null),
-      refunds.findByOrderId(order.getId()).map(RefundEntity::getStatus).orElse(null)
+      refunds.findByOrderId(order.getId()).map(RefundEntity::getStatus).orElse(null),
+      store ? figures(order) : null
     );
   }
 }
