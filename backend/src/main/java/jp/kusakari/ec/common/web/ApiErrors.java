@@ -21,6 +21,7 @@ public class ApiErrors {
     MethodArgumentNotValidException.class,
     HttpMessageNotReadableException.class,
     MethodArgumentTypeMismatchException.class,
+    org.springframework.web.method.annotation.HandlerMethodValidationException.class,
   })
   public ResponseEntity<ErrorView> invalid(Exception error) {
     return ResponseEntity.badRequest().body(

@@ -13,4 +13,7 @@ public interface StoreMemberRepository extends JpaRepository<StoreMemberEntity, 
 
   @Query("select m from StoreMemberEntity m where m.id.storeId = :storeId and m.role is not null")
   List<StoreMemberEntity> findAssignedAtStore(@Param("storeId") long storeId);
+
+  @Query("select m from StoreMemberEntity m where m.organizationId = :organizationId order by m.id.storeId")
+  List<StoreMemberEntity> findAllInOrganization(@Param("organizationId") long organizationId);
 }

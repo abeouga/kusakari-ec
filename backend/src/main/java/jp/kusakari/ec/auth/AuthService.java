@@ -6,8 +6,10 @@ import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
+import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberId;
+import jp.kusakari.ec.store.persistence.repository.OrganizationMemberRepository;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class AuthService {
   private final StoreRepository stores;
   private final OrganizationRepository organizations;
   private final StoreMemberRepository storeMembers;
+  private final OrganizationMemberRepository organizationMembers;
 
   @Value("${kusakari.auth.mode:cognito}")
   private String mode;
@@ -71,11 +74,7 @@ public class AuthService {
   @Transactional(readOnly = true)
   public AuthMember current() {
     var authentication = SecurityContextHolder.getContext().getAuthentication();
-    if (
-      authentication == null ||
-      !(authentication.getPrincipal() instanceof OidcUser user) ||
-      !idTokenValid(user)
-    ) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser user) || !idTokenValid(user)) {
       throw new ApiException(401, "LOGIN_REQUIRED", "ログインしてください。");
     }
     var member = members
@@ -92,7 +91,7 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public SessionView session() {
-    if (!enabled()) return new SessionView("demo", false, null, null, null, null, null, List.of());
+    if (!enabled()) return new SessionView("demo", false, null, null, null, null, null, null, List.of());
     try {
       var member = current();
       return new SessionView(
@@ -103,11 +102,12 @@ public class AuthService {
         member.getDisplayName(),
         member.getAccountType(),
         organizationIdOf(member),
+        organizationRoleOf(member),
         storeIdsOf(member)
       );
     } catch (ApiException error) {
       if (error.status() != 401) throw error;
-      return new SessionView("cognito", false, null, null, null, null, null, List.of());
+      return new SessionView("cognito", false, null, null, null, null, null, null, List.of());
     }
   }
 
@@ -117,9 +117,47 @@ public class AuthService {
       return organizations.findByOwnerMemberId(member.getId()).map(OrganizationEntity::getId).orElse(null);
     }
     if (AuthMember.SHOP_STAFF.equals(member.getAccountType())) {
-      return storeMembers.findAllForMember(member.getId()).stream().map(StoreMemberEntity::getOrganizationId).findFirst().orElse(null);
+      return organizationMembers
+        .findForMember(member.getId())
+        .map(m -> m.getId().getOrganizationId())
+        .orElse(null);
     }
     return null;
+  }
+
+  /** 担当者の人事のロール（ORG_ADMIN か空）。オーナー・購入者・運営は空。 */
+  public String organizationRoleOf(AuthMember member) {
+    if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) return null;
+    return organizationMembers.findForMember(member.getId()).map(OrganizationMemberEntity::getRole).orElse(null);
+  }
+
+  /**
+   * 出店者画面の店舗の候補。オーナーは組織の全店舗、ORG_ADMIN は組織の全店舗（ロールのない店舗では人事の画面だけ、#112）、
+   * ほかの担当者は所属する店舗（ロール未割り当てを含む）。
+   */
+  public List<Long> candidateStoreIdsOf(AuthMember member) {
+    if (OrganizationMemberEntity.ORG_ADMIN.equals(organizationRoleOf(member))) {
+      Long organizationId = organizationIdOf(member);
+      if (organizationId != null) return stores
+        .findByOrganizationIdOrderByIdAsc(organizationId)
+        .stream()
+        .map(StoreEntity::getId)
+        .toList();
+    }
+    return viewableStoreIdsOf(member);
+  }
+
+  /** その店舗での自分の立場。OWNER・MANAGER・STAFF・NONE（所属でロールなし）、担当でなければ空。運営は ADMIN。 */
+  public String memberRoleAt(AuthMember member, StoreEntity store) {
+    if (member.isAdmin()) return AuthMember.ADMIN;
+    if (AuthMember.SHOP_OWNER.equals(member.getAccountType())) {
+      return store.getOrganizationId().equals(organizationIdOf(member)) ? "OWNER" : null;
+    }
+    if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) return null;
+    return storeMembers
+      .findById(new StoreMemberId(store.getId(), member.getId()))
+      .map(assignment -> assignment.getRole() == null ? "NONE" : assignment.getRole())
+      .orElse(null);
   }
 
   /** その会員が操作できる店舗。オーナーは組織の全店舗、子アカウントはロールが割り振られた担当の店舗。 */
@@ -143,7 +181,11 @@ public class AuthService {
   /** 店舗の情報と、出店者の商品一覧・在庫を見られる店舗。子アカウントはロール未割り当ての所属店舗も含む。 */
   public List<Long> viewableStoreIdsOf(AuthMember member) {
     if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) return storeIdsOf(member);
-    return storeMembers.findAllForMember(member.getId()).stream().map(assignment -> assignment.getId().getStoreId()).toList();
+    return storeMembers
+      .findAllForMember(member.getId())
+      .stream()
+      .map(assignment -> assignment.getId().getStoreId())
+      .toList();
   }
 
   /**
@@ -272,6 +314,7 @@ public class AuthService {
     String name,
     String accountType,
     Long organizationId,
+    String organizationRole,
     List<Long> storeIds
   ) {}
 }
