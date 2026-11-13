@@ -133,12 +133,17 @@ test('account list scope and role assignment permissions', async ({ browser }) =
     await admin.page.reload();
     await expect(note).toBeVisible();
     await expect(admin.page.getByLabel('管理する店舗')).toHaveValue('2');
-    await expect(admin.page.getByRole('link', { name: 'アカウント' })).toBeVisible();
+    await expect(
+      admin.page.getByRole('navigation', { name: '出店者メニュー' }).getByRole('link', { name: 'アカウント' }),
+    ).toBeVisible();
     await admin.page.screenshot({ path: `${evidence}/org-admin-personnel-only-reloaded.png`, fullPage: true });
 
     // The owner's account page: the ORG_ADMIN switch, kept after a reload.
     await owner.page.goto(`${ec}/seller/accounts`);
-    await owner.page.getByLabel(`${staff.email}を ORG_ADMIN にする`).check();
+    // The switch shows the saved state, so it turns on once the server has stored it.
+    await owner.page.getByLabel(`${staff.email}を ORG_ADMIN にする`).click();
+    await expect(owner.page.getByText(`${staff.email}を ORG_ADMIN にしました。`)).toBeVisible();
+    await expect(owner.page.getByLabel(`${staff.email}を ORG_ADMIN にする`)).toBeChecked();
     await owner.page.reload();
     await expect(owner.page.getByLabel(`${staff.email}を ORG_ADMIN にする`)).toBeChecked();
     await expect(owner.page.getByRole('cell', { name: 'オーナー（全店舗）' }).first()).toBeVisible();

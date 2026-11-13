@@ -106,8 +106,10 @@ test('invitation keys register unassigned staff and a MANAGER assigns STAFF', as
     ])
       expect((await call(invitee.request, path, method, data)).status(), `${method} ${path}`).toBe(403);
     await invitee.goto(`${ec}/seller/products`);
-    await expect(invitee.getByRole('link', { name: 'アカウント' })).toHaveCount(0);
-    await expect(invitee.getByRole('link', { name: '招待キー' })).toHaveCount(0);
+    const menu = invitee.getByRole('navigation', { name: '出店者メニュー' });
+    await expect(menu.getByRole('link', { name: '商品管理' })).toBeVisible();
+    await expect(menu.getByRole('link', { name: 'アカウント' })).toHaveCount(0);
+    await expect(menu.getByRole('link', { name: '招待キー' })).toHaveCount(0);
 
     // A single-use key admits nobody else; a revoked, expired or unknown key admits nobody (no Cognito user is made).
     const unused = `password-${randomUUID()}@example.com`;

@@ -29,6 +29,9 @@ test('seller screen opens on product management without a dashboard', async ({ p
     '店舗一覧',
     '店舗プロフィール',
     '出店者通知',
+    // Issue #111: the SELLER fixture is a MANAGER, so the personnel pages follow.
+    'アカウント',
+    '招待キー',
   ]);
   await expect(sidebar.getByText('ダッシュボード', { exact: true })).toHaveCount(0);
 
