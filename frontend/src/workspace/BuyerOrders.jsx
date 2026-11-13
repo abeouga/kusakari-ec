@@ -3,7 +3,7 @@ import { ChevronDown, Sprout, Store } from 'lucide-react';
 import { yen } from '../api';
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
-import { orderLabels, cancellationLabels, PickupDetails } from './OrderPages';
+import { orderLabels, cancellationLabels, PickupDetails, PaymentState } from './OrderPages';
 import { CancelOrderForm } from './CancelOrderForm';
 import './buyer-orders.css';
 
@@ -51,6 +51,9 @@ function OrderBody({ order, resource }) {
         <dt>合計</dt>
         <dd>{yen(order.totalYen)}</dd>
       </dl>
+      <p className="order-payment">
+        <PaymentState order={order} />
+      </p>
       <section className="order-pickup">
         <h3>受け取り</h3>
         <PickupDetails order={order} />
@@ -116,6 +119,7 @@ function OrderCard({ order, open, onToggle, resource }) {
           {order.cancellationStatus === 'PENDING' && (
             <span className="order-status order-status-pending">キャンセル申請中</span>
           )}
+          {order.refundStatus === 'SUCCEEDED' && <span className="order-status order-status-refunded">返金済み</span>}
         </span>
         <span className="order-card-thumbs" aria-hidden="true">
           {order.items.slice(0, maxThumbnails).map((line) => (

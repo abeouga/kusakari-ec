@@ -34,6 +34,10 @@ export function useShop() {
   const [orders, setOrders] = useState(/** @type {import('./types').Order[]} */ ([]));
   // One checkout saves one order per pickup store (issue #70).
   const [lastOrders, setLastOrders] = useState(/** @type {import('./types').Order[]|null} */ (null));
+  // Issue #132: card orders wait for payment; the Payment Element is shown until the server accepts them.
+  const [pendingPayment, setPendingPayment] = useState(
+    /** @type {import('./types').PendingCardPayment|null} */ (null),
+  );
   const [shoppingTransfer, setShoppingTransfer] = useState(
     /** @type {import('./types').ShoppingTransfer|null} */ (null),
   );
@@ -200,11 +204,23 @@ export function useShop() {
         };
       }
       const result = await api.checkout(checkoutRequest.current);
-      setLastOrders(result.orders);
       checkoutRequest.current = null;
+      // カードは支払い待ちの注文を作るだけ。支払いが確かめられるまで完了にしない。
+      if (result.payment?.clientSecret) setPendingPayment({ orders: result.orders, payment: result.payment });
+      else setLastOrders(result.orders);
       await refresh();
     });
   }
+
+  const acceptCardOrders = useCallback(
+    /** @param {import('./types').Order[]} accepted */
+    (accepted) => {
+      setPendingPayment(null);
+      setLastOrders(accepted);
+      void refresh();
+    },
+    [refresh],
+  );
 
   /** @param {number} lat @param {number} lon @param {string} label */
   function locate(lat, lon, label) {
@@ -308,6 +324,8 @@ export function useShop() {
     orders,
     lastOrders,
     setLastOrders,
+    pendingPayment,
+    acceptCardOrders,
     busy,
     error,
     setError,

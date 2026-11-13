@@ -13,6 +13,7 @@ import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
+import jp.kusakari.ec.commerce.dto.CommerceDtos.CardPayment;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CartLine;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CartView;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.CheckoutRequest;
@@ -30,6 +31,9 @@ import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.payment.persistence.entity.PaymentEntity;
+import jp.kusakari.ec.payment.persistence.repository.PaymentRepository;
+import jp.kusakari.ec.payment.service.StripeGateway;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +60,10 @@ public class CheckoutService {
   private final CartService cartService;
   private final DeliveryService delivery;
   private final OrderResponseMapper orderMapper;
+  private final PaymentRepository payments;
+  private final StripeGateway stripe;
+
+  public static final String CARD = "CARD";
 
   /** 手数料の率（1万分率。800 = 8%）。注文ごとに、そのときの率と額を保存する。 */
   @Value("${kusakari.ec.commission-rate-bp:800}")
@@ -76,7 +84,14 @@ public class CheckoutService {
       ) {
         throw new ApiException(409, "REQUEST_REUSED", "同じ注文キーに異なる内容は指定できません。");
       }
-      return new CheckoutResult(priorOrders.stream().map(this::orderView).toList());
+      return new CheckoutResult(
+        priorOrders.stream().map(this::orderView).toList(),
+        payments.findByCartIdAndRequestId(cartId, requestId).map(CheckoutService::cardPayment).orElse(null)
+      );
+    }
+    // 鍵がない・テスト用の鍵でないときは、カードを受け付けない（店頭払いだけ）。
+    if (request.paymentMethod().equals(CARD) && !stripe.enabled()) {
+      throw new ApiException(409, "CARD_PAYMENT_UNAVAILABLE", "カード決済は現在使えません。店頭払いを選んでください。");
     }
 
     if (cart.getRevision() != request.revision()) {
@@ -117,15 +132,26 @@ public class CheckoutService {
       .collect(Collectors.groupingBy(CartLine::storeId, TreeMap::new, Collectors.toList()));
     // The buyer's pickup contact is copied to every order of this checkout.
     DetailsView details = delivery.pickupDetails(cart.getMemberId(), request.paymentMethod());
+    // カードは、お会計1回に決済を1つ作る（全店舗の注文の合計）。PaymentIntent はコミットの後で作る（PaymentService.start）。
+    PaymentEntity payment = null;
+    if (request.paymentMethod().equals(CARD)) {
+      payment = payments.saveAndFlush(
+        new PaymentEntity(UUID.randomUUID().toString(), cartId, requestId, auth.current().getId(), current.totalYen())
+      );
+    }
     List<OrderView> created = new ArrayList<>();
     for (var group : linesByStore.entrySet()) {
       StoreEntity store = lockedStores.get(group.getKey());
-      created.add(orderView(placeStoreOrder(cart, request, store, group.getValue(), lockedStock, details)));
+      created.add(orderView(placeStoreOrder(cart, request, store, group.getValue(), lockedStock, details, payment)));
     }
 
     cartItems.deleteAll(items);
     cart.incrementRevision();
-    return new CheckoutResult(created);
+    return new CheckoutResult(created, payment == null ? null : cardPayment(payment));
+  }
+
+  private static CardPayment cardPayment(PaymentEntity payment) {
+    return new CardPayment(payment.getId(), payment.getStatus(), payment.getAmountYen(), null);
   }
 
   // 受け付けられない店舗の商品が1つでもあれば、どの店舗の注文も作らない。
@@ -147,10 +173,10 @@ public class CheckoutService {
     StoreEntity store,
     List<CartLine> lines,
     Map<String, InventoryEntity> lockedStock,
-    DetailsView details
+    DetailsView details,
+    PaymentEntity payment
   ) {
     int total = lines.stream().mapToInt(CartLine::lineTotalYen).sum();
-    // Payment is a demo choice: it is recorded on the order, but no payment provider is called.
     OrderEntity order = new OrderEntity(
       UUID.randomUUID().toString(),
       cart.getId(),
@@ -165,9 +191,16 @@ public class CheckoutService {
     );
     order.assignPickup(auth.current().getId(), store.getId(), store.getAddress(), store.getHours());
     order.changeRecipient(details.recipientName(), details.recipientPhone(), details.contactEmail());
-    orders.save(order);
-    notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
-    notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
+    if (payment == null) {
+      // 店頭払い：決済を作らず、この時点で注文受付。
+      orders.save(order);
+      notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
+      notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
+    } else {
+      // カード：支払いが成功する（Webhook）まで支払い待ち。通知は支払いの成功で送る（PaymentService）。
+      order.awaitPayment(payment.getId());
+      orders.save(order);
+    }
 
     for (CartLine line : lines) {
       InventoryEntity stock = lockedStock.get(line.product().id());

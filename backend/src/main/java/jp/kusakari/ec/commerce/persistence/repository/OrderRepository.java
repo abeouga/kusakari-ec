@@ -18,6 +18,11 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
   @Query("select o from OrderEntity o where o.id=:id")
   Optional<OrderEntity> lockOrder(@Param("id") String id);
 
+  // 同じ決済（お会計）の注文。決済の行をロックしてから、注文 ID の順にロックする。
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select o from OrderEntity o where o.paymentId = :paymentId order by o.id")
+  List<OrderEntity> lockByPayment(@Param("paymentId") String paymentId);
+
   List<OrderEntity> findByCartIdAndRequestIdOrderByStoreIdAsc(String cartId, String requestId);
 
   List<OrderEntity> findTop30ByCartIdAndDeletedAtIsNullOrderByCreatedAtDescIdAsc(String cartId);

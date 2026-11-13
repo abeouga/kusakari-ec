@@ -4,7 +4,9 @@ import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowLeft, ArrowRight, Check
 import { yen } from '../api';
 import { DeliverySummary } from './DeliverySummary';
 import { CheckoutConfirm } from './CheckoutConfirm';
-import { paymentLabel, paymentStatus } from '../payment';
+import { paymentLabel, useCardAvailable } from '../payment';
+import { CardPaymentStep } from './CardPayment';
+import { PaymentState } from '../workspace/OrderPages';
 import { PageLink } from '../workspace/Common';
 import { AddFromGardenCard } from './GardenItemsDialog';
 
@@ -13,7 +15,11 @@ export function Cart({ shop }) {
   const [confirming, setConfirming] = useState(false);
   const [payment, setPayment] = useState('PAY_AT_STORE');
   const [lastLine, setLastLine] = useState(/** @type {HTMLElement|null} */ (null));
+  const cardAvailable = useCardAvailable();
   const cart = shop.cart;
+  if (shop.pendingPayment) {
+    return <CardPaymentStep pending={shop.pendingPayment} onAccepted={shop.acceptCardOrders} />;
+  }
   if (shop.lastOrders) {
     return (
       <section className="cart-content cart-complete">
@@ -77,6 +83,7 @@ export function Cart({ shop }) {
   let title = `ショッピングカート (${cart.itemCount})`;
   let checkoutLabel = '注文を確定する';
   if (confirming) title = 'お支払い・受け取りの確認';
+  if (payment === 'CARD') checkoutLabel = '注文してカードで支払う';
   if (shop.busy) checkoutLabel = '保存中…';
   return (
     <section className="cart-content">
@@ -93,7 +100,15 @@ export function Cart({ shop }) {
         </p>
       )}
       <div className="checkout-layout">
-        {confirming && <CheckoutConfirm shop={shop} cart={cart} payment={payment} onPayment={setPayment} />}
+        {confirming && (
+          <CheckoutConfirm
+            shop={shop}
+            cart={cart}
+            payment={payment}
+            onPayment={setPayment}
+            cardAvailable={cardAvailable}
+          />
+        )}
         {!confirming && (
           <div>
             <div className="cart-items">
@@ -247,9 +262,13 @@ export function OrderSummary({ order }) {
       <DeliverySummary details={order.details} />
       {order.details?.paymentMethod && order.details.paymentMethod !== 'NONE' && (
         <p data-testid="order-payment">
-          お支払い方法：{paymentLabel(order.details.paymentMethod)}
+          <PaymentState order={order} />
           <br />
-          <small>{paymentStatus(order.details.paymentMethod)}</small>
+          <small>
+            {order.details.paymentMethod === 'PAY_AT_STORE'
+              ? '受け取り時に店頭でお支払いください。'
+              : 'カードでのお支払いを確認しました（テストモードのため実際の請求はありません）。'}
+          </small>
         </p>
       )}
       {order.items.map((item) => (

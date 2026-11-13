@@ -8,10 +8,12 @@
     "build": "vite build"
   },
   "dependencies": {
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "@kusakari/site-header": "0.1.13",
+    "@stripe/react-stripe-js": "7.0.0",
+    "@stripe/stripe-js": "10.1.0",
     "lucide-react": "^0.468.0",
-    "@kusakari/site-header": "0.1.13"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.1",

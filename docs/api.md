@@ -16,7 +16,9 @@
 | GET | `/stores/{id}` | 店舗の公開ページ。購入者・未ログインには公開中と閉鎖予定（`closingStartedAt` あり）の店舗だけを返し、非公開・停止・閉鎖済み・組織の停止は404。オーナー・担当者（ロール未割り当てを含む）・運営は扱える店舗を見られる |
 | PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除。新しい明細は商品の販売店舗（出店者の商品は出店者の店舗、共通商品は表示中の店舗）を受取店舗として記録し、その店舗の在庫で検証 |
 | PUT | `/cart/store` | `{ "storeId": 2, "revision": 1 }`。商品を表示・追加する店舗を変更。カート内の明細の受取店舗は変えない |
-| POST | `/orders` | 下記の確定要求。受取店舗ごとに1件の注文を作り `{ "orders": [...] }`（店舗ID順）を返す。保存済みの同一要求は同じ注文群を返す |
+| POST | `/orders` | 下記の確定要求。受取店舗ごとに1件の注文を作り `{ "orders": [...], "payment": ... }`（店舗ID順）を返す。保存済みの同一要求は同じ注文群を返す。カードのときは `payment` に決済（`id`・`status`・`amountYen`・支払い待ちなら `clientSecret`）、店頭払いは `payment: null` |
+| GET | `/payments/config` | `{ "cardAvailable": true }`。テスト用の Stripe の鍵がそろっていなければ false（画面はカードを出さない） |
+| POST | `/payments/stripe/webhook` | Stripe の通知。会員認証なし・CSRF の対象外。届いたままの本文で署名を確かめ、不正なら400 `INVALID_WEBHOOK` で何もしない。処理済みの通知は `processed:false` で何もしない（[決済の決定](decisions/2026-11-13-stripe-card-payment.md)） |
 | GET | `/orders` | 同じCookieの最近30件。単価・商品名は注文時の記録 |
 | POST | `/materials/quote` | 材料コードごとの商品候補と必要金額 |
 
@@ -26,13 +28,16 @@
 {
   "requestId": "4502d427-883d-4a61-bd56-9f1177fbb81e",
   "revision": 2,
-  "expectedTotalYen": 13600
+  "expectedTotalYen": 13600,
+  "paymentMethod": "CARD"
 }
 ```
 
+`paymentMethod` は `CARD`（Stripe のテストモードのカード）か `PAY_AT_STORE`（店頭払い）。店頭払いの注文は `ACCEPTED`、カードの注文は `PENDING_PAYMENT` で作り、Stripe の支払い成功の通知で `ACCEPTED` にする。注文の応答の `paymentStatus`（`PENDING`/`SUCCEEDED`/`FAILED`/`EXPIRED`、店頭払いは null）と `refundStatus`（`REQUESTED`/`SUCCEEDED`/`FAILED`、返金なしは null）で、支払いと返金の状態を返す。
+
 `requestId` は操作ごとにUUIDを生成し、通信失敗後の再試行では同じ値を使います。
-レスポンスは `orders` 配列で、各要素は注文ID、`DEMO_CONFIRMED`、保存日時、受取店舗のID・名前、合計金額、商品ID/SKU/商品名/数量/単価/小計の明細です。各注文の明細は、その受取店舗の在庫から減算されます。注文群の合計は `expectedTotalYen` と一致します。
-住所・氏名は受取情報APIで保存し、注文時に複製します。カード番号は受け取りません。
+レスポンスは `orders` 配列で、各要素は注文ID、状態、保存日時、受取店舗のID・名前、合計金額、商品ID/SKU/商品名/数量/単価/小計の明細です。各注文の明細は、その受取店舗の在庫から減算されます。注文群の合計は `expectedTotalYen` と一致します。
+住所・氏名は受取情報APIで保存し、注文時に複製します。カード番号は受け取りません（画面の Stripe の入力欄から Stripe へ直接送られます）。
 
 ## 画面案に対応したCRUD
 
@@ -44,7 +49,7 @@
 | DELETE | `/products/{id}` | 販売終了。カート・注文記録は保持 |
 | PUT | `/cart/details` | `{revision, details}` で受取情報を保存しrevisionを更新 |
 | DELETE | `/cart/details?revision=...` | 入力情報を削除し店舗受取の初期値に戻す |
-| PUT | `/orders/{id}` | 同じCookieの注文の受取者・連絡先・住所・希望日時・デモ支払方法を更新 |
+| PUT | `/orders/{id}` | 注文受付の注文の受取者・連絡先を更新。支払方法は変えない |
 | DELETE | `/orders/{id}` | 同じCookieの注文を履歴から非表示。注文取消・在庫復元は行わない |
 
 商品入力は `ProductRequest.java`、受取情報は `DeliveryDtos.java` を正本とします。

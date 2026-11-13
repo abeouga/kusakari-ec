@@ -35,7 +35,7 @@
 | 1-12 | 戻らない決済手数料 | Kusakari（運営）が負担する扱い。アプリでは記録しない |
 | 1-13 | 手数料8%の差し引き（Stripe Connect） | 入れない。#130 は表示だけ |
 | 1-14 | チャージバック | `charge.dispute.created` を受けて記録するだけ（`stripe_events` に残す） |
-| 1-15 | 鍵の確認 | `STRIPE_SECRET_KEY` が `sk_test_` で、公開鍵が `pk_test_` で始まらないときは、決済の API を使えなくする。起動は止めない。カードの選択肢を出さず、店頭払いだけにする。鍵がないときも同じ |
+| 1-15 | 鍵の確認 | `STRIPE_SECRET_KEY` が `sk_test_` か `rk_test_`（テストモードの制限付きキー。2026-11-13 に広げた。[決済の決定](2026-11-13-stripe-card-payment.md)）で、公開鍵が `pk_test_` で始まらないときは、決済の API を使えなくする。起動は止めない。カードの選択肢を出さず、店頭払いだけにする。鍵がないときも同じ |
 | 1-16 | 環境変数 | `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`VITE_STRIPE_PUBLISHABLE_KEY`（画面用）。`.env` に入れ、Git・ログ・成果物に入れない |
 | 1-17 | API | `POST /api/orders`（お会計。カードのときは PaymentIntent の `client_secret` も返す）、`POST /api/payments/stripe/webhook`（会員認証なし、Stripe の署名で検証、CSRF の対象外） |
 
