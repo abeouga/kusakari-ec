@@ -72,7 +72,11 @@ test('all public products advance every five seconds, loop and open the matching
 
 test('hover and keyboard focus pause rotation; edge arrows replace central controls', async ({ page }, testInfo) => {
   const products = await browse(page);
+  // The first product list can take seconds; start from a paused clock so the carousel has not moved on its own.
   await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.reload();
+  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
   await hero(page).hover();
   await page.clock.runFor(15000);
   await expect(current(page)).toHaveAttribute('data-product-id', 'olive');

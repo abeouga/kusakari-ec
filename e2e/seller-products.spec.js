@@ -116,6 +116,7 @@ test('seller table search, sorting, pagination and bulk actions persist', async 
     expect((await catalog(page.request)).some((p) => p.id === ids[0])).toBe(false);
     await page.reload();
     await page.getByRole('searchbox', { name: '商品検索', exact: true }).fill(prefix);
+    await page.getByRole('combobox', { name: '並び順', exact: true }).selectOption('priceAsc');
     await expect(hiddenButton).toBeVisible();
     await hiddenButton.focus();
     await hiddenButton.press('Enter');
@@ -175,7 +176,9 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
       (await call(buyer.request, `/cart/items/${ids[0]}`, 'PUT', { quantity: 2, revision: cart.revision })).status(),
     ).toBe(409);
     const quote = await buyer.request
-      .post(`${ec}/api/materials/quote`, { data: { items: [{ materialCode: ids[0], quantity: 1, unit: 'piece' }] } })
+      .post(`${ec}/api/materials/quote`, {
+        data: { storeId: 1, items: [{ materialCode: ids[0], quantity: 1, unit: 'piece' }] },
+      })
       .then((r) => r.json());
     expect(quote[0].candidates).toHaveLength(0);
     const hidden = (await catalog(seller.request, 1, true)).find((p) => p.id === ids[0]);
@@ -189,10 +192,8 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
       'publicationStatus',
       'modelComposition',
       'canvasMaterialCode',
-      'storeName',
-      'unavailableReason',
-      'suspended',
-      'moderation',
+      'sellerStoreId',
+      'sellerStoreName',
     ]);
     const input = Object.fromEntries(Object.entries(hidden).filter(([key]) => !responseOnly.has(key)));
     const edited = await call(seller.request, `/products/${ids[0]}`, 'PUT', { ...input, storeId: 1 });
@@ -213,9 +214,9 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
     expect((await status(seller.request, ids, 'UNKNOWN')).status()).toBe(400);
     expect((await status(seller.request, [], 'HIDDEN')).status()).toBe(400);
     expect((await status(seller.request, Array(26).fill(ids[1]), 'HIDDEN')).status()).toBe(400);
-    expect((await status(seller.request, [ids[1]], 'HIDDEN', 999999)).status()).toBe(404);
-    // A product of store 1 cannot be changed through another store.
-    expect([403, 404]).toContain((await status(seller.request, [ids[1]], 'HIDDEN', 2)).status());
+    // A store the seller has no role at is refused before the products are looked up (#105), whether it exists or not.
+    expect((await status(seller.request, [ids[1]], 'HIDDEN', 999999)).status()).toBe(403);
+    expect((await status(seller.request, [ids[1]], 'HIDDEN', 2)).status()).toBe(403);
     expect((await catalog(buyer.request)).some((p) => p.id === ids[1])).toBe(true);
   } finally {
     await seller.context.close();

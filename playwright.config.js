@@ -13,6 +13,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
+  // The catalogue of the shared E2E database grows with every run; the first product list can take over 5 seconds.
+  expect: { timeout: 20000 },
   reporter: [['list'], ['html', { outputFolder: fromRoot('artifacts/playwright-report'), open: 'never' }]],
   outputDir: fromRoot('artifacts/playwright-results'),
   use: {

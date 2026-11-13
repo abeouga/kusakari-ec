@@ -65,6 +65,8 @@ test('garden list reflects edits and stays independent of existing EC cart quant
     // Removing a placed object lowers the count again.
     await page.getByRole('tab', { name: '商品一覧', exact: true }).click();
     await page.getByTestId('object-row-1').click();
+    // The side panel keeps its own keys; the editor's Delete key works once the focus leaves the panel.
+    await page.evaluate(() => /** @type {HTMLElement} */ (document.activeElement)?.blur());
     await page.keyboard.press('Delete');
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
     await expect(page.getByTestId('save-status')).toHaveText('保存済み');
@@ -87,11 +89,15 @@ test('garden list reflects edits and stays independent of existing EC cart quant
 test('EC outage does not prevent list placement, editing or automatic garden saving', async ({ page }) => {
   const garden = await fixture(page);
   try {
-    // Explicit fault injection after sign-in: only the browser's requests to the EC API are cut off.
-    await page.route(`${ec}/api/**`, (route) => route.abort('failed'));
     await page.goto(`${canvas}/gardens/${garden.id}`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '3D庭', exact: true }).click();
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
+    // Explicit fault injection once the editor is open: the browser's requests to the EC commerce API (catalogue,
+    // references, shopping lists) are cut off. The EC sign-in endpoints (/api/auth/*: session and CSRF token) stay
+    // reachable, because the Canvas session is the EC session (canvas#64) and saving needs its CSRF token.
+    await page.route(`${ec}/api/**`, (route) =>
+      route.request().url().startsWith(`${ec}/api/auth/`) ? route.continue() : route.abort('failed'),
+    );
     await page.getByRole('tab', { name: /買い物リスト/ }).click();
     await dropListLine(page);
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 2 / 2');

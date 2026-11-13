@@ -17,7 +17,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
   try {
     await buyer(page);
     await expect(page.getByTestId('product-olive')).toBeVisible();
-    await page.getByRole('link', { name: '植物を探す', exact: true }).first().click();
+    await page.getByRole('link', { name: '商品を探す', exact: true }).first().click();
     await expect(page).toHaveURL(/#plants$/);
     await page.getByRole('button', { name: 'ハーブ', exact: true }).click();
     await expect(page.getByTestId('product-rosemary')).toBeVisible();
@@ -39,6 +39,8 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await expect(page.locator('.product-card').first()).toContainText(Math.max(...prices).toLocaleString('ja-JP'));
     await page.getByLabel('商品の並び順').selectOption('price-asc');
     await expect(page.locator('.product-card').first()).toContainText(Math.min(...prices).toLocaleString('ja-JP'));
+    // The catalogue is paginated, so the olive is found by its product number before opening the detail.
+    await page.getByLabel('植物を検索').fill('KS-OLV-001');
     await page.getByRole('button', { name: 'オリーブの詳細', exact: true }).click();
     await expect(page.getByRole('dialog')).toContainText('KS-OLV-001');
     await page.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
@@ -53,7 +55,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
     await expect(page.getByRole('heading', { name: 'お支払い・受け取りの確認' })).toBeVisible();
     await expect(page.getByTestId('checkout-store')).toContainText('二子玉川ガーデン');
-    await expect(page.getByTestId('checkout-payment')).toContainText('店頭払い');
+    await expect(page.getByTestId('checkout-payment')).toContainText('店舗でお支払い');
     const saved = page.waitForResponse(
       (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
     );

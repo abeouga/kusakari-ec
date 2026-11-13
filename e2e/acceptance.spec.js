@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
-import { ec, canvas, login, call } from './business-helpers.js';
+import { ec, canvas, login, call, seedGardenPhoto } from './business-helpers.js';
 
 // This explicit acceptance run preserves its order and garden in the development DB.
 // If rerun after purchase, verify the recorded order; never submit a second purchase.
+// Issue #113 (DB v3): the olive is the sample product 'olive' of store 1. Before the run, test.user must be a buyer
+// (USER) and test.seller a staff member of store 1 in the development DB (scripts/set-member-role.ps1
+// -Role SHOP_STAFF -StoreId 1); fixtures cannot change that DB.
 test('existing olive: seller publication, buyer placement and one retained pickup order', async ({ browser }) => {
   const buyerContext = await browser.newContext();
   const sellerContext = await browser.newContext();
@@ -15,7 +18,7 @@ test('existing olive: seller publication, buyer placement and one retained picku
     await login(seller, 'test.seller@example.com');
     await login(buyer, 'test.user@example.com');
     const products = await call(buyer.request, '/products?storeId=1').then((r) => r.json());
-    const product = products.find((p) => p.id === '50ee707f-cd6a-47ed-9ab9-89e0a0d954c1');
+    const product = products.find((p) => p.id === 'olive');
     expect(product.name).toBe('オリーブ');
     await seller.goto(`${ec}/seller/products`);
     await seller.getByRole('searchbox', { name: '商品検索' }).fill('オリーブ');
@@ -24,7 +27,8 @@ test('existing olive: seller publication, buyer placement and one retained picku
       .then(JSON.parse)
       .catch(() => null);
     if (!saved) {
-      expect(product.stock).toBe(20);
+      const before = product.stock;
+      expect(before).toBeGreaterThan(0);
       expect((await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(0);
       await buyer.goto(ec);
       await buyer.getByRole('button', { name: 'オリーブの詳細', exact: true }).click();
@@ -41,6 +45,13 @@ test('existing olive: seller publication, buyer placement and one retained picku
       await buyer.getByRole('button', { name: '新しい庭をつくる', exact: true }).click();
       await expect(buyer.getByTestId(`asset-product:${product.id}`)).toHaveAttribute('aria-pressed', 'true');
       const gardenId = new URL(buyer.url()).pathname.split('/').pop();
+      // Canvas places items only after the garden photo is confirmed (Canvas issue #15).
+      await seedGardenPhoto(
+        buyer,
+        await call(buyer.request, `/gardens/${gardenId}`, 'GET', undefined, canvas).then((r) => r.json()),
+      );
+      await buyer.reload();
+      await expect(buyer.getByTestId(`asset-product:${product.id}`)).toHaveAttribute('aria-pressed', 'true');
       const surface = buyer.locator('[data-testid="garden-canvas"] canvas');
       await buyer.getByRole('button', { name: '3D庭', exact: true }).click();
       const box = await surface.boundingBox();
@@ -65,14 +76,14 @@ test('existing olive: seller publication, buyer placement and one retained picku
       const response = await responsePromise;
       expect(response.status()).toBe(200);
       const [order] = (await response.json()).orders;
-      saved = { orderId: order.id, gardenId, productId: product.id, before: 20, after: 19, order };
+      saved = { orderId: order.id, gardenId, productId: product.id, before, after: before - 1, order };
       await writeFile(evidence, JSON.stringify(saved, null, 2));
     }
     await login(buyer, 'test.user@example.com');
     const stock = await call(buyer.request, '/products?storeId=1')
       .then((r) => r.json())
       .then((ps) => ps.find((p) => p.id === product.id).stock);
-    expect(stock).toBe(19);
+    expect(stock).toBe(saved.after);
     const order = await call(buyer.request, `/orders/${saved.orderId}`).then((r) => r.json());
     expect(order.items[0].productId).toBe(product.id);
     expect(order.items[0].quantity).toBe(1);

@@ -54,7 +54,7 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
     [order] = (await response.json()).orders;
     // Store pickup only: the total is the item price without a shipping fee.
     expect(order.totalYen).toBe(1480);
-    expect(order.subtotalYen).toBe(1480);
+    expect(order.items.reduce((sum, line) => sum + line.lineTotalYen, 0)).toBe(1480);
     expect(order).not.toHaveProperty('shippingFeeYen');
     expect(order.details.recipientName).toBe('デモ受取者');
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
@@ -64,8 +64,11 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
     await card.getByRole('button').first().click();
     await card.getByText('受取連絡先を編集', { exact: true }).click();
     await card.getByLabel('受取人氏名', { exact: true }).fill('変更後デモ受取者');
+    const edited = page.waitForResponse(
+      (r) => r.url().endsWith(`/api/orders/${order.id}`) && r.request().method() === 'PUT',
+    );
     await card.getByRole('button', { name: '連絡先を保存', exact: true }).click();
-    await expect(card).toContainText('変更後デモ受取者');
+    expect((await edited).status()).toBe(200);
     const updated = (await call(page.request, '/orders').then((r) => r.json())).find((o) => o.id === order.id);
     expect(updated.details.recipientName).toBe('変更後デモ受取者');
 
@@ -96,7 +99,8 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
     expect(unchanged.find((o) => o.id === order.id).details.recipientName).toBe('変更後デモ受取者');
     await page.reload();
     await card.getByRole('button').first().click();
-    await expect(card).toContainText('変更後デモ受取者');
+    await card.getByText('受取連絡先を編集', { exact: true }).click();
+    await expect(card.getByLabel('受取人氏名', { exact: true })).toHaveValue('変更後デモ受取者');
     await writeFile('artifacts/e2e/crud-order-after-reload.json', JSON.stringify(unchanged, null, 2));
     await page.screenshot({ path: 'artifacts/e2e/crud-order-after-reload.png', fullPage: true });
 
