@@ -1,12 +1,20 @@
+import { useState } from 'react';
 import { useResource, write } from './useResource';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { DataTable } from './Common';
 import { navigate } from './navigation';
 
-/** @typedef {{id:number,revision:number,organizationId:number,name:string,company:string,address:string,hours:string,enabled:boolean,published:boolean}} StoreProfile */
+/** @typedef {{id:number,revision:number,organizationId:number,name:string,company:string,address:string,hours:string,enabled:boolean,published:boolean,closingStartedAt:string|null,closingStartedBy:'OWNER'|'ADMIN'|null,closedAt:string|null,openOrderCount:number|null}} StoreProfile */
 
-/** @param {StoreProfile} store */
-function stateOf(store) {
+/**
+ * Issue #79: a closing store takes no new orders and becomes closed once its open orders are done.
+ * @param {StoreProfile} store
+ */
+export function stateOf(store) {
+  if (store.closedAt) return '閉鎖済み';
+  if (store.closingStartedAt)
+    return `閉鎖中（${store.closingStartedBy === 'ADMIN' ? '運営が開始' : 'オーナーが開始'}・未完了の注文 ${store.openOrderCount ?? 0}件）`;
   if (!store.enabled) return '運営により停止中';
   return store.published ? '公開中' : '非公開';
 }
@@ -19,6 +27,7 @@ function stateOf(store) {
 export function SellerStoresPage({ shop, owner }) {
   const resource = useResource('/seller/stores');
   const stores = /** @type {StoreProfile[]|null} */ (resource.data);
+  const [closing, setClosing] = useState(/** @type {StoreProfile|null} */ (null));
   /** @param {()=>Promise<unknown>} action @param {string} message */
   async function change(action, message) {
     if (await resource.run(action, message)) await shop.reloadSellerStores();
@@ -51,10 +60,12 @@ export function SellerStoresPage({ shop, owner }) {
               store.hours,
               stateOf(store),
               <div key="actions" className="workspace-actions">
-                <button type="button" onClick={() => edit(store)}>
-                  店舗情報を編集
-                </button>
-                {owner && (
+                {!store.closedAt && (
+                  <button type="button" onClick={() => edit(store)}>
+                    店舗情報を編集
+                  </button>
+                )}
+                {owner && !store.closingStartedAt && (
                   <button
                     type="button"
                     disabled={resource.busy}
@@ -69,10 +80,51 @@ export function SellerStoresPage({ shop, owner }) {
                     {store.published ? '非公開にする' : '公開する'}
                   </button>
                 )}
+                {owner && !store.closingStartedAt && (
+                  <button type="button" disabled={resource.busy} onClick={() => setClosing(store)}>
+                    閉鎖する
+                  </button>
+                )}
+                {owner && store.closingStartedAt && !store.closedAt && store.closingStartedBy === 'OWNER' && (
+                  <button
+                    type="button"
+                    disabled={resource.busy}
+                    onClick={() =>
+                      void change(
+                        () => write(`/seller/stores/${store.id}/closure`, 'DELETE'),
+                        '閉鎖を取り消しました。新しい注文の受付を再開しました。',
+                      )
+                    }
+                  >
+                    閉鎖を取り消す
+                  </button>
+                )}
               </div>,
             ])}
           />
         </section>
+      )}
+      {closing && (
+        <ConfirmDialog
+          title="店舗の閉鎖の確認"
+          confirmLabel="閉鎖を始める"
+          busy={resource.busy}
+          onCancel={() => setClosing(null)}
+          onConfirm={() =>
+            void change(
+              () => write(`/seller/stores/${closing.id}/closure`, 'POST'),
+              '閉鎖を始めました。新しい注文の受付を止めました。',
+            ).then(() => setClosing(null))
+          }
+        >
+          <p>対象：{closing.name}</p>
+          <p>
+            すぐに新しい注文の受付を止め、閉鎖中にします。受け取り待ちの注文（{closing.openOrderCount ?? 0}
+            件）は、これまでどおり受け渡してください。
+          </p>
+          <p>未完了の注文がなくなると、自動で閉鎖済みになります。閉鎖済みの店舗は再開できません。</p>
+          <p>閉鎖中のあいだは、閉鎖を取り消して営業に戻せます。</p>
+        </ConfirmDialog>
       )}
       {owner && (
         <section className="workspace-card">

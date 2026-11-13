@@ -56,12 +56,25 @@ function OrderBody({ order, resource }) {
       </p>
       <section className="order-pickup">
         <h3>受け取り</h3>
+        {/* Issue #79: buyers with an open order at a closing store are asked to pick it up early. */}
+        {order.storeClosing && ['ACCEPTED', 'READY'].includes(order.status) && (
+          <p className="order-cancel-result" role="note">
+            この店舗は閉鎖予定です。お早めにお受け取りください。
+          </p>
+        )}
         <PickupDetails order={order} />
       </section>
+      {order.cancelledBy === 'OPERATOR' && (
+        <p className="order-cancel-result" role="note">
+          この注文は出店者からキャンセルされました（運営から：{order.cancellationResponse}）
+        </p>
+      )}
       {order.cancellationReason && order.cancellationStatus !== 'PENDING' && (
         <p className="order-cancel-result" role="note">
           キャンセル申請（{cancellationLabels[order.cancellationStatus]}）：{order.cancellationReason}
-          {order.cancellationResponse && <> / 店舗からの回答：{order.cancellationResponse}</>}
+          {order.cancellationResponse && order.cancelledBy !== 'OPERATOR' && (
+            <> / 店舗からの回答：{order.cancellationResponse}</>
+          )}
         </p>
       )}
       {order.status === 'ACCEPTED' && (

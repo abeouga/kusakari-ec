@@ -4,7 +4,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import jp.kusakari.ec.auth.AuthMember;
+import jp.kusakari.ec.auth.AuthMemberRepository;
 import jp.kusakari.ec.catalog.dto.ProductImageReference;
+import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
+import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.catalog.persistence.repository.ProductRepository;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderLine;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
@@ -26,6 +30,8 @@ public class OrderResponseMapper {
   private final ProductRepository products;
   private final PaymentRepository payments;
   private final RefundRepository refunds;
+  private final StoreRepository stores;
+  private final AuthMemberRepository members;
 
   /** 購入者向け。販売手数料は返さない。 */
   public OrderView toView(OrderEntity order, List<OrderItemEntity> items) {
@@ -100,6 +106,13 @@ public class OrderResponseMapper {
         ? null
         : payments.findById(order.getPaymentId()).map(PaymentEntity::getStatus).orElse(null),
       refunds.findByOrderId(order.getId()).map(RefundEntity::getStatus).orElse(null),
+      stores.findById(order.getStoreId()).map(StoreEntity::isClosing).orElse(false),
+      order.getCancelledByMemberId() == null
+        ? null
+        : members
+          .findById(order.getCancelledByMemberId())
+          .map(member -> member.isAdmin() ? "OPERATOR" : "STORE")
+          .orElse("STORE"),
       store ? figures(order) : null
     );
   }

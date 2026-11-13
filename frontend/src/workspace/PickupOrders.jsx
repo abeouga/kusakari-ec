@@ -194,11 +194,17 @@ function PickupCard({ order, resource, operator }) {
           返金に失敗しました。Stripe の管理画面で返金の状態を確認し、購入者に連絡してください。
         </p>
       )}
-      {order.cancellationReason && !pending && (
-        <p className="order-cancel-result">
-          キャンセル申請（{cancellationLabels[order.cancellationStatus]}）：{order.cancellationReason}
-          {order.cancellationResponse && <> / 回答：{order.cancellationResponse}</>}
-        </p>
+      {order.cancelledBy === 'OPERATOR' ? (
+        // Issue #79/#109: the operator cancelled it when closing the store or suspending the organization.
+        <p className="order-cancel-result">運営がキャンセルしました：{order.cancellationResponse}</p>
+      ) : (
+        order.cancellationReason &&
+        !pending && (
+          <p className="order-cancel-result">
+            キャンセル申請（{cancellationLabels[order.cancellationStatus]}）：{order.cancellationReason}
+            {order.cancellationResponse && <> / 回答：{order.cancellationResponse}</>}
+          </p>
+        )
       )}
       {!operator && pending && <CancellationDecision order={order} resource={resource} />}
       {!operator && action && (

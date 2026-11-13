@@ -100,7 +100,7 @@ public class CheckoutService {
     List<CartItemEntity> items = cartItems.findAllForCart(cartId);
     if (items.isEmpty()) throw new ApiException(409, "EMPTY_CART", "カートが空です。");
 
-    // Lock in a fixed order (stores by ID, then inventory by product ID) so concurrent checkouts cannot deadlock.
+    // Lock in a fixed order (stores by ID, their organizations, then inventory by product ID) so concurrent checkouts cannot deadlock.
     // 商品の店舗は変わらないので、ロックする店舗はロックの前に読んでよい。
     List<String> productIds = items.stream().map(item -> item.getId().getProductId()).toList();
     Map<Long, StoreEntity> lockedStores = new TreeMap<>();
@@ -110,11 +110,11 @@ public class CheckoutService {
       .map(ProductStoreReference::storeId)
       .collect(Collectors.toCollection(TreeSet::new))
       .forEach(storeId -> lockedStores.put(storeId, stores.lock(storeId).orElseThrow()));
+    requireOpen(lockedStores);
     Map<String, InventoryEntity> lockedStock = inventory
       .lockAll(productIds)
       .stream()
       .collect(Collectors.toMap(InventoryEntity::getProductId, stock -> stock));
-    requireOpen(lockedStores);
 
     CartView current = cartService.view(cart);
     if (!current.canCheckout()) {
@@ -156,8 +156,9 @@ public class CheckoutService {
 
   // 受け付けられない店舗の商品が1つでもあれば、どの店舗の注文も作らない。
   private void requireOpen(Map<Long, StoreEntity> lockedStores) {
+    // 組織の行は共有ロックで読む（受付停止・停止の操作と同時に注文を作らない。ロックの順は店舗 → 組織 → 在庫）。
     Map<Long, Boolean> accepting = organizations
-      .findAllById(lockedStores.values().stream().map(StoreEntity::getOrganizationId).collect(Collectors.toSet()))
+      .lockShared(lockedStores.values().stream().map(StoreEntity::getOrganizationId).collect(Collectors.toSet()))
       .stream()
       .collect(Collectors.toMap(OrganizationEntity::getId, OrganizationEntity::acceptsOrders));
     for (StoreEntity store : lockedStores.values()) {

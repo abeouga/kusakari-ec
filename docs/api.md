@@ -13,6 +13,10 @@
 | GET | `/cart`（#119） | 開いたときに、店舗の閉鎖・運営の停止・組織の停止・商品の削除で買えなくなった明細を外し、`removedItems`（`productId`・`name`・`storeName`・`quantity`・`reason`）で返す。外さなかったときは空の配列。各明細の `unavailableReason` は今は買えない理由（非公開・商品の停止・組織の受付停止など。買えるなら null） |
 | — | 購入者の API（#108） | `/cart/**`・`/orders`・`/orders/{id}` 系・`/shopping-lists/**`・`/cart/shopping-lists/**` は、店舗側（`SHOP_OWNER`・`SHOP_STAFF`）と申請中（`SHOP_OWNER_APPLICANT`）のアカウントに 403 `BUYER_REQUIRED` を返す。購入者（`USER`）と運営（`ADMIN`）は使える |
 | POST | `/products/references` | `{ "productIds": [...] }`。削除済みも含めて店舗名・在庫・`purchasable` を返す。`unavailableReason` は買えない理由（`purchasable` が true なら null）：`DELETED`・`STORE_CLOSED`・`STORE_SUSPENDED`・`ORGANIZATION_SUSPENDED`（庭の配置を外す）、`STORE_CLOSING`・`STORE_UNPUBLISHED`・`ORGANIZATION_NOT_ACCEPTING`・`PRODUCT_SUSPENDED`・`HIDDEN`・`OUT_OF_STOCK`（配置を残す）。在庫0は `purchasable:false` |
+| POST・DELETE | `/seller/stores/{id}/closure`、`/operator/stores/{id}/closure` | 店舗の閉鎖を始める・取り消す（#79。オーナーか運営）。始めると閉鎖中になり新しい注文を受けない。未完了の注文（支払い待ち・注文受付・受取準備完了）がなくなると自動で閉鎖済み。運営が始めた閉鎖をオーナーが取り消すと403 `CLOSED_BY_OPERATOR`、閉鎖済みは409 `STORE_CLOSED` |
+| POST | `/operator/stores/{id}/order-cancellations` | `{ "reason": "..." }`。閉鎖中の店舗の注文受付・受取準備完了の注文を運営がまとめてキャンセルし、在庫を戻し、カードで支払い済みなら返金し、購入者に通知する。`{ "cancelled": 件数, "store": 店舗 }` |
+| GET | `/operator/organizations` | 組織の一覧。`status`（`ACTIVE`・`NOT_ACCEPTING`・`SUSPENDED`）、店舗数、未完了の注文の件数、履歴（#109） |
+| POST | `/operator/organizations/{id}/stop-accepting`、`/resume`、`/order-cancellations` | 受付停止（理由必須）、受付停止の取り消し・停止の解除（理由は任意）、受付停止中の組織の未完了の注文のまとめてキャンセル（理由必須）。受付停止中に未完了の注文がなくなると自動で停止 |
 | GET | `/stores/{id}` | 店舗の公開ページ。購入者・未ログインには公開中と閉鎖予定（`closingStartedAt` あり）の店舗だけを返し、非公開・停止・閉鎖済み・組織の停止は404。オーナー・担当者（ロール未割り当てを含む）・運営は扱える店舗を見られる |
 | PUT | `/cart/items/{productId}` | `{ "quantity": 2, "revision": 0 }`。数量0で削除。受取店舗は商品の店舗で、その商品の在庫で検証 |
 | POST | `/orders` | 下記の確定要求。受取店舗ごとに1件の注文を作り `{ "orders": [...], "payment": ... }`（店舗ID順）を返す。保存済みの同一要求は同じ注文群を返す。カードのときは `payment` に決済（`id`・`status`・`amountYen`・支払い待ちなら `clientSecret`）、店頭払いは `payment: null` |

@@ -1,6 +1,7 @@
 package jp.kusakari.ec.commerce.persistence.repository;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
@@ -30,4 +31,20 @@ public interface OrderRepository extends JpaRepository<OrderEntity, String> {
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select o from OrderEntity o where o.cartId = :cartId and o.id = :orderId and o.deletedAt is null")
   Optional<OrderEntity> findLocked(@Param("cartId") String cartId, @Param("orderId") String orderId);
+
+  // 店舗の閉鎖・組織の停止を止める注文（支払い待ち・注文受付・受取準備完了）の件数。判定は閉鎖と停止で共通（#79 決定事項6）。
+  @Query("select count(o) from OrderEntity o where o.storeId in :storeIds and o.status in :statuses")
+  long countByStatus(@Param("storeIds") Collection<Long> storeIds, @Param("statuses") Collection<String> statuses);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select o from OrderEntity o where o.storeId in :storeIds and o.status in :statuses order by o.id")
+  List<OrderEntity> lockByStatus(@Param("storeIds") Collection<Long> storeIds, @Param("statuses") Collection<String> statuses);
+
+  @Query(
+    "select distinct o.buyerMemberId from OrderEntity o where o.storeId in :storeIds and o.status in :statuses"
+  )
+  List<String> findBuyersByStatus(
+    @Param("storeIds") Collection<Long> storeIds,
+    @Param("statuses") Collection<String> statuses
+  );
 }

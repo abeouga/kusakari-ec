@@ -174,6 +174,17 @@ public class OrderEntity {
     cancellationAt = Instant.now();
   }
 
+  /**
+   * 店舗の閉鎖・組織の停止で、運営が未完了の注文をまとめてキャンセルする（#79・#109）。
+   * 購入者のキャンセル申請の状態（cancellation_status）は変えず、申請が出ていたことを残す。運営の理由は回答の欄に入れる。
+   */
+  public void cancelByOperator(String operatorMemberId, String reason) {
+    status = "CANCELLED";
+    cancelledByMemberId = operatorMemberId;
+    cancellationResponse = reason.trim();
+    cancellationAt = Instant.now();
+  }
+
   public void archive() {
     deletedAt = Instant.now();
   }

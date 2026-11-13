@@ -9,6 +9,7 @@ import jp.kusakari.ec.commerce.persistence.repository.*;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.payment.service.RefundService;
+import jp.kusakari.ec.store.service.ClosureSettlement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class OrderWorkflowService {
   private final RefundService refunds;
   private final OrderResponseMapper mapper;
   private final NotificationService notices;
+  private final ClosureSettlement closures;
 
   @Transactional(readOnly = true)
   public List<OrderView> sellerOrders(long storeId) {
@@ -61,7 +63,11 @@ public class OrderWorkflowService {
     boolean complete = expectedStatus.equals("READY") && status.equals("COMPLETED");
     if ((!ready && !complete) || order.getCancellationStatus().equals("PENDING")) conflict();
     if (ready) order.markReady();
-    else order.completePickup();
+    else {
+      order.completePickup();
+      // 閉鎖中の店舗・受付停止中の組織は、未完了の注文がなくなったら閉鎖済み・停止にする（#79・#109）。
+      closures.afterOrderChanged(order.getStoreId());
+    }
     notices.send(
       order.getBuyerMemberId(),
       ready ? "受取準備が完了しました" : "商品をお渡ししました",
@@ -91,7 +97,10 @@ public class OrderWorkflowService {
     if (approved) stock.restock(List.of(id));
     order.decideCancellation(approved, reason, auth.current().getId());
     // カードで支払い済みなら、この注文の金額だけを返金する（店頭払いは返金なし）。結果は Webhook で反映する。
-    if (approved) refunds.refundCancelledOrder(order, auth.current().getId());
+    if (approved) {
+      refunds.refundCancelledOrder(order, auth.current().getId());
+      closures.afterOrderChanged(order.getStoreId());
+    }
     notices.send(
       order.getBuyerMemberId(),
       approved ? "注文をキャンセルしました" : "キャンセル申請の結果",

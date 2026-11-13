@@ -15,7 +15,12 @@ export default defineConfig({
     index === 0
       ? {
           ...server,
-          env: { ...server.env, KUSAKARI_CANVAS_API_URL: 'http://127.0.0.1:18280' },
+          env: {
+            ...server.env,
+            KUSAKARI_CANVAS_API_URL: 'http://127.0.0.1:18280',
+            // Issue #79: the daily job that clears closed stores' contacts runs every few seconds in E2E.
+            KUSAKARI_EC_STORE_CONTACT_PURGE_INTERVAL_MS: '5000',
+          },
         }
       : server,
   ),

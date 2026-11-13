@@ -15,7 +15,7 @@ const sellerMenu = [
   'アカウント',
   '招待キー',
 ];
-const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出店審査', '店舗管理', '全注文管理'];
+const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出店審査', '店舗管理', '組織管理', '全注文管理'];
 
 // Issue #27: seller and operator sidebars can be folded so wide tables get the full width.
 // Issue #43: every item carries an icon, and the folded sidebar keeps the icons as a working menu.
