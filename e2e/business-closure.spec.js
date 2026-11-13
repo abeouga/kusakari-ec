@@ -251,9 +251,9 @@ test('closed stores lose their contact 90 days after closing (the daily job), an
     stores.push(storeId);
   }
   const contact = (/** @type {number} */ storeId) =>
-    sql(`SELECT contact_name, contact_email FROM stores WHERE id=${id(storeId)};`);
-  await expect.poll(() => contact(stores[0]), { timeout: 60000, intervals: [2000] }).toBe('\t');
-  expect(contact(stores[1])).toBe('閉鎖確認担当\tclosure-check@example.com');
+    sql(`SELECT CONCAT(contact_name, '|', contact_email) FROM stores WHERE id=${id(storeId)};`);
+  await expect.poll(() => contact(stores[0]), { timeout: 60000, intervals: [2000] }).toBe('|');
+  expect(contact(stores[1])).toBe('閉鎖確認担当|closure-check@example.com');
   // The rows stay.
   expect(sql(`SELECT COUNT(*) FROM stores WHERE id IN (${stores.map(id).join(',')});`)).toBe('2');
   await writeFile(
