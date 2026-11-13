@@ -1,17 +1,14 @@
 package jp.kusakari.ec.commerce.service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import jp.kusakari.ec.auth.AuthService;
-import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
-import jp.kusakari.ec.catalog.persistence.repository.InventoryRepository;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
 import jp.kusakari.ec.commerce.persistence.entity.*;
 import jp.kusakari.ec.commerce.persistence.repository.*;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.notification.service.NotificationService;
+import jp.kusakari.ec.payment.service.RefundService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +21,8 @@ public class OrderWorkflowService {
   private final AuthService auth;
   private final OrderRepository orders;
   private final OrderItemRepository items;
-  private final InventoryRepository inventory;
+  private final StockReturn stock;
+  private final RefundService refunds;
   private final OrderResponseMapper mapper;
   private final NotificationService notices;
 
@@ -89,20 +87,11 @@ public class OrderWorkflowService {
     auth.requireManager(order.getStoreId());
     if (!order.getStatus().equals("ACCEPTED") || !order.getCancellationStatus().equals("PENDING")) conflict();
     if (!approved && reason.isBlank()) throw new ApiException(400, "REASON_REQUIRED", "却下理由を入力してください。");
-    if (approved) {
-      // Match checkout's ascending product order. The order lock prevents double restocking.
-      var orderItems = items.findAllForOrder(id);
-      Map<String, InventoryEntity> stockByProduct = inventory
-        .lockAll(orderItems.stream().map(item -> item.getId().getProductId()).toList())
-        .stream()
-        .collect(Collectors.toMap(InventoryEntity::getProductId, stock -> stock));
-      for (var item : orderItems) {
-        var stock = stockByProduct.get(item.getId().getProductId());
-        if (stock == null) throw new ApiException(409, "STOCK_NOT_FOUND", "在庫情報が見つかりません。");
-        stock.setQuantity(Math.addExact(stock.getQuantity(), item.getQuantity()));
-      }
-    }
+    // The order lock prevents double restocking and a second refund.
+    if (approved) stock.restock(List.of(id));
     order.decideCancellation(approved, reason, auth.current().getId());
+    // カードで支払い済みなら、この注文の金額だけを返金する（店頭払いは返金なし）。結果は Webhook で反映する。
+    if (approved) refunds.refundCancelledOrder(order, auth.current().getId());
     notices.send(
       order.getBuyerMemberId(),
       approved ? "注文をキャンセルしました" : "キャンセル申請の結果",

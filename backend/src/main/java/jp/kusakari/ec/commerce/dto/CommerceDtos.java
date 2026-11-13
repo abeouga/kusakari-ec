@@ -15,11 +15,17 @@ public final class CommerceDtos {
     @NotNull UUID requestId,
     @PositiveOrZero long revision,
     @Positive int expectedTotalYen,
-    @NotNull @Pattern(regexp = "CREDIT_CARD|PAYPAY|RAKUTEN_PAY|PAY_AT_STORE") String paymentMethod
+    @NotNull @Pattern(regexp = "CARD|PAY_AT_STORE") String paymentMethod
   ) {}
 
-  /** One checkout creates one order per store (issue #70), ordered by store ID. */
-  public record CheckoutResult(List<OrderView> orders) {}
+  /**
+   * One checkout creates one order per store (issue #70), ordered by store ID.
+   * payment はカードのときだけ（店頭払いは null）。お会計1回の決済で、全店舗の注文の合計を支払う。
+   */
+  public record CheckoutResult(List<OrderView> orders, CardPayment payment) {}
+
+  /** clientSecret は支払い待ち（PENDING）のときだけ。画面は Stripe の Payment Element にこれを渡して支払う。 */
+  public record CardPayment(String id, String status, int amountYen, String clientSecret) {}
 
   /**
    * storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。
@@ -80,6 +86,10 @@ public final class CommerceDtos {
     String storeName,
     int totalYen,
     List<OrderLine> items,
-    DeliveryDtos.DetailsView details
+    DeliveryDtos.DetailsView details,
+    // カードの注文の決済の状態（PENDING / SUCCEEDED / FAILED / EXPIRED）。店頭払いは null。
+    String paymentStatus,
+    // 返金の状態（REQUESTED / SUCCEEDED / FAILED）。返金がなければ null。
+    String refundStatus
   ) {}
 }

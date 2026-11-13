@@ -11,6 +11,10 @@ import jp.kusakari.ec.commerce.dto.CommerceDtos.OrderView;
 import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsView;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.entity.OrderItemEntity;
+import jp.kusakari.ec.payment.persistence.entity.PaymentEntity;
+import jp.kusakari.ec.payment.persistence.entity.RefundEntity;
+import jp.kusakari.ec.payment.persistence.repository.PaymentRepository;
+import jp.kusakari.ec.payment.persistence.repository.RefundRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +23,8 @@ import org.springframework.stereotype.Component;
 public class OrderResponseMapper {
 
   private final ProductRepository products;
+  private final PaymentRepository payments;
+  private final RefundRepository refunds;
 
   public OrderView toView(OrderEntity order, List<OrderItemEntity> items) {
     Map<String, String> images = products
@@ -66,7 +72,11 @@ public class OrderResponseMapper {
         order.getRecipientName(),
         order.getRecipientPhone(),
         order.getContactEmail()
-      )
+      ),
+      order.getPaymentId() == null
+        ? null
+        : payments.findById(order.getPaymentId()).map(PaymentEntity::getStatus).orElse(null),
+      refunds.findByOrderId(order.getId()).map(RefundEntity::getStatus).orElse(null)
     );
   }
 }
