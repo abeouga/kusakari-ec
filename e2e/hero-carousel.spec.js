@@ -11,7 +11,8 @@ async function browse(page) {
   await page.goto('/');
   await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
   await page.mouse.move(0, 0);
-  const response = await page.request.get('/api/products?storeId=1');
+  // The carousel shows every store's public products in the catalog order (issue #119).
+  const response = await page.request.get('/api/products');
   expect(response.status()).toBe(200);
   const products = await response.json();
   expect(products.length).toBeGreaterThan(1);
@@ -19,7 +20,7 @@ async function browse(page) {
 }
 
 async function saveProducts(page, testInfo, storeId, name) {
-  const response = await page.request.get(`/api/products?storeId=${storeId}`);
+  const response = await page.request.get(storeId ? `/api/products?storeId=${storeId}` : '/api/products');
   expect(response.status()).toBe(200);
   const products = await response.json();
   await writeFile(testInfo.outputPath(`${name}.json`), JSON.stringify(products, null, 2));
@@ -64,7 +65,7 @@ test('all public products advance every five seconds, loop and open the matching
   await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
   await page.reload();
   await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
-  await saveProducts(page, testInfo, 1, 'public-products-reloaded');
+  await saveProducts(page, testInfo, null, 'public-products-reloaded');
   await page.screenshot({ path: testInfo.outputPath('desktop-reloaded.png') });
   expect(errors).toEqual([]);
 });
@@ -122,7 +123,10 @@ test('mobile layout and reduced motion keep product details operable', async ({ 
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-test('store changes reset selection and handle one or zero public products after reload', async ({
+// Issue #113: no longer valid, kept for the decision whether to delete it. The buyer cannot choose a store any more
+// (the cart has no store and `PUT /api/cart/store` is gone, #119), and the carousel shows every store's public products,
+// so the one- and zero-product cases cannot happen without hiding the whole catalogue. `stores.hours` is also gone (v3).
+test.skip('store changes reset selection and handle one or zero public products after reload', async ({
   page,
 }, testInfo) => {
   const suffix = randomUUID().slice(0, 8);

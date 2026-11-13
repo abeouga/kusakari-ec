@@ -14,7 +14,7 @@ Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニ�
 - **起動:** `start.bat` をダブルクリック
 - **停止:** `stop.bat` をダブルクリック
 
-初回は `setup.bat` で接続設定と依存を準備します。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
+初回は `setup.bat` で接続設定と依存を準備します。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは [他の PC の移行手順](docs/migration-other-pc.md) を参照してください（EC と Canvas の DB の初期化を含みます）。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
 再実行時は、この作業フォルダから起動したWeb/APIを停止してから同じ5186/8086で作り直します。別のプロセスが固定ポートを使っている場合は停止せず、エラーにします。代替ポートへ移動しません。
 Javaや依存を更新した場合は、停止 → ビルド → 起動の順に実行します。
 
@@ -46,7 +46,7 @@ Canvasから商品候補の取得へ接続しています。候補選択後に�
 | frontend | JavaScript / React 19 / Vite 8 | 5186 |
 | backend | Spring Boot 3.5.16 / Java 21 target / JDBC / Flyway | 8086 |
 | database | MySQL 8、開発DB `kusakari` | 3306（既存サーバーを共用） |
-| E2E | Playwright Chromium / DB `kusakari_e2e` | 15186 / 18086 |
+| E2E | Playwright Chromium / DB `kusakari_e2e`（実 Cognito） | 15286 / 18286（Canvas 15273 / 18280） |
 
 フロントの実装は `.js` / `.jsx` です。JSDoc + TypeScriptの `checkJs` で型を確認します。
 MySQLサーバーそのものは既存のものを使い、EC試作用DBと権限を分離しています。ローカル試作の3Dデータベースとは直接共有せず、商品連携は合意したAPI契約を通します。
@@ -121,11 +121,13 @@ docker compose up --build
 ## 開発と検証
 
 ```powershell
-npm ci
+npm install            # npm ci は使わない（Windows で frontend のソースを消したことがある）
 npm run check          # JavaScript型確認・lint・Viteビルド・Javaビルド
 npm run format:check   # JavaScript / CSS / Java の整形確認
-npm run test:e2e       # 専用API・専用Web・専用DBで7シナリオ
+npm run test:e2e       # 業務 E2E（専用API・専用Web・専用DB・実Cognito）
 ```
+
+業務以外の E2E は `e2e/configs/` の設定ごとに `npx playwright test --config e2e/configs/playwright.<名前>.config.js` で実行します。どれも E2E 用の DB（`.env` の `KUSAKARI_EC_E2E_DB_URL`）と実 Cognito のテスト用アカウント（`../kusakari-terraform/.env.test-accounts`）を使い、Canvas は `../kusakari-canvas`（`KUSAKARI_CANVAS_DIRECTORY` で変更可）を起動します。`playwright.acceptance.config.js` だけは、起動中の開発用の環境（5186・開発用の DB）に対して動きます。
 
 API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` を実行します。
 フロント変更はViteで即時反映されます。

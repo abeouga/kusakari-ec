@@ -187,6 +187,35 @@ export async function checkout(request) {
   return { order: orders[0], orders, payload };
 }
 
+/**
+ * Confirmed photo covering the whole garden: Canvas shows the 3D garden and places items only in gardens with a photo
+ * (Canvas issue #15). The photo is a plain image drawn in the page; no external image is used.
+ * @param {import('@playwright/test').Page} page signed in as the garden's owner
+ * @param {any} garden the saved garden document
+ */
+export async function seedGardenPhoto(page, garden) {
+  if (!/^https?:\/\/127\.0\.0\.1:/.test(page.url())) await page.goto(`${ec}/`);
+  const dataUrl = await page.evaluate(() => {
+    const image = document.createElement('canvas');
+    image.width = 600;
+    image.height = 400;
+    const drawing = image.getContext('2d');
+    drawing.fillStyle = '#b8ccb2';
+    drawing.fillRect(0, 0, 600, 400);
+    return image.toDataURL('image/png');
+  });
+  const corners = [
+    { x: 0.1, y: 0.9 },
+    { x: 0.9, y: 0.9 },
+    { x: 0.9, y: 0.1 },
+    { x: 0.1, y: 0.1 },
+  ];
+  const photo = { dataUrl, imageWidth: 600, imageHeight: 400, corners, boundary: corners };
+  const saved = await call(page.request, `/gardens/${garden.id}`, 'PUT', { ...garden, photo }, canvas);
+  expect(saved.status(), await saved.text()).toBe(200);
+  return saved.json();
+}
+
 // Isolate password changes from the shared buyer/seller/administrator accounts.
 function cognitoAccount(action, payload) {
   const python = fileURLToPath(new URL('../../kusakari-canvas/backend/.venv/Scripts/python.exe', import.meta.url));

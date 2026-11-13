@@ -7,14 +7,9 @@ const fromRoot = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
   testDir: fromRoot('e2e'),
-  testIgnore: [
-    'business*.spec.js',
-    'acceptance.spec.js',
-    'canvas-integration.spec.js',
-    'canvas-commerce.spec.js',
-    'auth.spec.js',
-    'custom-login.spec.js',
-  ],
+  // Issue #113: only the signed-out catalog suites run on these servers; every other suite has its own config in
+  // e2e/configs (the cart, orders, Canvas and seller screens need a signed-in member and real Cognito).
+  testMatch: ['catalog-pagination.spec.js', 'sticky-header.spec.js'],
   fullyParallel: false,
   workers: 1,
   timeout: 45000,
