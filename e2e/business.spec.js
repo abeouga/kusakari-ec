@@ -110,7 +110,8 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await expect(buyer.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
     const garden = await call(buyer.request, `/gardens/${gardenId}`, 'GET', undefined, canvas).then((r) => r.json());
     expect(garden.objects[0].productId).toBe(product.id);
-    expect((await call(seller.request, `/gardens/${gardenId}`, 'GET', undefined, canvas)).status()).toBe(404);
+    // A shop account cannot use Canvas at all (canvas#71), so another member's garden is refused before ownership.
+    expect((await call(seller.request, `/gardens/${gardenId}`, 'GET', undefined, canvas)).status()).toBe(403);
     await mkdir('artifacts/business', { recursive: true });
     await buyer.screenshot({ path: 'artifacts/business/placed-reloaded.png' });
     const adminContext = await browser.newContext();

@@ -176,10 +176,11 @@ test('custom login rejects external return targets and preserves EC sessions aft
     }
   }
   await page.screenshot({ path: 'artifacts/custom-login/ec-authenticated-header.png', fullPage: true });
+  // Canvas is for buyer accounts (canvas#71): a shop account sees the notice instead of the gardens.
   await page.goto(canvas);
   await page.reload();
-  await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '出店者', exact: true })).toBeVisible();
-  await page.screenshot({ path: 'artifacts/custom-login/seller-canvas-header.png', fullPage: true });
+  await expect(page.getByText('Canvas は購入者のアカウントで使えます', { exact: false })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/custom-login/seller-canvas-notice.png', fullPage: true });
   await page.goto(ec);
   const csrf = await (await page.request.get('/api/auth/csrf')).json();
   expect((await page.request.post('/api/auth/logout', { headers: { [csrf.headerName]: csrf.token } })).status()).toBe(
