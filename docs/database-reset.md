@@ -90,7 +90,7 @@ MySQL の方式、ポート、プロセス ID、実行ファイル、データ�
 - EC だけを初期化すると、Canvas の庭の持ち主（EC の会員 ID）と、買い物リストが持つ庭 ID が、作り直した EC と食い違う。Canvas 側も続けて初期化する
 - 認証基盤（Cognito）のユーザーは消さない。初期化の後、初めてログインしたときに会員が作られる
 - DB を作り直した後でマイグレーションの確認に失敗すると、DB は空か、途中まで作られた状態で残る。原因を直してから `setup.bat` を実行すると、テーブルが作られる
-- 閉鎖した店舗の連絡先を消すイベントは、#107 ではマイグレーションに入れなかった（`docs/database-v3-check/store-closure-event.sql`）。アプリ用の DB ユーザーに `EVENT` の権限が要るので、#79 でセットアップが付ける権限と合わせて入れる
+- 閉鎖した店舗の連絡先を消すイベントは、#107 ではマイグレーションに入れなかった（`docs/database-v3-check/store-closure-event.sql`）。2026-11-12 の決定（3-1）で、イベントをやめてアプリ内の定期処理（1日1回）にした（#79）。セットアップが付ける権限は変えない
 - 初期化の後の確認は、`backend/target` にある API の JAR でマイグレーションを適用する。古い JAR のままだと、古いマイグレーションが空の DB に適用されてしまう。新しい main を取得した後は、`npm run build:api`（または `setup.bat`）で API を作り直してから初期化する
 - 2026-11-12、v3 への切り替えの後、以前にビルドしたフォルダーで初期化すると、確認が「Found more than one migration with version 1」で失敗した。Maven の `package` が、ソースから消した旧マイグレーション（V1〜V15）を `target` に残していたため。`scripts/api.mjs` の API のビルドに `clean` を付けて直した。直す前のフォルダーでは、`backend` で `mvnw clean package -DskipTests` を実行してから `setup.bat` を実行すると、空の DB にテーブルが作られる
 - `scripts/setup.ps1` は、確認の処理を `scripts/database-verify.ps1` の関数の呼び出しに置き換えた。処理の中身は変えていない

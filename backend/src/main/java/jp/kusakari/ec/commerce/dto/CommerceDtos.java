@@ -91,6 +91,10 @@ public final class CommerceDtos {
     String paymentStatus,
     // 返金の状態（REQUESTED / SUCCEEDED / FAILED）。返金がなければ null。
     String refundStatus,
+    // 受け取る店舗が閉鎖中なら true。購入者の注文履歴に「この店舗は閉鎖予定です」と出す（#79）。
+    boolean storeClosing,
+    // キャンセルした人の立場（OPERATOR＝運営、STORE＝店舗）。キャンセルされていなければ null。
+    String cancelledBy,
     // 販売手数料（#130）。店舗・運営の注文の応答だけで返し、購入者には null。
     SalesDtos.SalesFigures sales
   ) {}

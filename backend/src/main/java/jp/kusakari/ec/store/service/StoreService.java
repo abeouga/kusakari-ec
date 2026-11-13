@@ -25,10 +25,13 @@ public class StoreService {
   private final StoreRepository stores;
   private final OrganizationRepository organizations;
   private final AuthService auth;
+  private final OpenOrders openOrders;
 
   /**
    * company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。
    * closingStartedAt は閉鎖を始めた日時（空なら営業中）。日時があれば、画面は「閉店予定」と出す。
+   * closingStartedBy は閉鎖を始めた人（OWNER・ADMIN）、closedAt は閉鎖済みになった日時（#79）。
+   * openOrderCount は閉鎖を止めている未完了の注文の件数で、出店者と運営の店舗一覧だけで返す（公開ページは null）。
    * memberRole は出店者画面の店舗一覧（GET /api/seller/stores）だけで返す、その店舗での自分の立場
    * （OWNER・MANAGER・STAFF・NONE＝所属でロールなし・ADMIN＝運営。空＝担当外で、ORG_ADMIN の人事の画面だけ）。
    */
@@ -46,7 +49,10 @@ public class StoreService {
     boolean enabled,
     boolean published,
     Instant closingStartedAt,
-    String memberRole
+    String memberRole,
+    String closingStartedBy,
+    Instant closedAt,
+    Long openOrderCount
   ) {}
 
   public record Input(
@@ -81,7 +87,13 @@ public class StoreService {
   @Transactional(readOnly = true)
   public List<Profile> list() {
     auth.requireAdmin();
-    return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
+    return stores.findAllByOrderByIdAsc().stream().map(this::withOpenOrders).toList();
+  }
+
+  /** 閉鎖の操作の後に返す店舗（未完了の注文の件数つき）。操作の権限は呼ぶ前に確かめている。 */
+  @Transactional(readOnly = true)
+  public Profile managed(long id) {
+    return withOpenOrders(require(id));
   }
 
   /** ログインしている店舗側のアカウントが操作できる店舗。運営には全店舗を返す。 */
@@ -89,14 +101,14 @@ public class StoreService {
   public List<Profile> mine() {
     auth.requireSellerRole();
     AuthMember member = auth.current();
-    if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
+    if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::withOpenOrders).toList();
     // ロール未割り当ての担当者も、所属店舗の店舗情報は見られる（#105）。ORG_ADMIN には組織の全店舗を候補に出す（#112）。
     // 変更の API は、それぞれロールを確かめる。
     return stores
       .findAllById(auth.candidateStoreIdsOf(member))
       .stream()
       .sorted(java.util.Comparator.comparing(StoreEntity::getId))
-      .map(store -> withRole(view(store), auth.memberRoleAt(member, store)))
+      .map(store -> withRole(withOpenOrders(store), auth.memberRoleAt(member, store)))
       .toList();
   }
 
@@ -124,6 +136,7 @@ public class StoreService {
   public Profile save(long id, Input in) {
     auth.requireManager(id);
     var s = require(id);
+    requireNotClosed(s);
     if (s.getRevision() != in.revision()) throw new ApiException(409, "STORE_CHANGED", "店舗情報が更新されています。");
     String name = in.name().trim();
     if (
@@ -138,6 +151,7 @@ public class StoreService {
   public Profile publish(long id, boolean published) {
     var s = require(id);
     auth.requireOwnerOf(s);
+    requireNotClosed(s);
     s.changePublished(published);
     stores.flush();
     return view(s);
@@ -147,6 +161,10 @@ public class StoreService {
   public void enable(long id, boolean enabled) {
     auth.requireAdmin();
     require(id).changeSuspended(!enabled);
+  }
+
+  private static void requireNotClosed(StoreEntity store) {
+    if (store.getClosedAt() != null) throw new ApiException(409, "STORE_CLOSED", "この店舗は閉鎖済みです。");
   }
 
   private StoreEntity require(long id) {
@@ -173,11 +191,23 @@ public class StoreService {
       !s.isSuspended(),
       s.isPublished(),
       s.getClosingStartedAt(),
+      null,
+      s.getClosingStartedBy(),
+      s.getClosedAt(),
       null
     );
   }
 
+  private Profile withOpenOrders(StoreEntity s) {
+    Profile p = view(s);
+    return withRole(p, null, openOrders.count(List.of(s.getId())));
+  }
+
   private static Profile withRole(Profile p, String role) {
+    return withRole(p, role, p.openOrderCount());
+  }
+
+  private static Profile withRole(Profile p, String role, Long openOrderCount) {
     return new Profile(
       p.id(),
       p.revision(),
@@ -192,7 +222,10 @@ public class StoreService {
       p.enabled(),
       p.published(),
       p.closingStartedAt(),
-      role
+      role,
+      p.closingStartedBy(),
+      p.closedAt(),
+      openOrderCount
     );
   }
 }

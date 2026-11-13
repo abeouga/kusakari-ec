@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import {
   Bell,
   Building2,
+  Landmark,
   KeyRound,
   ChartColumn,
   ClipboardCheck,
@@ -23,6 +24,8 @@ import { SalesPage, SalesReport } from './SalesReport';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
+import { OperatorStoresPage } from './OperatorStores';
+import { OperatorOrganizationsPage } from './OperatorOrganizations';
 import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
@@ -57,6 +60,7 @@ const operatorMenu = [
   ['/operator/categories', 'カテゴリ管理', Tags],
   ['/operator/applications', '出店審査', ClipboardCheck],
   ['/operator/sellers', '店舗管理', Store],
+  ['/operator/organizations', '組織管理', Landmark],
   ['/operator/orders', '全注文管理', ReceiptText],
 ];
 /** @type {MenuItem[]} */
@@ -220,8 +224,9 @@ export function Workspace({ shop, path, header }) {
     content = <OrderPage storeId={storeId} operator={operator} />;
   else if (path === '/operator/applications') content = <ReviewPage />;
   else if (path === '/operator/products') content = <ReviewPage products />;
-  else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')
-    content = <MembersPage sellers={path.endsWith('/sellers')} />;
+  else if (path === '/operator' || path === '/operator/members') content = <MembersPage />;
+  else if (path === '/operator/sellers') content = <OperatorStoresPage />;
+  else if (path === '/operator/organizations') content = <OperatorOrganizationsPage />;
   else if (path === '/operator/categories') content = <CategoriesPage />;
   else if (publicStore) content = <ProfilePage storeId={Number(path.split('/')[2])} readOnly />;
   else content = <p>URLを確認するか、メニューからページを選んでください。</p>;

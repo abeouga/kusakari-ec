@@ -140,19 +140,17 @@ function ApplicationRow({ row, resource }) {
   );
 }
 
-/** @param {{sellers?:boolean}} props */
-export function MembersPage({ sellers = false }) {
-  const resource = useResource(sellers ? '/operator/stores' : '/operator/members');
+// Stores are managed on their own page (OperatorStores.jsx), which also closes them (issue #79).
+export function MembersPage() {
+  const resource = useResource('/operator/members');
   const [query, setQuery] = useState('');
   const [target, setTarget] = useState(/** @type {import('../businessTypes').Member|null} */ (null));
   const all = /** @type {import('../businessTypes').Member[]} */ (resource.data ?? []);
   const shown = all.filter((m) => `${m.name} ${m.email}`.includes(query));
-  const noun = sellers ? '店舗' : '会員';
   async function change() {
     if (!target) return;
     await resource.run(
-      () =>
-        write(`/operator/${sellers ? 'stores' : 'members'}/${target.id}/enabled`, 'PUT', { enabled: !target.enabled }),
+      () => write(`/operator/members/${target.id}/enabled`, 'PUT', { enabled: !target.enabled }),
       target.enabled ? '利用を停止しました。' : '利用を再開しました。',
     );
     setTarget(null);
@@ -168,7 +166,7 @@ export function MembersPage({ sellers = false }) {
         <section className="workspace-card" key={m.id}>
           <h3>{m.name}</h3>
           <p>
-            {m.email} / {sellers ? m.address : m.accountType}
+            {m.email} / {m.accountType}
           </p>
           <p>{m.withdrawnAt ? '退会済み' : m.enabled ? '利用中' : '利用停止'}</p>
           {/* EC-A02 6a: administrators and withdrawn members also go through the dialog; the server rejects the
@@ -181,7 +179,7 @@ export function MembersPage({ sellers = false }) {
         </section>
       ))}
       {resource.data && shown.length === 0 && (
-        <p>{all.length === 0 ? `対象の${noun}はありません。` : `検索条件に一致する${noun}はありません。`}</p>
+        <p>{all.length === 0 ? '対象の会員はありません。' : '検索条件に一致する会員はありません。'}</p>
       )}
       {target && (
         <ConfirmDialog
@@ -196,9 +194,7 @@ export function MembersPage({ sellers = false }) {
           </p>
           {target.enabled ? (
             <p>
-              {sellers
-                ? 'この店舗の利用を停止します。商品は購入者向けの画面に表示されなくなります。'
-                : 'このアカウントの利用を停止します。停止中はログインできません。'}
+              このアカウントの利用を停止します。停止中はログインできません。
               確定済みの注文はキャンセルされず、そのまま受け渡しを続けます。
             </p>
           ) : (

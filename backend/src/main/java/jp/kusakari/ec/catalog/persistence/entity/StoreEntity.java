@@ -57,12 +57,16 @@ public class StoreEntity {
   @Column(nullable = false)
   private boolean suspended;
 
-  /** 閉鎖を始めた日時。空なら営業中（閉鎖の操作は #79 で作る）。 */
+  /** 閉鎖を始めた日時。空なら営業中、日時があれば閉鎖中（閉鎖済みを含む）。 */
   @Column(name = "closing_started_at")
   private Instant closingStartedAt;
 
-  /** 閉鎖が済んだ日時。空でなければ閉鎖済みで、購入者には見せない（書き込みは #79 で作る）。 */
-  @Column(name = "closed_at", insertable = false, updatable = false)
+  /** 閉鎖を始めた人（OWNER か ADMIN）。運営が始めた閉鎖は、運営だけが取り消せる。 */
+  @Column(name = "closing_started_by", length = 16)
+  private String closingStartedBy;
+
+  /** 閉鎖が済んだ日時。空でなければ閉鎖済みで、購入者には見せない。再開できない。 */
+  @Column(name = "closed_at")
   private Instant closedAt;
 
   @Version
@@ -98,6 +102,30 @@ public class StoreEntity {
 
   public void changeSuspended(boolean suspended) {
     this.suspended = suspended;
+  }
+
+  public static final String CLOSED_BY_OWNER = "OWNER";
+  public static final String CLOSED_BY_ADMIN = "ADMIN";
+
+  /** 閉鎖を始める（閉鎖中）。新しい注文を受け付けなくなる。 */
+  public void startClosing(String by) {
+    closingStartedAt = Instant.now();
+    closingStartedBy = by;
+  }
+
+  /** 閉鎖中を取り消して営業に戻す。閉鎖済みは戻せない（呼ぶ側が確かめる）。 */
+  public void cancelClosing() {
+    closingStartedAt = null;
+    closingStartedBy = null;
+  }
+
+  /** 未完了の注文がなくなった閉鎖中の店舗を、閉鎖済みにする。 */
+  public void completeClosing() {
+    closedAt = Instant.now();
+  }
+
+  public boolean isClosing() {
+    return closingStartedAt != null && closedAt == null;
   }
 
   /** 購入者に見せて、新しい注文を受け付けられる店舗か（組織の停止は別に確かめる）。 */

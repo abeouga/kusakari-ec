@@ -44,10 +44,11 @@
  * @typedef {{productId:string, name:string, storeName:string, quantity:number, reason:string}} RemovedCartLine
  * @typedef {{revision:number, items:CartLine[], totalYen:number, itemCount:number, canCheckout:boolean, subtotalYen:number, details:DeliveryDetails, removedItems:RemovedCartLine[]}} Cart
  * @typedef {{productId:string, sku:string, name:string, quantity:number, unitPriceYen:number, lineTotalYen:number, imageUrl:string|null}} OrderLine
- * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], details:DeliveryDetails, paymentStatus:string|null, refundStatus:string|null, sales?:SalesFigures|null}} Order
+ * @typedef {{id:string, status:string, storeId:number, buyerMemberId:string, pickupAddress:string,pickupHours:string,readyAt:string|null,pickedUpAt:string|null,cancellationStatus:string,cancellationReason:string,cancellationResponse:string, createdAt:string, storeName:string, totalYen:number, items:OrderLine[], details:DeliveryDetails, paymentStatus:string|null, refundStatus:string|null, storeClosing:boolean, cancelledBy:'OPERATOR'|'STORE'|null, sales?:SalesFigures|null}} Order
  * sales is the commission, returned to stores and the operator only (issue #130).
  * @typedef {{commissionRateBp:number, commissionYen:number, netYen:number, counted:boolean}} SalesFigures
  * paymentStatus is null for pay-at-store orders; refundStatus is null when nothing was refunded (issue #132/#133).
+ * storeClosing is true while the pickup store is closing; cancelledBy tells an operator's cancellation from the store's (issue #79).
  * @typedef {{id:string, status:string, amountYen:number, clientSecret:string|null}} CardPayment
  * @typedef {{orders:Order[], payment:CardPayment|null}} CheckoutResult One order per pickup store (issue #70).
  * @typedef {{orders:Order[], payment:CardPayment}} PendingCardPayment
