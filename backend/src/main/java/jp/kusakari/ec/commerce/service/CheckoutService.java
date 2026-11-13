@@ -100,7 +100,8 @@ public class CheckoutService {
     List<CartItemEntity> items = cartItems.findAllForCart(cartId);
     if (items.isEmpty()) throw new ApiException(409, "EMPTY_CART", "カートが空です。");
 
-    // Lock in a fixed order (stores by ID, their organizations, then inventory by product ID) so concurrent checkouts cannot deadlock.
+    // Lock in a fixed order (stores by ID, their organizations, products, then inventory by product ID) so concurrent
+    // checkouts cannot deadlock. 商品の編集も「商品 → 在庫」の順にロックするので、輪にならない。
     // 商品の店舗は変わらないので、ロックする店舗はロックの前に読んでよい。
     List<String> productIds = items.stream().map(item -> item.getId().getProductId()).toList();
     Map<Long, StoreEntity> lockedStores = new TreeMap<>();
@@ -111,6 +112,7 @@ public class CheckoutService {
       .collect(Collectors.toCollection(TreeSet::new))
       .forEach(storeId -> lockedStores.put(storeId, stores.lock(storeId).orElseThrow()));
     requireOpen(lockedStores);
+    requireNotSuspended(productIds);
     Map<String, InventoryEntity> lockedStock = inventory
       .lockAll(productIds)
       .stream()
@@ -166,6 +168,16 @@ public class CheckoutService {
         throw new ApiException(409, "STORE_DISABLED", store.getName() + "は受付を停止しています。");
       }
     }
+  }
+
+  // 運営が停止した商品は、カートの表示（ロックしない読み取り）だけでなく、ロックした行でも確かめる（#16）。
+  // 停止とお会計が同時に起きたとき、停止の前の読み取りで注文が通ることを防ぐ。
+  private void requireNotSuspended(List<String> productIds) {
+    boolean suspended = products
+      .lockSharedSuspension(new TreeSet<>(productIds))
+      .stream()
+      .anyMatch(row -> row[1] instanceof Boolean b ? b : ((Number) row[1]).intValue() != 0);
+    if (suspended) throw new ApiException(409, "OUT_OF_STOCK", "購入できない商品があります。カートを確認してください。");
   }
 
   private OrderEntity placeStoreOrder(
