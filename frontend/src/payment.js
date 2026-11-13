@@ -1,20 +1,57 @@
-/** Demo payment choices. No payment provider is called; the choice is stored on the order. */
+import { useEffect, useState } from 'react';
+import { request } from './api';
+
+/**
+ * 支払方法は、カード（Stripe のテストモード）と店頭払いの2つ（#132）。カードは鍵がそろったときだけ出す。
+ * 店頭払いは決済を作らず、注文を作った時点で注文受付になる。
+ */
 export const paymentMethods = [
+  {
+    id: 'CARD',
+    label: 'クレジットカード',
+    note: 'カード情報は決済会社（Stripe）の入力欄に入れます。注文時に支払います。',
+  },
   { id: 'PAY_AT_STORE', label: '店舗でお支払い', note: '受け取り時に店頭レジで現金・カード・電子マネーで支払います。' },
-  { id: 'CREDIT_CARD', label: 'クレジットカード', note: 'VISA / Mastercard / JCB / AMEX。注文確定時に決済します。' },
-  { id: 'PAYPAY', label: 'PayPay', note: '注文確定後にPayPayアプリで支払いを承認します。' },
-  { id: 'RAKUTEN_PAY', label: '楽天ペイ', note: '楽天IDで支払います。楽天ポイントも使えます。' },
 ];
+
+/** 画面用の公開鍵。テスト用（pk_test_）でなければカードを出さない。 */
+export const stripePublishableKey = (() => {
+  const key = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  return typeof key === 'string' && key.startsWith('pk_test_') ? key : '';
+})();
+
+/** @type {Record<string,string>} */
+export const paymentStatusLabels = {
+  PENDING: '支払い待ち',
+  SUCCEEDED: '支払い済み',
+  FAILED: '支払いの失敗',
+  EXPIRED: '期限切れ',
+};
+
+/** @type {Record<string,string>} */
+export const refundStatusLabels = { REQUESTED: '返金の処理中', SUCCEEDED: '返金済み', FAILED: '返金の失敗' };
 
 /** @param {string|undefined} id */
 export function paymentLabel(id) {
   return paymentMethods.find((method) => method.id === id)?.label ?? '未選択';
 }
 
-/** @param {string|undefined} id */
-export function paymentStatus(id) {
-  if (id === 'PAY_AT_STORE') return '受け取り時に店頭でお支払いください。';
-  if (id && id !== 'NONE')
-    return `${paymentLabel(id)}でのお支払いを受け付けました（デモ決済のため実際の請求はありません）。`;
-  return '';
+/** 画面の公開鍵と、サーバーの鍵の両方がそろっているときだけ、カードを選べる。 */
+export function useCardAvailable() {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    if (!stripePublishableKey) return;
+    let active = true;
+    request('/payments/config')
+      .then((/** @type {{cardAvailable:boolean}} */ config) => {
+        if (active) setAvailable(config.cardAvailable === true);
+      })
+      .catch(() => {
+        if (active) setAvailable(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  return available;
 }

@@ -37,3 +37,32 @@
   .checkout-block { padding: 16px; }
   .payment-option { padding: 12px; gap: 10px; }
 }
+/* Issue #132: Stripe Payment Element step. */
+.card-payment h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-payment-form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+.card-payment-confirming {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-payment-confirming .spin {
+  animation: card-payment-spin 0.8s linear infinite;
+}
+@keyframes card-payment-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.card-payment-result {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+}

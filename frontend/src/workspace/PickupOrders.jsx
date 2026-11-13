@@ -4,7 +4,7 @@ import { yen } from '../api';
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { orderLabels, cancellationLabels } from './OrderPages';
+import { orderLabels, cancellationLabels, PaymentState } from './OrderPages';
 import { Thumbnail } from './BuyerOrders';
 import './buyer-orders.css';
 import './pickup-orders.css';
@@ -177,6 +177,14 @@ function PickupCard({ order, resource, operator }) {
         </details>
       ) : (
         body
+      )}
+      <p className="pickup-payment">
+        <PaymentState order={order} />
+      </p>
+      {order.refundStatus === 'FAILED' && (
+        <p className="error-text">
+          返金に失敗しました。Stripe の管理画面で返金の状態を確認し、購入者に連絡してください。
+        </p>
       )}
       {order.cancellationReason && !pending && (
         <p className="order-cancel-result">

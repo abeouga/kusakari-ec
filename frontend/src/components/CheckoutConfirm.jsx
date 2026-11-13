@@ -1,14 +1,20 @@
-import { Clock, CreditCard, MapPin, QrCode, Store, UserRound, Wallet } from 'lucide-react';
+import { useEffect } from 'react';
+import { Clock, CreditCard, MapPin, Store, UserRound, Wallet } from 'lucide-react';
 import { yen } from '../api';
 import { paymentMethods } from '../payment';
 import { PageLink } from '../workspace/Common';
 
 /** @type {Record<string, import('lucide-react').LucideIcon>} */
-const paymentIcons = { PAY_AT_STORE: Store, CREDIT_CARD: CreditCard, PAYPAY: QrCode, RAKUTEN_PAY: Wallet };
+const paymentIcons = { PAY_AT_STORE: Store, CARD: CreditCard };
 
-/** @param {{shop:ReturnType<import('../useShop').useShop>,cart:import('../types').Cart,payment:string,onPayment:(id:string)=>void}} props */
-export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
+/** @param {{shop:ReturnType<import('../useShop').useShop>,cart:import('../types').Cart,payment:string,onPayment:(id:string)=>void,cardAvailable:boolean}} props */
+export function CheckoutConfirm({ shop, cart, payment, onPayment, cardAvailable }) {
   const contact = cart.details;
+  // Stripe の鍵がない PC では、カードを出さず店頭払いだけにする（#132）。
+  const methods = paymentMethods.filter((method) => method.id !== 'CARD' || cardAvailable);
+  useEffect(() => {
+    if (payment === 'CARD' && !cardAvailable) onPayment('PAY_AT_STORE');
+  }, [payment, cardAvailable, onPayment]);
   return (
     <div className="checkout-confirm">
       <section className="checkout-block" aria-labelledby="checkout-items-title">
@@ -89,7 +95,7 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
           <Wallet size={18} aria-hidden="true" />
           お支払い方法
         </legend>
-        {paymentMethods.map((method) => {
+        {methods.map((method) => {
           const Icon = paymentIcons[method.id];
           return (
             <label key={method.id} className="payment-option" data-selected={payment === method.id}>
@@ -109,9 +115,11 @@ export function CheckoutConfirm({ shop, cart, payment, onPayment }) {
             </label>
           );
         })}
-        <p className="fine-print">
-          デモ決済です。カード番号などの支払い情報は入力・送信せず、実際の請求も発生しません。
-        </p>
+        {cardAvailable && (
+          <p className="fine-print">
+            カードは Stripe のテストモードで決済します（実際の請求はありません）。注文を確定すると、カード情報の入力欄を表示します。
+          </p>
+        )}
       </fieldset>
     </div>
   );
