@@ -4,7 +4,17 @@ import { ec, capture, login, prepareMember } from './business-helpers.js';
 
 test.use({ trace: 'off' });
 
-const sellerMenu = ['商品管理', '店舗受け取り', '注文実績', '店舗一覧', '店舗プロフィール', '出店者通知'];
+// Issue #111: the SELLER fixture is a MANAGER, so the personnel pages (accounts, invitation keys) follow.
+const sellerMenu = [
+  '商品管理',
+  '店舗受け取り',
+  '注文実績',
+  '店舗一覧',
+  '店舗プロフィール',
+  '出店者通知',
+  'アカウント',
+  '招待キー',
+];
 const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出店審査', '店舗管理', '全注文管理'];
 
 // Issue #27: seller and operator sidebars can be folded so wide tables get the full width.

@@ -2,14 +2,25 @@ import { useState } from 'react';
 import { confirmSignUp, passwordLogin, resendSignUpCode, signUp } from '../auth';
 
 /** @typedef {'signup'|'confirm'} SignupStep */
+/** Invitation keys are 43 URL-safe characters (32 random bytes). */
+const invitationPattern = String.raw`\s*[A-Za-z0-9_\-]{43}\s*`;
 
 /**
- * Issue #87: registration inside the login card. The password stays only in this component's memory
+ * Issue #87: registration inside the login card. Issue #111: with `invitation` (a string, possibly empty) the form
+ * registers a store staff account with that invitation key instead of offering the business sign-up. The password stays only in this component's memory
  * so the member can be signed in right after the confirmation code is accepted.
  * @param {{step:SignupStep, initialEmail?:string, initialPassword?:string, returnTo:string, onStep:(step:SignupStep|'login')=>void,
- *   onSignedIn:(target:string)=>Promise<void>}} props
+ *   onSignedIn:(target:string)=>Promise<void>, invitation?:string|null}} props
  */
-export function SignupForm({ step, initialEmail = '', initialPassword = '', returnTo, onStep, onSignedIn }) {
+export function SignupForm({
+  step,
+  initialEmail = '',
+  initialPassword = '',
+  returnTo,
+  onStep,
+  onSignedIn,
+  invitation = null,
+}) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
   const [failure, setFailure] = useState('');
@@ -38,7 +49,8 @@ export function SignupForm({ step, initialEmail = '', initialPassword = '', retu
     const address = String(data.get('email') || '').trim();
     const secret = String(data.get('password') || '');
     void run(async () => {
-      await signUp(address, secret, String(data.get('confirmPassword') || ''), data.get('business') === 'on');
+      const key = invitation === null ? null : String(data.get('invitationKey') || '').trim();
+      await signUp(address, secret, String(data.get('confirmPassword') || ''), data.get('business') === 'on', key);
       setEmail(address);
       setPassword(secret);
       onStep('confirm');
@@ -154,10 +166,26 @@ export function SignupForm({ step, initialEmail = '', initialPassword = '', retu
             disabled={busy}
           />
         </label>
-        <label className="auth-check">
-          <input name="business" type="checkbox" disabled={busy} />
-          企業様向け：出店を申請するアカウントとして登録する
-        </label>
+        {invitation === null ? (
+          <label className="auth-check">
+            <input name="business" type="checkbox" disabled={busy} />
+            企業様向け：出店を申請するアカウントとして登録する
+          </label>
+        ) : (
+          <label>
+            招待キー
+            <input
+              name="invitationKey"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              pattern={invitationPattern}
+              maxLength={60}
+              defaultValue={invitation}
+              disabled={busy}
+            />
+          </label>
+        )}
         <button className="auth-submit" type="submit" disabled={busy}>
           {busy ? '登録中…' : '確認コードを送信'}
         </button>

@@ -29,6 +29,8 @@ public class StoreService {
   /**
    * company は組織の名前（事業者名の正本）。enabled は「運営が停止していない」、published は「オーナーが公開した」。
    * closingStartedAt は閉鎖を始めた日時（空なら営業中）。日時があれば、画面は「閉店予定」と出す。
+   * memberRole は出店者画面の店舗一覧（GET /api/seller/stores）だけで返す、その店舗での自分の立場
+   * （OWNER・MANAGER・STAFF・NONE＝所属でロールなし・ADMIN＝運営。空＝担当外で、ORG_ADMIN の人事の画面だけ）。
    */
   public record Profile(
     long id,
@@ -43,7 +45,8 @@ public class StoreService {
     String story,
     boolean enabled,
     boolean published,
-    Instant closingStartedAt
+    Instant closingStartedAt,
+    String memberRole
   ) {}
 
   public record Input(
@@ -69,7 +72,10 @@ public class StoreService {
 
   private boolean publiclyVisible(StoreEntity store) {
     if (!store.isPublished() || store.isSuspended() || store.getClosedAt() != null) return false;
-    return organizations.findById(store.getOrganizationId()).map(organization -> !organization.isSuspended()).orElse(false);
+    return organizations
+      .findById(store.getOrganizationId())
+      .map(organization -> !organization.isSuspended())
+      .orElse(false);
   }
 
   @Transactional(readOnly = true)
@@ -84,8 +90,14 @@ public class StoreService {
     auth.requireSellerRole();
     AuthMember member = auth.current();
     if (member.isAdmin()) return stores.findAllByOrderByIdAsc().stream().map(this::view).toList();
-    // ロール未割り当ての担当者も、所属店舗の店舗情報は見られる（#105）。変更の API は、それぞれロールを確かめる。
-    return stores.findAllById(auth.viewableStoreIdsOf(member)).stream().map(this::view).toList();
+    // ロール未割り当ての担当者も、所属店舗の店舗情報は見られる（#105）。ORG_ADMIN には組織の全店舗を候補に出す（#112）。
+    // 変更の API は、それぞれロールを確かめる。
+    return stores
+      .findAllById(auth.candidateStoreIdsOf(member))
+      .stream()
+      .sorted(java.util.Comparator.comparing(StoreEntity::getId))
+      .map(store -> withRole(view(store), auth.memberRoleAt(member, store)))
+      .toList();
   }
 
   /** オーナーが、自分の組織に店舗を作る。申請や運営の審査は要らない。作った直後は非公開。 */
@@ -114,11 +126,9 @@ public class StoreService {
     var s = require(id);
     if (s.getRevision() != in.revision()) throw new ApiException(409, "STORE_CHANGED", "店舗情報が更新されています。");
     String name = in.name().trim();
-    if (!name.equals(s.getName()) && stores.existsByOrganizationIdAndName(s.getOrganizationId(), name)) throw new ApiException(
-      409,
-      "STORE_NAME_EXISTS",
-      "同じ名前の店舗がすでにあります。"
-    );
+    if (
+      !name.equals(s.getName()) && stores.existsByOrganizationIdAndName(s.getOrganizationId(), name)
+    ) throw new ApiException(409, "STORE_NAME_EXISTS", "同じ名前の店舗がすでにあります。");
     s.updateProfile(name, in.contact(), in.email(), in.address(), in.hours(), in.story());
     stores.flush();
     return view(s);
@@ -162,7 +172,27 @@ public class StoreService {
       s.getStory(),
       !s.isSuspended(),
       s.isPublished(),
-      s.getClosingStartedAt()
+      s.getClosingStartedAt(),
+      null
+    );
+  }
+
+  private static Profile withRole(Profile p, String role) {
+    return new Profile(
+      p.id(),
+      p.revision(),
+      p.organizationId(),
+      p.name(),
+      p.company(),
+      p.contact(),
+      p.email(),
+      p.address(),
+      p.hours(),
+      p.story(),
+      p.enabled(),
+      p.published(),
+      p.closingStartedAt(),
+      role
     );
   }
 }
