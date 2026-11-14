@@ -14,7 +14,7 @@ Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニ�
 - **起動:** `start.bat` をダブルクリック
 - **停止:** `stop.bat` をダブルクリック
 
-初回は `setup.bat` で接続設定と依存を準備します。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
+初回は `setup.bat` で接続設定と依存を準備します。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは [他の PC の移行手順](docs/migration-other-pc.md) を参照してください（EC と Canvas の DB の初期化を含みます）。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
 再実行時は、この作業フォルダから起動したWeb/APIを停止してから同じ5186/8086で作り直します。別のプロセスが固定ポートを使っている場合は停止せず、エラーにします。代替ポートへ移動しません。
 Javaや依存を更新した場合は、停止 → ビルド → 起動の順に実行します。
 
@@ -22,14 +22,14 @@ Javaや依存を更新した場合は、停止 → ビルド → 起動の順に
 
 - オリーブ、ラベンダー、ローズマリー、モンステラの4商品。サイズ、育て方を掲載(育て方はこっちサポートしきれないから出品者が書くブログ機能的なやつとしてなら実装できそう？)
 - カテゴリー・商品名・品番検索、価格順ソート、在庫あり絞り込み。
-- 3つの架空店舗の在庫確認、受取店舗変更。東京駅・横浜駅・大宮駅または許可された現在地から距離順に表示。
+- 全店舗の商品を店舗名つきで表示。受取店舗は商品の店舗で、購入者は切り替えない。店舗一覧は東京駅・横浜駅・大宮駅または許可された現在地から距離順に表示。
 - カートへの追加、数量変更、削除、税込合計。カートはMySQLへ保存され、再読み込みで復元。
 - `/cart` でカート・受取情報・店舗受取の注文確認を独立画面で表示。URLを直接開いても利用できます。
 - 注文確認 → 注文確定 → 注文履歴。金額・在庫をサーバーで再確認。
-- 材料コードのJSONから商品候補・購入個数・必要金額を取得し、選んだ候補をカートへ追加。
+- Canvasの庭の買い物リストから、配置した商品をカートへ追加。受取店舗は商品の店舗。
 - PC・スマートフォン対応、キーボードでのダイアログ操作、通信失敗時の再試行。
 
-**デモの範囲:** 商品・価格・店舗・在庫はデモ用です。実決済・配送・実店舗での取り置きは行いません。
+**デモの範囲:** 商品・価格・店舗・在庫はデモ用です。決済は Stripe のテストモードだけを範囲に入れ、実際のお金は動かしません。配送は行わず、受け取りは商品の店舗での店舗受け取りだけです。販売手数料（8%）は注文実績に表示するだけで、請求・精算はしません。
 
 商品一覧は日照・用途・手入れレベル・生産者・価格で絞り込めます。商品詳細には追加画像と生育スペックを表示します。
 画面下部の「商品管理」から商品と店舗在庫を登録・編集・削除できます。
@@ -46,7 +46,7 @@ Canvasから商品候補の取得へ接続しています。候補選択後に�
 | frontend | JavaScript / React 19 / Vite 8 | 5186 |
 | backend | Spring Boot 3.5.16 / Java 21 target / JDBC / Flyway | 8086 |
 | database | MySQL 8、開発DB `kusakari` | 3306（既存サーバーを共用） |
-| E2E | Playwright Chromium / DB `kusakari_e2e` | 15186 / 18086 |
+| E2E | Playwright Chromium / DB `kusakari_e2e`（実 Cognito） | 15286 / 18286（Canvas 15273 / 18280） |
 
 フロントの実装は `.js` / `.jsx` です。JSDoc + TypeScriptの `checkJs` で型を確認します。
 MySQLサーバーそのものは既存のものを使い、EC試作用DBと権限を分離しています。ローカル試作の3Dデータベースとは直接共有せず、商品連携は合意したAPI契約を通します。
@@ -121,11 +121,13 @@ docker compose up --build
 ## 開発と検証
 
 ```powershell
-npm ci
+npm install            # npm ci は使わない（Windows で frontend のソースを消したことがある）
 npm run check          # JavaScript型確認・lint・Viteビルド・Javaビルド
 npm run format:check   # JavaScript / CSS / Java の整形確認
-npm run test:e2e       # 専用API・専用Web・専用DBで7シナリオ
+npm run test:e2e       # 業務 E2E（専用API・専用Web・専用DB・実Cognito）
 ```
+
+業務以外の E2E は `e2e/configs/` の設定ごとに `npx playwright test --config e2e/configs/playwright.<名前>.config.js` で実行します。どれも E2E 用の DB（`.env` の `KUSAKARI_EC_E2E_DB_URL`）と実 Cognito のテスト用アカウント（`../kusakari-terraform/.env.test-accounts`）を使い、Canvas は `../kusakari-canvas`（`KUSAKARI_CANVAS_DIRECTORY` で変更可）を起動します。`playwright.acceptance.config.js` だけは、起動中の開発用の環境（5186・開発用の DB）に対して動きます。
 
 API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` を実行します。
 フロント変更はViteで即時反映されます。
@@ -142,10 +144,10 @@ API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` �
 - ローカル専用です。127.0.0.1へのbindと接続元チェックを使用し、公開用認証は実装していません。
 - CookieはHttpOnly / SameSite=Strict、有効期間30日です。Cookie削除後は以前のカート・注文履歴へアクセスできません。
 - 在庫は追加時には予約しません。注文確定時にロック・再確認・減算します。
-- 金額は税込JPYの整数です。店舗受け取りのみで、送料は0円です。
+- 金額は税込JPYの整数です。店舗受け取りのみで、送料はありません。
 - 位置情報はリクエスト内の距離計算に使い、DBに保存しません。距離は道路距離ではなく直線距離です。
 - 外部フォント取得に失敗してもOSのフォントで表示されます。商品画像はプロジェクト内にあります。
-- 公開時の会員認証、決済、実商品フィード、税・送料規則、注文取消・返金、運用管理は別途実装が必要です。
+- 公開時の会員認証、本番の決済、実商品フィード、税の規則、手数料の請求・精算、運用管理は別途実装が必要です。
 
 設計判断: [docs/architecture.md](docs/architecture.md) / API: [docs/api.md](docs/api.md) / 画像: [docs/images.md](docs/images.md)
 
@@ -153,5 +155,5 @@ API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` �
 
 ## 業務バックエンドと機能要件
 
-出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証は実Cognito、会員・店舗・審査・注文・通知は実API/MySQLです。実決済・配送・精算は対象外です。[構成・移行・検証手順](docs/business-backend.md)を参照してください。
+出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証は実Cognito、会員・店舗・審査・注文・通知は実API/MySQLです。決済は Stripe のテストモードだけを範囲に入れ（実際のお金は動かしません）、販売手数料は表示だけです。配送・精算は対象外です。[構成・移行・検証手順](docs/business-backend.md)を参照してください。
 

@@ -17,6 +17,7 @@ public class ShoppingController {
 
   private final ShoppingService shopping;
   private final CartSessionResolver sessions;
+  private final jp.kusakari.ec.auth.AuthService auth;
 
   @GetMapping("/api/shopping-lists")
   public List<Summary> summaries(HttpServletRequest request, HttpServletResponse response) {
@@ -54,6 +55,8 @@ public class ShoppingController {
 
   @GetMapping("/api/shopping-lists/{gardenId}/thumbnail")
   public ResponseEntity<byte[]> thumbnail(@PathVariable String gardenId) {
+    // 庭の買い物リストは購入者の機能なので、店舗側・申請中のアカウントには返さない（#108）。
+    auth.requireBuyer();
     return ResponseEntity.ok()
       .contentType(MediaType.IMAGE_PNG)
       .header("Cache-Control", "private, no-cache")

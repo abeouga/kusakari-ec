@@ -41,8 +41,35 @@ public class OrganizationEntity {
     this.ownerMemberId = ownerMemberId;
   }
 
+  public static final String ACTIVE = "ACTIVE";
+  public static final String NOT_ACCEPTING = "NOT_ACCEPTING";
+  public static final String SUSPENDED = "SUSPENDED";
+
   /** 新しい注文を受け付けられるか。受付停止中と停止のどちらでも受け付けない。 */
   public boolean acceptsOrders() {
     return suspensionStartedAt == null;
+  }
+
+  /** 通常（ACTIVE）・受付停止中（NOT_ACCEPTING）・停止（SUSPENDED）。 */
+  public String status() {
+    if (suspended) return SUSPENDED;
+    return suspensionStartedAt == null ? ACTIVE : NOT_ACCEPTING;
+  }
+
+  /** 運営が受付を止める（受付停止中）。配下のすべての店舗が新しい注文を受け付けなくなる。 */
+  public void stopAccepting() {
+    suspensionStartedAt = Instant.now();
+    suspended = false;
+  }
+
+  /** 受付停止中で未完了の注文がなくなったら、停止にする（店舗も商品も購入者に見えなくなる）。 */
+  public void suspend() {
+    suspended = true;
+  }
+
+  /** 受付停止の取り消し、または停止からの再開。通常に戻す。 */
+  public void resume() {
+    suspensionStartedAt = null;
+    suspended = false;
   }
 }

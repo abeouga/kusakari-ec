@@ -27,4 +27,14 @@ public class StoreMemberEntity {
   /** MANAGER か STAFF。空は、招待キーで登録した直後の「ロール未割り当て」。 */
   @Column(length = 16)
   private String role;
+
+  public StoreMemberEntity(long storeId, String memberId, long organizationId, String role) {
+    this.id = new StoreMemberId(storeId, memberId);
+    this.organizationId = organizationId;
+    this.role = role;
+  }
+
+  public void changeRole(String role) {
+    this.role = role;
+  }
 }

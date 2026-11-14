@@ -4,15 +4,13 @@ import { ec, call, login, prepareMember, productInput, add, checkout } from './b
 
 test.use({ trace: 'off' });
 
-/** The counts the sales page should show, computed from the real seller orders API. */
+/** The counts the sales page should show, computed from the real sales API (issue #130). */
 async function expected(request) {
-  const orders = await call(request, '/seller/orders?storeId=1').then((r) => r.json());
-  const active = orders.filter((o) => o.status !== 'CANCELLED');
+  const report = await call(request, '/seller/stores/1/sales').then((r) => r.json());
+  const t = report.totals;
   return {
-    orders,
-    text: `注文数：${active.length}件 / キャンセル：${orders.length - active.length}件 / キャンセル申請中：${
-      active.filter((o) => o.cancellationStatus === 'PENDING').length
-    }件`,
+    report,
+    text: `注文数：${t.orderCount}件 / 支払い待ち：${t.pendingPaymentCount}件 / キャンセル：${t.cancelledCount}件 / キャンセル申請中：${t.cancellationPendingCount}件`,
   };
 }
 
@@ -37,11 +35,12 @@ test('seller sales page counts pending and approved cancellations', async ({ bro
     expect(requested.status(), await requested.text()).toBe(200);
 
     await seller.goto(`${ec}/seller/sales`);
-    const card = seller.locator('.workspace-main section.workspace-card');
+    const card = seller.getByTestId('sales-report');
+    const counts = seller.getByTestId('sales-counts');
     const pending = await expected(seller.request);
-    await expect(card.locator('p').first()).toHaveText(pending.text);
+    await expect(counts).toHaveText(pending.text);
     expect(pending.text).not.toContain('キャンセル申請中：0件');
-    await expect(card.getByText(`${order.id} / 注文受付（キャンセル申請中）`, { exact: false })).toBeVisible();
+    await expect(card.getByRole('row').filter({ hasText: order.id })).toContainText('注文受付（キャンセル申請中）');
 
     const approved = await call(seller.request, `/seller/orders/${order.id}/cancellation`, 'PUT', {
       approved: true,
@@ -50,13 +49,14 @@ test('seller sales page counts pending and approved cancellations', async ({ bro
     expect(approved.status(), await approved.text()).toBe(200);
     await seller.reload();
     const after = await expected(seller.request);
-    await expect(card.locator('p').first()).toHaveText(after.text);
-    await expect(card.getByText(`${order.id} / キャンセル /`, { exact: false })).toBeVisible();
+    await expect(counts).toHaveText(after.text);
+    await expect(card.getByRole('row').filter({ hasText: order.id })).toContainText('キャンセル');
+    await expect(card.getByRole('row').filter({ hasText: order.id })).toContainText('手数料なし');
     await seller.screenshot({ path: `${dir}/reloaded.png`, fullPage: true });
     await writeFile(
       `${dir}/seller-order.json`,
       JSON.stringify(
-        after.orders.find((o) => o.id === order.id),
+        after.report.orders.find((o) => o.orderId === order.id),
         null,
         2,
       ),

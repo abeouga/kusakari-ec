@@ -5,8 +5,9 @@ import { yen } from '../api';
 
 // #65 カート追加ボタンと区別しにくいため「買い物リストに追加」ボタンを画面から外した。
 // 別の形で戻す可能性があるため、ボタンはコメントで残している。戻すときは型と引数に onAddToList:()=>void を加える。
-/** @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, disabled:boolean}} props */
-export function ProductCard({ product, onOpen, onAdd, disabled }) {
+/** canBuy is false for shop accounts and applicants (issue #108): the cart button is left out.
+ * @param {{product:import('../types').Product, onOpen:()=>void, onAdd:()=>void, disabled:boolean, canBuy:boolean}} props */
+export function ProductCard({ product, onOpen, onAdd, disabled, canBuy }) {
   let stockClass = 'sold-out';
   let stockLabel = '在庫なし';
   if (product.stock > 0) {
@@ -50,14 +51,16 @@ export function ProductCard({ product, onOpen, onAdd, disabled }) {
             <ListPlus size={18} aria-hidden="true" />
           </button>
           */}
-          <button
-            className="add-button"
-            onClick={onAdd}
-            disabled={disabled || !product.stock}
-            aria-label={`${product.name}をカートに追加`}
-          >
-            <Plus size={20} />
-          </button>
+          {canBuy && (
+            <button
+              className="add-button"
+              onClick={onAdd}
+              disabled={disabled || !product.stock}
+              aria-label={`${product.name}をカートに追加`}
+            >
+              <Plus size={20} />
+            </button>
+          )}
         </div>
       </div>
     </article>

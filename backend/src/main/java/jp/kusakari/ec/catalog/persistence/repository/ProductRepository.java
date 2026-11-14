@@ -78,4 +78,15 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
   @Query("select p from ProductEntity p where p.id = :id")
   Optional<ProductEntity> findLocked(@Param("id") String id);
 
+  /**
+   * お会計で、商品の行を ID の順に共有ロックして、運営の停止をロックしたうえで読む（#16）。
+   * 戻り値の各行は [id, suspended]。大きな 3D モデルの JSON は読まない。
+   * 運営の停止（商品の行の排他ロック）と同時のお会計は、どちらかが待つので、停止のコミットの後に注文が通ることはない。
+   */
+  @Query(value = "SELECT id, suspended FROM products WHERE id IN (:ids) ORDER BY id FOR SHARE", nativeQuery = true)
+  List<Object[]> lockSharedSuspension(@Param("ids") Collection<String> ids);
+
+  @Query("select p.id from ProductEntity p where p.storeId = :storeId and p.suspended = true")
+  List<String> findSuspendedIdsAtStore(@Param("storeId") long storeId);
+
 }

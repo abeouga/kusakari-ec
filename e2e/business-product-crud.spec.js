@@ -169,10 +169,15 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
       .locator('.kusakari-site-header')
       .getByRole('link', { name: /^カートを開く/ })
       .click();
-    await expect(buyer.getByRole('button', { name: '注文内容を確認する' })).toBeDisabled();
-    await shoot(buyer, `${dir}/archived-cart-after-reload`);
-    await buyer.getByRole('button', { name: `${name}を削除`, exact: true }).click();
+    // Issue #119: opening the cart removes the deleted product's line and says so; it stays out after a reload.
+    await expect(buyer.locator('.cart-removed-notice')).toContainText(
+      `${name}は購入できなくなったためカートから外しました。`,
+    );
     await expect(buyer.getByRole('heading', { name: 'まだ商品が入っていません。' })).toBeVisible();
+    await buyer.reload();
+    await expect(buyer.getByRole('heading', { name: 'まだ商品が入っていません。' })).toBeVisible();
+    await shoot(buyer, `${dir}/archived-cart-after-reload`);
+    expect(sql(`SELECT COUNT(*) FROM cart_items WHERE product_id='${product.id}';`)).toBe('0');
     // A deleted product keeps its row; the deletion is its inventory row's publication status.
     expect(sql(`SELECT COUNT(*) FROM products WHERE id='${product.id}';`)).toBe('1');
     expect(sql(`SELECT publication_status FROM inventory WHERE product_id='${product.id}';`)).toBe('DELETED');

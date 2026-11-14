@@ -7,10 +7,17 @@ import { StockEditor } from './StockEditor';
 import { useSellerCatalog } from './useSellerCatalog';
 import { SellerStoreSelect } from './SellerStoreSelect';
 import { navigate } from '../workspace/navigation';
+import { useResource } from '../workspace/useResource';
+import { WarningBadge } from '../workspace/Moderation';
+
+/** @typedef {{productId:string,productName:string,suspended:boolean,warning:import('../workspace/Moderation').Warning|null}} ProductNotice */
 
 /** @param {{shop:ReturnType<import('../useShop').useShop>,onClose:()=>void,embedded?:boolean}} props */
 export function ProductManager({ shop, onClose, embedded = false }) {
   const catalog = useSellerCatalog(shop);
+  // Issue #16: the operator's warnings and suspensions on this store's products, with the reasons.
+  const moderation = useResource(catalog.storeId ? `/seller/products/moderation?storeId=${catalog.storeId}` : null);
+  const notices = /** @type {ProductNotice[]} */ (moderation.data ?? []);
   const [editing, setEditing] = useState(/** @type {import('../types').Product|null} */ (null));
   // Stock shown when the form opened; refreshed after a conflict so the seller can re-check it (EC-S05 5b).
   const [expectedStock, setExpectedStock] = useState(0);
@@ -69,7 +76,22 @@ export function ProductManager({ shop, onClose, embedded = false }) {
         />
       )}
       <div hidden={!!editing}>
+        {notices.length > 0 && (
+          <section className="moderation-notices" aria-label="運営からの警告・停止">
+            <h2>運営からの警告・停止</h2>
+            <ul>
+              {notices.map((notice) => (
+                <li key={notice.productId}>
+                  <strong>{notice.productName}</strong>
+                  {notice.suspended && <span className="moderation-badge">運営により公開停止中</span>}
+                  <WarningBadge warning={notice.warning} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <SellerProductList
+          notices={Object.fromEntries(notices.map((notice) => [notice.productId, notice]))}
           key={catalog.storeId}
           products={catalog.products}
           storeName={storeName}

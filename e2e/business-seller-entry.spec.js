@@ -29,6 +29,9 @@ test('seller screen opens on product management without a dashboard', async ({ p
     '店舗一覧',
     '店舗プロフィール',
     '出店者通知',
+    // Issue #111: the SELLER fixture is a MANAGER, so the personnel pages follow.
+    'アカウント',
+    '招待キー',
   ]);
   await expect(sidebar.getByText('ダッシュボード', { exact: true })).toHaveCount(0);
 
@@ -50,7 +53,8 @@ test('seller screen opens on product management without a dashboard', async ({ p
   await page.reload();
   await expect(heading).toHaveText('注文実績');
   await expect(nav.getByRole('link', { name: '注文実績', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('.workspace-main h2', { hasText: '注文実績' })).toBeVisible();
+  // Issue #130: the report's heading is the store name; the page heading above stays '注文実績'.
+  await expect(page.getByTestId('sales-report')).toBeVisible();
   await expect(page.locator('.workspace-main')).toContainText('注文数：');
   await capture(page, `${dir}/seller-sales-reloaded.png`);
 

@@ -6,26 +6,33 @@ import { useEffect, useState } from 'react';
 import {
   Bell,
   Building2,
+  Landmark,
+  KeyRound,
   ChartColumn,
   ClipboardCheck,
   Package,
   ReceiptText,
   Store,
   Tags,
+  UserCog,
   UserRound,
   Users,
 } from 'lucide-react';
-import { SalesPage } from './OrderPages';
+import { StaffAccountsPage } from './StaffAccounts';
+import { StoreInvitationsPage } from './StoreInvitations';
+import { SalesPage, SalesReport } from './SalesReport';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
 import { ReviewPage, MembersPage, CategoriesPage } from './OperatorPages';
+import { OperatorStoresPage } from './OperatorStores';
+import { OperatorOrganizationsPage } from './OperatorOrganizations';
 import { Notices } from './Notices';
 import { ProductCreatePage } from './ProductCreatePage';
 import { ProductManager } from '../components/ProductManager';
 import { SellerStoreSelect } from '../components/SellerStoreSelect';
 import { SellerStoresPage } from './SellerStores';
 import { PageLink } from './Common';
-import { canSell } from '../auth';
+import { buyerOnlyMessage, canSell, isShopAccount } from '../auth';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
@@ -40,6 +47,12 @@ const sellerMenu = [
   ['/seller/profile', '店舗プロフィール', UserRound],
   ['/seller/notifications', '出店者通知', Bell],
 ];
+// Issue #111: personnel pages, shown to the owner, ORG_ADMIN and MANAGER only.
+/** @type {MenuItem[]} */
+const personnelMenu = [
+  ['/seller/accounts', 'アカウント', UserCog],
+  ['/seller/invitations', '招待キー', KeyRound],
+];
 /** @type {MenuItem[]} */
 const operatorMenu = [
   ['/operator/members', '会員管理', Users],
@@ -47,6 +60,7 @@ const operatorMenu = [
   ['/operator/categories', 'カテゴリ管理', Tags],
   ['/operator/applications', '出店審査', ClipboardCheck],
   ['/operator/sellers', '店舗管理', Store],
+  ['/operator/organizations', '組織管理', Landmark],
   ['/operator/orders', '全注文管理', ReceiptText],
 ];
 /** @type {MenuItem[]} */
@@ -66,7 +80,15 @@ const pageTitles = {
   '/seller/products/new': '商品登録',
 };
 // Pages that work on one store: an account with several stores chooses which one above the page.
-const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile']);
+const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile', '/seller/invitations']);
+// Issue #112: pages that need a role at the chosen store. An ORG_ADMIN's store without a role offers personnel pages only.
+const rolePaths = new Set([
+  '/seller/products',
+  '/seller/products/new',
+  '/seller/orders',
+  '/seller/sales',
+  '/seller/profile',
+]);
 // Issue #71: these pages show their heading inside the card instead of above it.
 const cardTitlePaths = new Set(['/seller/products', '/seller/products/new']);
 /** @param {{shop:ReturnType<import('../useShop').useShop>,path:string,header:import('react').ReactNode}} props */
@@ -103,6 +125,7 @@ export function Workspace({ shop, path, header }) {
       </>
     );
   const publicStore = path.startsWith('/store/');
+  const operatorSales = path.match(/^\/operator\/stores\/(\d+)\/sales$/);
   const application = path === applicationPaths.form || path === applicationPaths.status;
   const seller = path.startsWith('/seller') && !application;
   const operator = path.startsWith('/operator');
@@ -125,10 +148,17 @@ export function Workspace({ shop, path, header }) {
       </>
     );
   const storeId = shop.sellerStoreId;
+  const chosenStore = shop.sellerStores.find((store) => store.id === storeId);
+  const personnel =
+    session.accountType === 'SHOP_OWNER' ||
+    session.organizationRole === 'ORG_ADMIN' ||
+    shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  const personnelOnly =
+    seller && rolePaths.has(path) && session.accountType !== 'ADMIN' && !!chosenStore && chosenStore.memberRole == null;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
-      ? [{ label: '出店者メニュー', items: sellerMenu }]
+      ? [{ label: '出店者メニュー', items: personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu }]
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
@@ -141,8 +171,35 @@ export function Workspace({ shop, path, header }) {
   let content;
   const action = accountActions.find((a) => a[0] === path);
   if (path === '/account' || action) content = <AccountPage key={path} tab={action?.[1] || 'アカウント情報'} />;
-  else if (path === '/purchases') content = <BuyerOrders />;
+  else if (path === '/purchases')
+    // Issue #108: orders are for buyers; the API refuses shop accounts and applicants.
+    content = isShopAccount(session) ? (
+      <p className="buyer-only-note" role="note">
+        {buyerOnlyMessage}
+      </p>
+    ) : (
+      <BuyerOrders />
+    );
   else if (path.endsWith('/notifications')) content = <Notices />;
+  // Issue #130: the sales page decides by the API which stores the account may read, including closed ones.
+  else if (path === '/seller/sales' && !shop.sellerStoresLoading)
+    content = <SalesPage key={storeId ?? 0} storeId={storeId ?? null} />;
+  else if (operatorSales)
+    content = (
+      <>
+        <PageLink href="/operator/sellers">店舗管理へ戻る</PageLink>
+        <SalesReport storeId={Number(operatorSales[1])} operator />
+      </>
+    );
+  else if (personnelOnly)
+    content = (
+      <section className="workspace-card">
+        <p role="note">
+          {chosenStore?.name}では担当のロールがないため、人事（アカウント・招待キー）の画面だけを使えます。
+        </p>
+      </section>
+    );
+  else if (path === '/seller/accounts') content = <StaffAccountsPage />;
   else if (path === '/seller/products')
     content = <ProductManager shop={shop} onClose={() => navigate('/seller/products')} embedded />;
   else if (path === '/seller/products/new') content = <ProductCreatePage shop={shop} />;
@@ -159,15 +216,17 @@ export function Workspace({ shop, path, header }) {
       </section>
     );
   else if (path === '/seller/profile') content = <ProfilePage key={storeId} storeId={storeId} />;
+  else if (path === '/seller/invitations')
+    content = <StoreInvitationsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage accountType={session.accountType} />;
   else if (application) content = <ApplicationPage accountType={session.accountType} />;
   else if (path === '/seller/orders' || path === '/operator/orders')
     content = <OrderPage storeId={storeId} operator={operator} />;
-  else if (path === '/seller/sales') content = <SalesPage storeId={storeId} />;
   else if (path === '/operator/applications') content = <ReviewPage />;
   else if (path === '/operator/products') content = <ReviewPage products />;
-  else if (path === '/operator' || path === '/operator/members' || path === '/operator/sellers')
-    content = <MembersPage sellers={path.endsWith('/sellers')} />;
+  else if (path === '/operator' || path === '/operator/members') content = <MembersPage />;
+  else if (path === '/operator/sellers') content = <OperatorStoresPage />;
+  else if (path === '/operator/organizations') content = <OperatorOrganizationsPage />;
   else if (path === '/operator/categories') content = <CategoriesPage />;
   else if (publicStore) content = <ProfilePage storeId={Number(path.split('/')[2])} readOnly />;
   else content = <p>URLを確認するか、メニューからページを選んでください。</p>;
@@ -176,6 +235,7 @@ export function Workspace({ shop, path, header }) {
     action?.[1] ||
     menu.find(([url]) => url === path)?.[1] ||
     pageTitles[path] ||
+    (operatorSales ? '店舗の注文実績' : '') ||
     (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
     <>
@@ -191,7 +251,9 @@ export function Workspace({ shop, path, header }) {
           />
           <main className="workspace-main">
             {!cardTitlePaths.has(path) && <h1>{title}</h1>}
-            {storePaths.has(path) && shop.sellerStores.length > 1 && <SellerStoreSelect shop={shop} disabled={false} />}
+            {(storePaths.has(path) || personnelOnly) && shop.sellerStores.length > 1 && (
+              <SellerStoreSelect shop={shop} disabled={false} />
+            )}
             {content}
           </main>
         </div>

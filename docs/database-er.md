@@ -4,6 +4,8 @@
 
 - [decisions/2026-11-11-shop-organization-db-v3.md](decisions/2026-11-11-shop-organization-db-v3.md)：構成（v3）の採用
 - [decisions/2026-11-12-db-v3-payments-closure-roles.md](decisions/2026-11-12-db-v3-payments-closure-roles.md)：決済と返金、手数料、店舗の閉鎖、組織のロール、招待キー、警告の履歴の追加
+- [decisions/2026-11-13-moderation-warnings.md](decisions/2026-11-13-moderation-warnings.md)：運営の警告と、商品・店舗の停止の履歴（`product_moderation_events`・`store_moderation_events`）の使い方。マイグレーションは足していない
+- [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）の追加と、連絡先の削除をアプリの定期処理にしたこと
 
 この文書の前提は次のとおりです。
 
@@ -206,7 +208,7 @@ erDiagram
         char36 request_id UK
         char36 buyer_member_id FK
         varchar payment_intent_id UK "Stripe の PaymentIntent"
-        varchar status "PENDING / SUCCEEDED / FAILED / EXPIRED（仮）"
+        varchar status "PENDING / SUCCEEDED / FAILED / EXPIRED"
         int amount_yen "お会計の合計。1円以上"
         timestamp created_at
         timestamp updated_at
@@ -258,7 +260,7 @@ erDiagram
         char36 order_id FK, UK "注文1件につき1行"
         char36 payment_id FK "その注文が支払われた決済"
         varchar stripe_refund_id UK "Stripe の Refund"
-        varchar status "REQUESTED / SUCCEEDED / FAILED（仮）"
+        varchar status "REQUESTED / SUCCEEDED / FAILED"
         int amount_yen "注文の合計。1円以上"
         char36 requested_by_member_id FK "NULL = Stripe の管理画面から"
         timestamp created_at
@@ -278,6 +280,14 @@ erDiagram
         varchar event_type "WARN / CLEAR_WARNING / SUSPEND / RESUME"
         varchar reason "警告と停止では必須"
         char36 actor_member_id FK "操作した運営者"
+        timestamp created_at
+    }
+    organization_moderation_events {
+        bigint id PK
+        bigint organization_id FK
+        varchar event_type "STOP_ACCEPTING / SUSPEND / RESUME"
+        varchar reason "受付停止では必須"
+        char36 actor_member_id FK "操作した運営者。NULL = 自動の停止"
         timestamp created_at
     }
 
@@ -321,11 +331,13 @@ erDiagram
     stores ||--o{ store_moderation_events : "警告・停止の履歴"
     members ||--o{ product_moderation_events : "操作した運営者"
     members ||--o{ store_moderation_events : "操作した運営者"
+    organizations ||--o{ organization_moderation_events : "受付停止・停止の履歴"
+    members |o--o{ organization_moderation_events : "操作した運営者"
 ```
 
-テーブルは27個です。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
+テーブルは28個です（`organization_moderation_events` は V3 のマイグレーションで足した）。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
 
-テーブルのほかに、閉鎖済みになってから90日たった店舗の連絡先を消すイベント（`ev_stores_clear_closed_contacts`、1日1回）があります。
+閉鎖済みになってから90日たった店舗の連絡先は、アプリ内の定期処理（1日1回）で消します。MySQL のイベントは使いません（[残りの決定](decisions/2026-11-12-remaining-decisions.md) の 3-1）。
 
 ## 2. 会員の種別と、2つのロール
 
@@ -410,6 +422,7 @@ erDiagram
 | `refunds(order_id, payment_id)` → `orders(id, payment_id)` | 注文が支払われた決済と違う決済からの返金 |
 | `payments.amount_yen`・`refunds.amount_yen` が1以上、状態の CHECK | 0円の決済・返金。知らない状態 |
 | `product_moderation_events`・`store_moderation_events` の種別の CHECK、理由の CHECK、対象への外部キー | 知らない操作の種別。理由のない警告・停止。存在しない商品・店舗への履歴 |
+| `organization_moderation_events` の種別の CHECK、理由の CHECK、操作した人の CHECK、組織への外部キー | 知らない操作の種別。理由のない受付停止。自動の停止以外で操作した人のない履歴。存在しない組織への履歴 |
 
 `owner_account_type` と `member_account_type` は、有効・無効を表す列ではありません。複合外部キーを成り立たせるための固定値の列で、値は `members.account_type` の値と同じでなければなりません。
 
@@ -439,12 +452,12 @@ erDiagram
 
 - `members.enabled` は、運営による会員の利用停止です。公開の条件には入りません
 - 「今、警告中か」は列で持たず、警告の履歴のうち最新の `WARN` と最新の `CLEAR_WARNING` を比べて求めます（#16）
-- 閉鎖・停止しても、店舗・商品・在庫の行は消しません。閉鎖済みになってから90日後に、店舗の連絡先（担当者名・連絡用メール）だけをイベントで消します（#79）
+- 閉鎖・停止しても、店舗・商品・在庫の行は消しません。閉鎖済みになってから90日後に、店舗の連絡先（担当者名・連絡用メール）だけをアプリの定期処理で消します（#79）
 - 閉鎖済みになった店舗は、担当（`store_members`）の行を消します。組織への所属は残します（#79）
 
 ## 5. 注文・決済・返金の流れ
 
-決済は Stripe のテストモードだけを使います（#131〜#133）。状態の名前と細かいルールは、#131 の「決めること」が決まるまで仮です。
+決済は Stripe のテストモードだけを使います（#131〜#133）。状態の名前とルールは [残りの決定](decisions/2026-11-12-remaining-decisions.md) の 1-1〜1-17 で確定し、実装の流れは [決済の決定](decisions/2026-11-13-stripe-card-payment.md) にあります。店頭払いのお会計は決済を作らず、注文を `ACCEPTED` で作ります。
 
 | 場面 | DB で起きること |
 | --- | --- |
@@ -475,6 +488,7 @@ erDiagram
 | なし | `store_invitations`、`store_invitation_uses` | 招待キーと、キーを使った人の記録（#105） |
 | なし | `payments`、`stripe_events`、`refunds` | Stripe（テストモード）の決済・通知・返金（#131〜#133） |
 | なし | `product_moderation_events`、`store_moderation_events` | 運営による警告・停止の履歴（#16） |
+| なし | `organization_moderation_events` | 運営による組織の受付停止・停止・再開の履歴（#109、V3） |
 
 ### 列
 

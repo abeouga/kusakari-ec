@@ -110,7 +110,8 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await expect(buyer.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
     const garden = await call(buyer.request, `/gardens/${gardenId}`, 'GET', undefined, canvas).then((r) => r.json());
     expect(garden.objects[0].productId).toBe(product.id);
-    expect((await call(seller.request, `/gardens/${gardenId}`, 'GET', undefined, canvas)).status()).toBe(404);
+    // A shop account cannot use Canvas at all (canvas#71), so another member's garden is refused before ownership.
+    expect((await call(seller.request, `/gardens/${gardenId}`, 'GET', undefined, canvas)).status()).toBe(403);
     await mkdir('artifacts/business', { recursive: true });
     await buyer.screenshot({ path: 'artifacts/business/placed-reloaded.png' });
     const adminContext = await browser.newContext();
@@ -129,9 +130,8 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
       await buyer.getByRole('button', { name: '3D庭', exact: true }).click();
       await expect(buyer.getByTestId('model-loaded')).toHaveText('読み込み済み: 1 / 1');
       await buyer.getByRole('tab', { name: '買い物リスト（1）', exact: true }).click();
-      await expect(
-        buyer.getByText('現在は販売されていないため購入できません。保存済みの配置は維持されます。'),
-      ).toBeVisible();
+      // A product suspended by the operator stays placed (canvas#72); the shopping list says it cannot be bought now.
+      await expect(buyer.getByText('現在は購入できません', { exact: true })).toBeVisible();
       await buyer.screenshot({ path: 'artifacts/business/suspended-garden.png' });
     } finally {
       expect(
@@ -155,18 +155,20 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     );
     await expect(buyer.getByRole('button', { name: /を1個増やす$/ })).toHaveCount(0);
     await expect(buyer.getByRole('radio', { name: /店舗でお支払い/ })).toBeChecked();
-    await buyer.getByRole('radio', { name: /PayPay/ }).check();
-    await expect(buyer.getByTestId('checkout-payment')).toContainText('PayPay');
+    // Issue #132: pay-at-store keeps working without a payment provider; PayPay and Rakuten Pay are gone.
+    await expect(buyer.getByRole('radio', { name: /PayPay|楽天ペイ/ })).toHaveCount(0);
+    await expect(buyer.getByTestId('checkout-payment')).toContainText('店舗でお支払い');
     await buyer.screenshot({ path: 'artifacts/business/checkout-confirm.png', fullPage: true });
     const ordered = buyer.waitForResponse((r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST');
     await buyer.getByRole('button', { name: '注文を確定する', exact: true }).click();
     const response = await ordered;
     expect(response.status()).toBe(200);
-    expect(response.request().postDataJSON().paymentMethod).toBe('PAYPAY');
-    const [order] = (await response.json()).orders;
-    expect(order.details.paymentMethod).toBe('PAYPAY');
-    await expect(buyer.getByTestId('order-payment')).toContainText('PayPay');
-    const changedPayment = { ...response.request().postDataJSON(), paymentMethod: 'CREDIT_CARD' };
+    expect(response.request().postDataJSON().paymentMethod).toBe('PAY_AT_STORE');
+    const { orders: [order], payment } = await response.json();
+    expect(payment).toBeNull();
+    expect([order.status, order.details.paymentMethod, order.paymentStatus]).toEqual(['ACCEPTED', 'PAY_AT_STORE', null]);
+    await expect(buyer.getByTestId('order-payment')).toContainText('店舗でお支払い');
+    const changedPayment = { ...response.request().postDataJSON(), paymentMethod: 'CARD' };
     expect((await call(buyer.request, '/orders', 'POST', changedPayment)).status()).toBe(409);
     const stock = () =>
       call(buyer.request, '/products?storeId=1')
@@ -199,7 +201,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     await buyer.screenshot({ path: 'artifacts/business/purchases-reloaded.png', fullPage: true });
     await seller.screenshot({ path: 'artifacts/business/seller-orders-reloaded.png', fullPage: true });
     const persistedOrder = await call(buyer.request, `/orders/${order.id}`).then((r) => r.json());
-    expect(persistedOrder.details.paymentMethod).toBe('PAYPAY');
+    expect(persistedOrder.details.paymentMethod).toBe('PAY_AT_STORE');
     await writeFile(
       'artifacts/business/flow.json',
       JSON.stringify({ order: persistedOrder, garden, stock: await stock() }, null, 2),
@@ -224,9 +226,10 @@ test('concurrent final stock, cancellation locking, access control and catalog m
     const result = await call(seller.request, '/products', 'POST', input);
     expect(result.status(), await result.text()).toBe(200);
     const product = await result.json();
-    const carts = await Promise.all([add(buyer.request, product.id), add(seller.request, product.id)]);
+    // Issue #108: shop accounts cannot buy, so the operator is the second buyer in the race.
+    const carts = await Promise.all([add(buyer.request, product.id), add(admin.request, product.id)]);
     const results = await Promise.all(
-      [buyer, seller].map((p, i) =>
+      [buyer, admin].map((p, i) =>
         call(p.request, '/orders', 'POST', {
           requestId: randomUUID(),
           revision: carts[i].revision,
@@ -236,8 +239,8 @@ test('concurrent final stock, cancellation locking, access control and catalog m
       ),
     );
     expect(results.map((r) => r.status()).sort()).toEqual([200, 409]);
-    const winning = results[0].ok() ? buyer : seller;
-    const losing = winning === buyer ? seller : buyer;
+    const winning = results[0].ok() ? buyer : admin;
+    const losing = winning === buyer ? admin : buyer;
     const [order] = (await results.find((r) => r.ok()).json()).orders;
     expect((await call(losing.request, `/orders/${order.id}`)).status()).toBe(404);
     expect((await call(buyer.request, '/operator/members')).status()).toBe(403);
@@ -362,12 +365,16 @@ test('account, applications with private documents, store profile, categories an
     expect(
       (await call(admin.request, `/operator/members/${member.id}/enabled`, 'PUT', { enabled: false })).status(),
     ).toBe(200);
-    expect((await call(user.request, '/orders')).status()).toBe(403);
+    // Issue #108: the new owner is a shop account, so the buyer APIs refuse it; a disabled account is refused anywhere.
+    const disabled = await call(user.request, '/notifications');
+    expect(disabled.status()).toBe(403);
+    expect((await disabled.json()).code).toBe('ACCOUNT_DISABLED');
     expect(
       (await call(admin.request, `/operator/members/${member.id}/enabled`, 'PUT', { enabled: true })).status(),
     ).toBe(200);
     await login(user, 'test.user@example.com');
-    expect((await call(user.request, '/orders')).status()).toBe(200);
+    expect((await call(user.request, '/notifications')).status()).toBe(200);
+    expect((await call(user.request, '/orders').then((r) => r.json())).code).toBe('BUYER_REQUIRED');
     // Withdrawal is verified with dedicated accounts in business-account.spec.js: this shared buyer keeps
     // open orders from other specs, which now correctly block withdrawal (EC-B21 7a).
     await admin.screenshot({ path: 'artifacts/business/categories-reloaded.png', fullPage: true });

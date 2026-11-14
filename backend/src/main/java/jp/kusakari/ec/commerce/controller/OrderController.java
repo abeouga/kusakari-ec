@@ -12,6 +12,7 @@ import jp.kusakari.ec.commerce.dto.DeliveryDtos.DetailsRequest;
 import jp.kusakari.ec.commerce.service.CheckoutService;
 import jp.kusakari.ec.commerce.service.OrderService;
 import jp.kusakari.ec.commerce.session.CartSessionResolver;
+import jp.kusakari.ec.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,7 @@ public class OrderController {
   private final CheckoutService checkout;
   private final OrderService orders;
   private final CartSessionResolver sessions;
+  private final PaymentService payments;
 
   @PostMapping
   public CheckoutResult checkout(
@@ -37,7 +39,8 @@ public class OrderController {
     HttpServletRequest request,
     HttpServletResponse response
   ) {
-    return checkout.placeOrder(sessions.resolve(request, response), input);
+    // 注文と決済の行を保存（コミット）してから、カードなら Stripe の PaymentIntent を作る。
+    return payments.start(checkout.placeOrder(sessions.resolve(request, response), input));
   }
 
   @GetMapping

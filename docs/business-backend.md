@@ -14,7 +14,7 @@ Canvasは既存FastAPI / SQLAlchemy / Alembicを維持する。今回Canvas DB�
 
 ## 注文と権限
 
-- 店舗受け取りのみ。新規DTOは氏名・電話・連絡先メールだけを受け付け、配送先・配送日時・決済手段は受け付けない。既存注文の保存済み情報は保持する。
+- 店舗受け取りのみ。受取店舗は商品の店舗で、購入者は選ばない。受取連絡先は氏名・電話・連絡先メールだけを受け付け、配送先・配送日時は受け付けない。支払方法はカード（Stripe のテストモード）か店頭払い。
 - カートをロックし、requestIdとrevisionを照合。店舗・商品・店舗在庫をロックして価格・公開・販売停止・在庫を再確認する。在庫減算、注文と商品スナップショット、カート消去、宛先通知を同一トランザクションで保存する。
 - 注文受付→受取準備完了→引き渡し完了。前状態が一致しない操作は409。キャンセル申請は受付中のみ。申請中の準備操作を拒否する。承認時は注文行ロックと商品ID順の在庫ロックで、一度だけ在庫を戻す。却下後の再申請は可能。
 - 購入者の履歴非表示はdeleted_atだけを設定し、出店者・運営者・集計・在庫へ影響しない。匿名旧注文は会員へ推測で割り当てない。
@@ -33,6 +33,7 @@ Canvasは既存FastAPI / SQLAlchemy / Alembicを維持する。今回Canvas DB�
 | カート・注文 | /api/cart、POST/GET /api/orders、GET/PUT/DELETE /api/orders/{id} |
 | 受注 | GET /api/seller/orders?storeId=、GET /api/seller/orders/{id}、PUT /api/seller/orders/{id}/status |
 | キャンセル | POST /api/orders/{id}/cancellation、PUT /api/seller/orders/{id}/cancellation |
+| 注文実績・手数料（#130） | GET /api/seller/sales/stores、GET /api/seller/stores/{id}/sales、GET /api/operator/stores/{id}/sales |
 | 運営者注文 | GET /api/operator/orders |
 | 受取連絡先・退会・パスワード | /api/account/pickup-contact、DELETE /api/account、PUT /api/account/password（住所APIは2026-11-05に削除） |
 | 店舗 | GET /api/stores/{id}、PUT /api/seller/stores/{id}、/api/operator/stores |
@@ -70,7 +71,7 @@ DBを27テーブルの構成に作り直した（[ER図](database-er.md)、[記�
 
 ## Consequences / 検証
 
-実決済・配送・精算・外部メール配信・デプロイは対象外。売上画面は実注文の件数・金額とキャンセルを表示し、支払済みを意味しない。
+決済は Stripe のテストモードだけを範囲に入れる（実際のお金は動かさない）。配送・精算・外部メール配信・デプロイは対象外。注文実績の画面は実注文の件数・金額とキャンセル、注文ごとの販売手数料（注文時に保存した率と額）・差引額を表示する。手数料は表示だけで請求・精算はしない（[記録](decisions/2026-11-13-commission-and-closed-store-sales.md)）。
 
 `npm run test:business` は専用MySQL、実Java/FastAPI、実Cognito、Chromiumを使用する。API正常系のモックは使用しない。テスト専用の商品の購入競合とキャンセル承認競合はUIクリックだけでは並列実行を保証できないため実HTTPを同時送信する。パスワード試験は共有3アカウントを変更しない。既存のAWS管理プロファイルで一時Cognitoアカウントを招待メールなしで作成し、変更・再ログイン後に削除する。専用DBの監査記録は無効化して保持する。資格情報を残さないようtrace/HARは無効。失敗スクリーンショットとレポート、成功画面とJSONを `artifacts/business` へ保存する。
 

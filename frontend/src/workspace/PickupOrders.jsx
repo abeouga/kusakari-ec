@@ -4,8 +4,9 @@ import { yen } from '../api';
 import { useResource, write } from './useResource';
 import { ResourceStatus, Input, values } from './ResourceView';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { orderLabels, cancellationLabels } from './OrderPages';
+import { orderLabels, cancellationLabels, PaymentState } from './OrderPages';
 import { Thumbnail } from './BuyerOrders';
+import { rateLabel } from './SalesReport';
 import './buyer-orders.css';
 import './pickup-orders.css';
 
@@ -178,11 +179,32 @@ function PickupCard({ order, resource, operator }) {
       ) : (
         body
       )}
-      {order.cancellationReason && !pending && (
-        <p className="order-cancel-result">
-          キャンセル申請（{cancellationLabels[order.cancellationStatus]}）：{order.cancellationReason}
-          {order.cancellationResponse && <> / 回答：{order.cancellationResponse}</>}
+      <p className="pickup-payment">
+        <PaymentState order={order} />
+      </p>
+      {operator && order.sales && (
+        <p className="pickup-commission" data-testid="order-commission">
+          {order.status === 'CANCELLED'
+            ? '販売手数料：手数料なし（キャンセル）'
+            : `販売手数料：${yen(order.sales.commissionYen)}（${rateLabel(order.sales.commissionRateBp)}） / 差引額：${yen(order.sales.netYen)}`}
         </p>
+      )}
+      {order.refundStatus === 'FAILED' && (
+        <p className="error-text">
+          返金に失敗しました。Stripe の管理画面で返金の状態を確認し、購入者に連絡してください。
+        </p>
+      )}
+      {order.cancelledBy === 'OPERATOR' ? (
+        // Issue #79/#109: the operator cancelled it when closing the store or suspending the organization.
+        <p className="order-cancel-result">運営がキャンセルしました：{order.cancellationResponse}</p>
+      ) : (
+        order.cancellationReason &&
+        !pending && (
+          <p className="order-cancel-result">
+            キャンセル申請（{cancellationLabels[order.cancellationStatus]}）：{order.cancellationReason}
+            {order.cancellationResponse && <> / 回答：{order.cancellationResponse}</>}
+          </p>
+        )
       )}
       {!operator && pending && <CancellationDecision order={order} resource={resource} />}
       {!operator && action && (
@@ -234,9 +256,18 @@ export function OrderPage({ storeId, operator = false }) {
     .filter(match)
     .filter((o) => !words || `${o.id} ${o.details.recipientName}`.toLowerCase().includes(words))
     .sort((a, b) => priority(a) - priority(b));
+  // Issue #130: the operator sees the commission of every store; totals leave out cancelled and unpaid orders.
+  const counted = orders.filter((o) => o.sales?.counted);
+  const sum = (/** @type {(o:Order)=>number} */ pick) => counted.reduce((total, o) => total + pick(o), 0);
   return (
     <div className="pickup-orders">
       <ResourceStatus resource={resource} />
+      {operator && resource.data && (
+        <p className="pickup-commission-total" data-testid="operator-commission-total">
+          注文金額：{yen(sum((o) => o.totalYen))} / 販売手数料：{yen(sum((o) => o.sales?.commissionYen ?? 0))} /
+          差引額：{yen(sum((o) => o.sales?.netYen ?? 0))}（{counted.length}件。キャンセルと支払い待ちを除く）
+        </p>
+      )}
       <div className="pickup-toolbar">
         <div className="pickup-filters" role="group" aria-label="注文状態で絞り込む">
           {filters.map(([key, label, test]) => (

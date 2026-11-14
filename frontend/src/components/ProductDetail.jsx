@@ -5,9 +5,13 @@ import { useState } from 'react';
 import { ShoppingBag, MapPin, Eye, ArrowUpRight } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { yen } from '../api';
+import { buyerOnlyMessage } from '../auth';
 
-/** The pickup store is the product's store. @param {{product:import('../types').Product,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string}} props */
-export function ProductDetail({ product, onClose, onAdd, busy, notice, error }) {
+/**
+ * The pickup store is the product's store. Shop accounts and applicants (canBuy false, issue #108) see a note instead of the cart.
+ * @param {{product:import('../types').Product,canvasUrl:string,onClose:()=>void,onAdd:(quantity:number)=>void,busy:boolean,notice:string,error:string,canBuy:boolean}} props
+ */
+export function ProductDetail({ product, onClose, onAdd, busy, notice, error, canBuy }) {
   const storeName = product.sellerStoreName;
   const [image, setImage] = useState(product.imageUrl);
   const [quantity, setQuantity] = useState(1);
@@ -100,26 +104,35 @@ export function ProductDetail({ product, onClose, onAdd, busy, notice, error }) 
               <p>店舗で商品を受け取れます。</p>
             </div>
           </div>
-          <label className="detail-quantity">
-            購入数量
-            <input
-              type="number"
-              min="1"
-              max={maxQuantity}
-              step="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              disabled={busy || !product.stock}
-            />
-          </label>
-          <button
-            className="primary-button"
-            disabled={busy || !product.stock || !Number.isInteger(quantity) || quantity < 1 || quantity > maxQuantity}
-            onClick={() => onAdd(quantity)}
-          >
-            <ShoppingBag size={18} />
-            カートに追加
-          </button>
+          {!canBuy && (
+            <p className="buyer-only-note" role="note">
+              {buyerOnlyMessage}
+            </p>
+          )}
+          {canBuy && (
+            <label className="detail-quantity">
+              購入数量
+              <input
+                type="number"
+                min="1"
+                max={maxQuantity}
+                step="1"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                disabled={busy || !product.stock}
+              />
+            </label>
+          )}
+          {canBuy && (
+            <button
+              className="primary-button"
+              disabled={busy || !product.stock || !Number.isInteger(quantity) || quantity < 1 || quantity > maxQuantity}
+              onClick={() => onAdd(quantity)}
+            >
+              <ShoppingBag size={18} />
+              カートに追加
+            </button>
+          )}
           <div className="canvas-product-entry">
             <a className="canvas-product-button" href={productCanvasUrl(product.id)}>
               <Eye size={19} />

@@ -12,6 +12,7 @@ import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.service.CatalogService;
 import jp.kusakari.ec.catalog.service.CatalogService.Listing;
 import jp.kusakari.ec.commerce.dto.CommerceDtos.ItemRequest;
+import jp.kusakari.ec.commerce.dto.CommerceDtos.RemovedLine;
 import jp.kusakari.ec.commerce.persistence.entity.CartEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemEntity;
 import jp.kusakari.ec.commerce.persistence.entity.CartItemId;
@@ -36,8 +37,31 @@ public class CartService {
   private final CatalogService catalog;
   private final DeliveryService delivery;
 
+  /**
+   * カートを開く。店舗の閉鎖・運営の停止・組織の停止・商品の削除で買えなくなった明細は、ここで外して知らせる（#119）。
+   * 商品のデータは消さない。非公開・在庫0・商品の停止・組織の受付停止は一時的なので外さず、購入できない明細として返す。
+   */
   public CartView read(String id) {
-    return view(requireLockedCart(id));
+    CartEntity cart = requireLockedCart(id);
+    List<CartItemEntity> cartItems = items.findAllForCart(id);
+    Map<String, Listing> listings = listingsById(cartItems.stream().map(item -> item.getId().getProductId()).toList());
+    List<RemovedLine> removed = new ArrayList<>();
+    for (var item : cartItems) {
+      Listing listing = listings.get(item.getId().getProductId());
+      // Set.of の contains は null で例外になるので、買える明細は先に除く。
+      if (listing == null || listing.purchasable()) continue;
+      if (!CatalogService.REMOVED_REASONS.contains(listing.unavailableReason())) continue;
+      ProductView product = listing.product();
+      removed.add(
+        new RemovedLine(product.id(), product.name(), product.sellerStoreName(), item.getQuantity(), listing.unavailableReason())
+      );
+      items.delete(item);
+    }
+    if (removed.isEmpty()) return view(cart);
+    items.flush();
+    // 開いていた別の画面のカートの操作は、明細が変わったので古いものとして拒否する。
+    cart.incrementRevision();
+    return view(cart, removed);
   }
 
   public CartView updateItem(String id, String productId, ItemRequest request) {
@@ -122,6 +146,10 @@ public class CartService {
   }
 
   public CartView view(CartEntity cart) {
+    return view(cart, List.of());
+  }
+
+  private CartView view(CartEntity cart, List<RemovedLine> removed) {
     List<CartItemEntity> cartItems = items.findAllForCart(cart.getId());
     Map<String, Listing> listings = listingsById(cartItems.stream().map(item -> item.getId().getProductId()).toList());
     List<CartLine> lines = cartItems
@@ -136,7 +164,8 @@ public class CartService {
           Math.multiplyExact(product.priceYen(), item.getQuantity()),
           listing.purchasable() && product.stock() >= item.getQuantity(),
           product.sellerStoreId(),
-          product.sellerStoreName()
+          product.sellerStoreName(),
+          listing.unavailableReason()
         );
       })
       .toList();
@@ -151,7 +180,8 @@ public class CartService {
       lines.stream().mapToInt(CartLine::quantity).sum(),
       !lines.isEmpty() && lines.stream().allMatch(CartLine::available),
       total,
-      delivery.pickupDetails(cart.getMemberId(), "NONE")
+      delivery.pickupDetails(cart.getMemberId(), "NONE"),
+      removed
     );
   }
 

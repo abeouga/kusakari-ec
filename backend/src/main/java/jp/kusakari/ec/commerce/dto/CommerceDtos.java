@@ -15,23 +15,36 @@ public final class CommerceDtos {
     @NotNull UUID requestId,
     @PositiveOrZero long revision,
     @Positive int expectedTotalYen,
-    @NotNull @Pattern(regexp = "CREDIT_CARD|PAYPAY|RAKUTEN_PAY|PAY_AT_STORE") String paymentMethod
+    @NotNull @Pattern(regexp = "CARD|PAY_AT_STORE") String paymentMethod
   ) {}
 
-  /** One checkout creates one order per store (issue #70), ordered by store ID. */
-  public record CheckoutResult(List<OrderView> orders) {}
+  /**
+   * One checkout creates one order per store (issue #70), ordered by store ID.
+   * payment はカードのときだけ（店頭払いは null）。お会計1回の決済で、全店舗の注文の合計を支払う。
+   */
+  public record CheckoutResult(List<OrderView> orders, CardPayment payment) {}
 
-  /** storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。 */
+  /** clientSecret は支払い待ち（PENDING）のときだけ。画面は Stripe の Payment Element にこれを渡して支払う。 */
+  public record CardPayment(String id, String status, int amountYen, String clientSecret) {}
+
+  /**
+   * storeId/storeName は商品の店舗。その店舗が販売し、在庫を持ち、受け渡す。
+   * unavailableReason は今は買えない理由（非公開・商品の停止など。買えるなら null）。在庫不足だけなら null で available が false。
+   */
   public record CartLine(
     ProductView product,
     int quantity,
     int lineTotalYen,
     boolean available,
     long storeId,
-    String storeName
+    String storeName,
+    String unavailableReason
   ) {}
 
-  /** 送料はないので、subtotalYen と totalYen は同じ値。受取店舗は明細ごとの {@link CartLine#storeId()}。 */
+  /**
+   * 送料はないので、subtotalYen と totalYen は同じ値。受取店舗は明細ごとの {@link CartLine#storeId()}。
+   * removedItems は、カートを開いたときに買えなくなったため外した明細（#119）。外さなかったときは空。
+   */
   public record CartView(
     long revision,
     List<CartLine> items,
@@ -39,8 +52,12 @@ public final class CommerceDtos {
     int itemCount,
     boolean canCheckout,
     int subtotalYen,
-    DeliveryDtos.DetailsView details
+    DeliveryDtos.DetailsView details,
+    List<RemovedLine> removedItems
   ) {}
+
+  /** 外した明細。reason は DELETED / STORE_CLOSED / STORE_SUSPENDED / ORGANIZATION_SUSPENDED のどれか。 */
+  public record RemovedLine(String productId, String name, String storeName, int quantity, String reason) {}
 
   public record OrderLine(
     String productId,
@@ -69,6 +86,16 @@ public final class CommerceDtos {
     String storeName,
     int totalYen,
     List<OrderLine> items,
-    DeliveryDtos.DetailsView details
+    DeliveryDtos.DetailsView details,
+    // カードの注文の決済の状態（PENDING / SUCCEEDED / FAILED / EXPIRED）。店頭払いは null。
+    String paymentStatus,
+    // 返金の状態（REQUESTED / SUCCEEDED / FAILED）。返金がなければ null。
+    String refundStatus,
+    // 受け取る店舗が閉鎖中なら true。購入者の注文履歴に「この店舗は閉鎖予定です」と出す（#79）。
+    boolean storeClosing,
+    // キャンセルした人の立場（OPERATOR＝運営、STORE＝店舗）。キャンセルされていなければ null。
+    String cancelledBy,
+    // 販売手数料（#130）。店舗・運営の注文の応答だけで返し、購入者には null。
+    SalesDtos.SalesFigures sales
   ) {}
 }

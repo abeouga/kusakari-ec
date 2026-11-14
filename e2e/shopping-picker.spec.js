@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { ec, canvas, login, call, add, prepareMember, productInput } from './business-helpers.js';
+import { ec, canvas, login, call, add, prepareMember, productInput, seedGardenPhoto } from './business-helpers.js';
 
 const evidence = 'artifacts/shopping-picker';
 
@@ -10,7 +10,7 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
   browser,
 }) => {
   await mkdir(evidence, { recursive: true });
-  await login(page, 'test.user@example.com');
+  prepareMember(await login(page, 'test.user@example.com'), 'USER');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
   // The garden dialog cannot choose a product that is already in the cart, so the product starts outside it.
@@ -67,9 +67,10 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
       expect(result.items[0].quantity).toBe(1);
       expect(result.listRevision).toBe(detail.listRevision);
     }
-    // Another authenticated owner cannot read or write this garden's list.
+    // Another authenticated owner cannot read or write this garden's list. The operator can use shopping lists (#108);
+    // a shop account would be refused before ownership is checked (403 BUYER_REQUIRED).
     const otherPage = await other.newPage();
-    await login(otherPage, 'test.seller@example.com');
+    prepareMember(await login(otherPage, 'test.admin@example.com'), 'ADMIN');
     expect((await call(otherPage.request, `/shopping-lists/${a.id}`)).status()).toBe(404);
     expect((await call(otherPage.request, `/shopping-lists/${a.id}/items/${product.id}`, 'PUT')).status()).toBe(404);
     const foreignLists = await call(otherPage.request, '/shopping-lists').then((r) => r.json());
@@ -118,7 +119,7 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
 // ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
 test.skip('picker creates a numbered garden project and saves the product into it', async ({ page, browser }) => {
   await mkdir(evidence, { recursive: true });
-  await login(page, 'test.user@example.com');
+  prepareMember(await login(page, 'test.user@example.com'), 'USER');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const product = products.find((p) => p.active);
   expect(product).toBeTruthy();
@@ -163,7 +164,7 @@ test.skip('picker creates a numbered garden project and saves the product into i
     await page.goto(`${ec}/cart?garden=${added[0].gardenId}`);
     await expect(page.getByTestId(`garden-item-product:${product.id}`)).toContainText(product.name);
     const otherPage = await other.newPage();
-    await login(otherPage, 'test.seller@example.com');
+    prepareMember(await login(otherPage, 'test.admin@example.com'), 'ADMIN');
     expect((await call(otherPage.request, `/shopping-lists/${added[0].gardenId}`)).status()).toBe(404);
     await writeFile(`${evidence}/created-garden.json`, JSON.stringify({ garden, detail }, null, 2));
   } finally {
@@ -174,8 +175,9 @@ test.skip('picker creates a numbered garden project and saves the product into i
 
 test('a product saved from EC appears in the Canvas list and placing it does not count it twice', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  await login(page, 'test.user@example.com');
-  const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
+  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  // The Canvas sample products are sold by stores 2 and 3, so the whole catalogue is searched (#119).
+  const products = await call(page.request, '/products').then((r) => r.json());
   const product = products.find(
     (p) =>
       p.active &&
@@ -191,7 +193,8 @@ test('a product saved from EC appears in the Canvas list and placing it does not
     canvas,
   );
   expect(created.status()).toBe(201);
-  const garden = await created.json();
+  // Canvas shows the 3D garden only after its photo is confirmed (Canvas issue #15).
+  const garden = await seedGardenPhoto(page, await created.json());
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   try {
@@ -201,7 +204,7 @@ test('a product saved from EC appears in the Canvas list and placing it does not
     await page.getByRole('tab', { name: '買い物リスト（1）', exact: true }).click();
     const line = page.getByTestId(`shopping-line-${product.id}`);
     await expect(line).toContainText(product.name);
-    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 1点');
+    await expect(line.getByTestId('placement-count')).toHaveCount(0);
     await expect(line.getByTestId('unplaced-ec-item')).toBeVisible();
     const target = page.getByTestId('garden-canvas').locator('canvas');
     const drop = async (x) => {
@@ -212,16 +215,16 @@ test('a product saved from EC appears in the Canvas list and placing it does not
       });
     };
     // Placement needs the Canvas product model, which loads with the EC catalog.
-    await expect(line.getByRole('button', { name: '庭に配置', exact: true })).toBeEnabled();
+    await expect(line).toHaveAttribute('draggable', 'true');
     await drop(0.5);
     await expect(page.getByTestId('save-status')).toHaveText('保存済み');
-    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 1点');
+    await expect(line.getByTestId('placement-count')).toHaveAttribute('aria-label', '庭に設置した数 1');
     await expect(line.getByTestId('unplaced-ec-item')).toHaveCount(0);
     await expect(page.getByRole('tab', { name: '買い物リスト（1）', exact: true })).toBeVisible();
     const one = await call(page.request, `/shopping-lists/${garden.id}`).then((r) => r.json());
     expect(one.items.map((item) => [item.key, item.quantity])).toEqual([[`product:${product.id}`, 1]]);
     await drop(0.65);
-    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 2点');
+    await expect(line.getByTestId('placement-count')).toHaveAttribute('aria-label', '庭に設置した数 2');
     await expect(page.getByTestId('save-status')).toHaveText('保存済み');
     await expect
       .poll(() =>
@@ -233,7 +236,7 @@ test('a product saved from EC appears in the Canvas list and placing it does not
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '3D庭', exact: true }).click();
     await page.getByRole('tab', { name: '買い物リスト（2）', exact: true }).click();
-    await expect(line.getByTestId('needed-quantity')).toHaveText('必要数 2点');
+    await expect(line.getByTestId('placement-count')).toHaveAttribute('aria-label', '庭に設置した数 2');
     await expect(page.getByTestId('model-loaded')).toHaveText('読み込み済み: 2 / 2');
     await expect.poll(() => line.locator('img').evaluate((img) => img.complete && img.naturalWidth > 0)).toBeTruthy();
     await page.screenshot({ path: `${evidence}/canvas-ec-item-reloaded.png` });
@@ -261,7 +264,7 @@ test('a product saved from EC appears in the Canvas list and placing it does not
 // ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
 test.skip('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
   expect((await request.get(`${ec}/api/shopping-lists`)).status()).toBe(401);
-  await login(page, 'test.user@example.com');
+  prepareMember(await login(page, 'test.user@example.com'), 'USER');
   await page.goto(ec);
   await page.route('**/api/shopping-lists', (route) => route.abort());
   await page
@@ -296,7 +299,7 @@ test('EC-B24/B25 garden dialog shows cart items, selects what can be added and r
       products.push(await created.json());
     }
     const [scarce, plenty] = products;
-    await login(page, 'test.user@example.com');
+    prepareMember(await login(page, 'test.user@example.com'), 'USER');
     const created = await call(
       page.request,
       '/gardens',

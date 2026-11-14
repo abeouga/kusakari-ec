@@ -28,23 +28,39 @@ test('price changes, store suspension, private attachments and pickup cancellati
     });
     expect(stale.status()).toBe(409);
     expect((await stale.json()).code).toBe('PRICE_CHANGED');
-    expect((await call(admin.request, '/operator/stores/1/enabled', 'PUT', { enabled: false })).status()).toBe(200);
+    // The cart seen before the suspension: checkout re-checks the store and refuses it.
+    const cart = await call(buyer.request, '/cart').then((r) => r.json());
+    expect(
+      (
+        await call(admin.request, '/operator/stores/1/enabled', 'PUT', { enabled: false, reason: '境界の確認' })
+      ).status(),
+    ).toBe(200);
     try {
-      const cart = await call(buyer.request, '/cart').then((r) => r.json());
-      expect(
-        (
-          await call(buyer.request, '/orders', 'POST', {
-            requestId: randomUUID(),
-            revision: cart.revision,
-            expectedTotalYen: cart.totalYen,
-            paymentMethod: 'PAY_AT_STORE',
-          })
-        ).status(),
-      ).toBe(409);
+      const refused = await call(buyer.request, '/orders', 'POST', {
+        requestId: randomUUID(),
+        revision: cart.revision,
+        expectedTotalYen: cart.totalYen,
+        paymentMethod: 'PAY_AT_STORE',
+      });
+      expect(refused.status()).toBe(409);
+      expect((await refused.json()).code).toBe('STORE_DISABLED');
+      // Issue #119: opening the cart then removes the line of the suspended store and says why.
+      const opened = await call(buyer.request, '/cart').then((r) => r.json());
+      expect(opened.items.some((line) => line.product.id === p.id)).toBe(false);
+      expect(opened.removedItems).toContainEqual(
+        expect.objectContaining({ productId: p.id, reason: 'STORE_SUSPENDED' }),
+      );
       expect((await call(seller.request, '/seller/orders?storeId=1')).status()).toBe(403);
     } finally {
-      expect((await call(admin.request, '/operator/stores/1/enabled', 'PUT', { enabled: true })).status()).toBe(200);
+      expect(
+        (await call(admin.request, '/operator/stores/1/enabled', 'PUT', { enabled: true, reason: '' })).status(),
+      ).toBe(200);
     }
+    // A removed line does not come back when the store reopens; the buyer adds the product again.
+    expect((await call(buyer.request, '/cart').then((r) => r.json())).items.some((l) => l.product.id === p.id)).toBe(
+      false,
+    );
+    await add(buyer.request, p.id);
     const { order } = await checkout(buyer.request);
     const attempts = await Promise.all([
       call(buyer.request, `/orders/${order.id}/cancellation`, 'POST', { reason: '競合検証' }),

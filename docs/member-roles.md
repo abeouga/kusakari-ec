@@ -10,8 +10,12 @@
 
 - 会員の種別は`members.account_type`に保存します。値は`USER`（購入者）、`SHOP_OWNER_APPLICANT`（出店を申請するアカウント）、`SHOP_OWNER`（組織のオーナー）、`SHOP_STAFF`（店舗の担当者）、`ADMIN`（運営）の5つです。CHECK制約はバイナリ比較で、大文字小文字・全角・末尾空白の違いを拒否します。
 - オーナーは`organizations.owner_member_id`で組織と結び付き、その組織の全店舗を操作できます。外部キーが、オーナーに指定できる会員を`SHOP_OWNER`だけに限ります。
-- 担当者は`organization_members`で組織に入り、`store_members.role`（`MANAGER`/`STAFF`/なし）で店舗ごとの操作が決まります。`STAFF`は商品の公開・在庫・注文の受け渡し、`MANAGER`はそれに加えて店舗情報の編集・商品の登録と削除・キャンセル申請への回答ができます。ロールのない担当者は、その店舗を操作できません。
+- 担当者は`organization_members`で組織に入り、`store_members.role`（`MANAGER`/`STAFF`/なし）で店舗ごとの操作が決まります。`STAFF`は商品の編集（価格を含む）・公開・在庫・注文の受け渡し、`MANAGER`はそれに加えて店舗情報の編集・商品の登録と削除・キャンセル申請への回答ができます。ロールのない担当者は、所属する店舗の店舗情報と、出店者の商品一覧・在庫を見られるだけで（GET）、変更と注文の閲覧はできません（#105、[残りの決定](decisions/2026-11-12-remaining-decisions.md)）。
+- 担当者は、組織の人事のロール（`organization_members.role`）として `ORG_ADMIN` を持てます。ORG_ADMIN は、組織の全員のアカウント一覧、組織の全店舗のロール（MANAGER・STAFF）の割り振り、別の店舗の担当の追加・解除、招待キーの発行ができます。商品・在庫・注文は、ORG_ADMIN でも店舗のロールに従います。ORG_ADMIN を付け外しできるのはオーナーだけです。MANAGER は自分の店舗の担当者だけを一覧で見て、STAFF とロールなしの間だけを変えられます。権限の表は [招待キーと人事のロール](decisions/2026-11-13-store-invitations-and-roles.md) にあり、判定は `StaffPolicy` 1か所で行います。
+- 担当者は、店舗の招待キーで新規登録して作ります（#111）。オーナー・ORG_ADMIN・MANAGER が出店者画面の「招待キー」で発行し、キーかキー入りの登録用 URL（`/account/login?invite=...`）を渡します。登録した時点で `SHOP_STAFF` の会員・組織への所属・店舗の担当（ロールなし）ができ、その後「アカウント」の画面でロールを割り振ります。キーは新規登録のときだけ使え、ログイン中の購入者のアカウントでは使えません。
+- 店舗側のアカウント（`SHOP_OWNER`・`SHOP_STAFF`）と申請中のアカウント（`SHOP_OWNER_APPLICANT`）は、カート・注文・庭の買い物リストを使えません（API は403 `BUYER_REQUIRED`）。購入者（`USER`）と運営（`ADMIN`）は使えます（#108）。
 - 通常の出店は、企業様向けの登録（`SHOP_OWNER_APPLICANT`）→ 出店申請 → 運営の承認（`SHOP_OWNER`になり、組織ができる）→ オーナーによる店舗の作成、の順です。
+- 初回ログインの扱い（#108）：会員は、企業様向けの登録（`SHOP_OWNER_APPLICANT`）と招待キーでの登録（`SHOP_STAFF`）では登録した時点で作り、メール確認前の状態で持ちます。初めてログインしたときは、その会員をそのまま使い、メール確認済みにするだけです。それ以外（通常の新規登録、DB の初期化（`DB-reset.bat`）の後に Cognito に残っているユーザー）は、初めてログインしたときに購入者（`USER`）の会員を作ります（`AuthService.provision`）。DB の初期化では Cognito のユーザーを消さないので、初期化の後に店舗側のアカウントとして使うには、出店申請か招待キーでの登録、開発用なら下のスクリプトで種別を付け直します。
 - 開発用に種別を直接付け替えるときは`scripts/set-member-role.ps1`を使います。`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。
   - `-Role ADMIN`：購入者を運営にします。
   - `-Role SHOP_OWNER -OrganizationId 1`：オーナーのいない組織（DBの初期化後のサンプルの組織）のオーナーにします。

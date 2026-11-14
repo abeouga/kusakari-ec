@@ -276,3 +276,40 @@
     min-width: 0;
   }
 }
+.order-status-pending_payment {
+  background: #fff3d6;
+  color: #7a5200;
+}
+.order-status-refunded {
+  background: #e3ecf6;
+  color: #234a72;
+}
+/* Issue #132/#133: payment method with the card payment and refund states. */
+.order-payment-state {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.payment-badge {
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: 12px;
+  background: #edf2e9;
+  color: #244c3c;
+}
+.payment-pending {
+  background: #fff3d6;
+  color: #7a5200;
+}
+.payment-failed,
+.payment-expired,
+.refund-failed {
+  background: #f8e5e2;
+  color: #8a2f22;
+}
+.refund-requested,
+.refund-succeeded {
+  background: #e3ecf6;
+  color: #234a72;
+}

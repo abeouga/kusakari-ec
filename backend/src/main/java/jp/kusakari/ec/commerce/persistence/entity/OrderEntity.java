@@ -75,6 +75,10 @@ public class OrderEntity {
   @Column(name = "payment_method", nullable = false, length = 32)
   private String paymentMethod;
 
+  /** カードで支払う注文の決済（お会計1回に1つ）。店頭払いは null。 */
+  @Column(name = "payment_id", length = 36, columnDefinition = "CHAR(36)")
+  private String paymentId;
+
   @Column(name = "recipient_name", nullable = false, length = 120)
   private String recipientName = "";
 
@@ -115,6 +119,21 @@ public class OrderEntity {
     this.paymentMethod = paymentMethod;
   }
 
+  /** カードの注文は、支払いが成功するまで支払い待ち（PENDING_PAYMENT）。在庫はこの時点で確保している。 */
+  public void awaitPayment(String paymentId) {
+    this.paymentId = paymentId;
+    this.status = "PENDING_PAYMENT";
+  }
+
+  public void acceptPayment() {
+    if (status.equals("PENDING_PAYMENT")) status = "ACCEPTED";
+  }
+
+  /** 支払いが失敗した・時間切れになった注文を取り消す。キャンセル申請ではないので、申請の状態は変えない。 */
+  public void cancelUnpaid() {
+    if (status.equals("PENDING_PAYMENT")) status = "CANCELLED";
+  }
+
   public void assignPickup(String buyerId, Long storeId, String address, String hours) {
     this.buyerMemberId = buyerId;
     this.storeId = storeId;
@@ -151,6 +170,17 @@ public class OrderEntity {
       cancelledByMemberId = decidedByMemberId;
     }
     cancellationStatus = approved ? "APPROVED" : "REJECTED";
+    cancellationResponse = reason.trim();
+    cancellationAt = Instant.now();
+  }
+
+  /**
+   * 店舗の閉鎖・組織の停止で、運営が未完了の注文をまとめてキャンセルする（#79・#109）。
+   * 購入者のキャンセル申請の状態（cancellation_status）は変えず、申請が出ていたことを残す。運営の理由は回答の欄に入れる。
+   */
+  public void cancelByOperator(String operatorMemberId, String reason) {
+    status = "CANCELLED";
+    cancelledByMemberId = operatorMemberId;
     cancellationResponse = reason.trim();
     cancellationAt = Instant.now();
   }

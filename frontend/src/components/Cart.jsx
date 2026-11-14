@@ -4,7 +4,9 @@ import { ShoppingCart, MapPin, Minus, Plus, Trash2, ArrowLeft, ArrowRight, Check
 import { yen } from '../api';
 import { DeliverySummary } from './DeliverySummary';
 import { CheckoutConfirm } from './CheckoutConfirm';
-import { paymentLabel, paymentStatus } from '../payment';
+import { paymentLabel, useCardAvailable } from '../payment';
+import { CardPaymentStep } from './CardPayment';
+import { PaymentState } from '../workspace/OrderPages';
 import { PageLink } from '../workspace/Common';
 import { AddFromGardenCard } from './GardenItemsDialog';
 
@@ -13,7 +15,11 @@ export function Cart({ shop }) {
   const [confirming, setConfirming] = useState(false);
   const [payment, setPayment] = useState('PAY_AT_STORE');
   const [lastLine, setLastLine] = useState(/** @type {HTMLElement|null} */ (null));
+  const cardAvailable = useCardAvailable();
   const cart = shop.cart;
+  if (shop.pendingPayment) {
+    return <CardPaymentStep pending={shop.pendingPayment} onAccepted={shop.acceptCardOrders} />;
+  }
   if (shop.lastOrders) {
     return (
       <section className="cart-content cart-complete">
@@ -56,6 +62,7 @@ export function Cart({ shop }) {
     return (
       <section className="cart-content cart-empty-state">
         <h2>ショッピングカート</h2>
+        <RemovedNotice shop={shop} />
         {shop.error && (
           <p className="error" role="alert">
             {shop.error}
@@ -76,6 +83,7 @@ export function Cart({ shop }) {
   let title = `ショッピングカート (${cart.itemCount})`;
   let checkoutLabel = '注文を確定する';
   if (confirming) title = 'お支払い・受け取りの確認';
+  if (payment === 'CARD') checkoutLabel = '注文してカードで支払う';
   if (shop.busy) checkoutLabel = '保存中…';
   return (
     <section className="cart-content">
@@ -85,13 +93,22 @@ export function Cart({ shop }) {
         <li aria-current={confirming ? 'step' : undefined}>お支払い・受け取り</li>
         <li>注文完了</li>
       </ol>
+      <RemovedNotice shop={shop} />
       {shop.error && (
         <p className="error" role="alert">
           {shop.error}
         </p>
       )}
       <div className="checkout-layout">
-        {confirming && <CheckoutConfirm shop={shop} cart={cart} payment={payment} onPayment={setPayment} />}
+        {confirming && (
+          <CheckoutConfirm
+            shop={shop}
+            cart={cart}
+            payment={payment}
+            onPayment={setPayment}
+            cardAvailable={cardAvailable}
+          />
+        )}
         {!confirming && (
           <div>
             <div className="cart-items">
@@ -110,7 +127,10 @@ export function Cart({ shop }) {
                       <MapPin size={14} aria-hidden="true" />
                       受取店舗：{line.storeName}
                     </p>
-                    {!line.available && <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>}
+                    {line.unavailableReason && <p className="error-text">現在は購入できません</p>}
+                    {!line.available && !line.unavailableReason && (
+                      <p className="error-text">在庫不足（現在 {line.product.stock} 点）</p>
+                    )}
                     <div className="quantity-control">
                       <button
                         aria-label={`${line.product.name}を1個減らす`}
@@ -207,6 +227,25 @@ export function Cart({ shop }) {
   );
 }
 
+/**
+ * Issue #119: lines removed when the cart was opened because their store closed or was suspended, the organization
+ * was suspended, or the product was deleted. The server removes them once, so the note stays until it is closed.
+ * @param {{shop:ReturnType<import('../useShop').useShop>}} props
+ */
+function RemovedNotice({ shop }) {
+  if (!shop.removedLines.length) return null;
+  return (
+    <div className="cart-removed-notice" role="status">
+      {shop.removedLines.map((line) => (
+        <p key={line.productId}>{line.name}は購入できなくなったためカートから外しました。</p>
+      ))}
+      <button type="button" className="text-button" onClick={() => shop.setRemovedLines([])}>
+        閉じる
+      </button>
+    </div>
+  );
+}
+
 /** @param {{order:import('../types').Order}} props */
 export function OrderSummary({ order }) {
   return (
@@ -223,9 +262,13 @@ export function OrderSummary({ order }) {
       <DeliverySummary details={order.details} />
       {order.details?.paymentMethod && order.details.paymentMethod !== 'NONE' && (
         <p data-testid="order-payment">
-          お支払い方法：{paymentLabel(order.details.paymentMethod)}
+          <PaymentState order={order} />
           <br />
-          <small>{paymentStatus(order.details.paymentMethod)}</small>
+          <small>
+            {order.details.paymentMethod === 'PAY_AT_STORE'
+              ? '受け取り時に店頭でお支払いください。'
+              : 'カードでのお支払いを確認しました（テストモードのため実際の請求はありません）。'}
+          </small>
         </p>
       )}
       {order.items.map((item) => (

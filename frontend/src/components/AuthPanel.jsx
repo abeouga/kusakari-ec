@@ -4,7 +4,10 @@ import { AuthError, logout, passwordLogin } from '../auth';
 import { SignupForm } from './SignupForm';
 import '../css/auth-dialog.css';
 
-/** @typedef {'login'|'signup'|'confirm'} AuthMode */
+/** @typedef {'login'|'signup'|'confirm'|'invite'} AuthMode */
+
+/** Issue #111: the registration URL a store hands out carries its invitation key (`?invite=`). */
+export const invitationInUrl = () => new URLSearchParams(window.location.search).get('invite');
 
 /** @type {Record<string,string>} */
 const accountLabels = {
@@ -19,7 +22,7 @@ const accountLabels = {
  */
 export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
   const { session, error } = useAuth();
-  const [mode, setMode] = useState(initialMode);
+  const [mode, setMode] = useState(/** @type {AuthMode} */ (invitationInUrl() !== null ? 'invite' : initialMode));
   const [pending, setPending] = useState({ email: '', password: '' });
   const [failure, setFailure] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -69,7 +72,11 @@ export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
   if (!session) return <p>ログイン状態を確認しています。</p>;
   if (session.mode === 'demo') return <p>Cognitoが未設定のため、ログイン・新規登録は利用できません。</p>;
   if (destination && submitting) {
-    return <div className="auth-redirecting" role="status" aria-label="移動しています"><span /></div>;
+    return (
+      <div className="auth-redirecting" role="status" aria-label="移動しています">
+        <span />
+      </div>
+    );
   }
   return (
     <section className="workspace-card">
@@ -80,6 +87,12 @@ export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
       )}
       {session.authenticated ? (
         <>
+          {invitationInUrl() !== null && (
+            // Issue #105: an invitation key is for a new registration only; an existing account cannot join with it.
+            <p className="auth-error" role="alert">
+              招待キーは新規登録のときだけ使えます。ログアウトしてから、新しいアカウントとして登録してください。
+            </p>
+          )}
           <p>{session.name || session.email}</p>
           <p>{accountLabels[session.accountType || ''] || '利用者'}</p>
           <button
@@ -98,7 +111,8 @@ export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
         </>
       ) : mode !== 'login' ? (
         <SignupForm
-          step={mode}
+          step={mode === 'invite' ? 'signup' : mode}
+          invitation={mode === 'invite' ? invitationInUrl() || '' : null}
           initialEmail={pending.email}
           initialPassword={pending.password}
           returnTo={returnTo}
@@ -133,6 +147,9 @@ export function AuthPanel({ initialMode = 'login', onModeChange } = {}) {
             </a>
             <button type="button" onClick={() => switchMode('signup')}>
               新規登録
+            </button>
+            <button type="button" onClick={() => switchMode('invite')}>
+              招待キーで登録（店舗の担当者）
             </button>
           </div>
         </>

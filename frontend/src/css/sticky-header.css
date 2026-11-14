@@ -8,3 +8,23 @@
 html {
   scroll-padding-top: var(--ec-header-offset, 0px);
 }
+
+/* Issue #108: shop accounts and applicants cannot buy. The shared header always draws the cart link, so it is hidden here. */
+.ec-sticky-header.no-cart .bag-button {
+  display: none;
+}
+.header-buyer-note {
+  margin: 0;
+  padding: 8px 5%;
+  border-bottom: 1px solid #d8d2bf;
+}
+.buyer-only-note {
+  background: #f6f2e4;
+  color: #4d4632;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.buyer-only-note:not(.header-buyer-note) {
+  padding: 10px 14px;
+  border-radius: 8px;
+}

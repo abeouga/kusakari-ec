@@ -49,9 +49,10 @@ for (const width of [1440, 390]) {
       .toBeGreaterThanOrEqual(-1);
     await page.screenshot({ path: `${dir}/reloaded-${width}.png` });
 
+    // Issue #10: the cart in the stuck header stays usable; a signed-out visitor is sent to the login page for it.
     await cart.click();
-    await expect(page).toHaveURL(/\/cart$/);
-    await expect(sticky).toBeVisible();
+    await expect(page).toHaveURL(/\/account\/login\?returnTo=http%3A%2F%2F127\.0\.0\.1%3A15186%2Fcart$/);
+    await expect(page.getByRole('heading', { name: 'ログイン', exact: true })).toBeVisible();
     const products = await (await page.request.get('/api/products')).json();
     expect(Array.isArray(products) ? products.length : products.items?.length).toBeGreaterThan(0);
     await writeFile(

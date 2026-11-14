@@ -50,9 +50,21 @@ Mavenはリポジトリ内のWrapperを使います。システムPATHの変更�
 専用MySQL自身が専用データディレクトリでポートを占有していれば停止・復旧します。別サーバーは停止しません。
 停止スクリプトはWeb/APIを停止し、専用MySQLは継続稼働します。
 
+### カード決済（Stripe のテストモード）を使うとき
+
+`setup.bat` は Stripe の鍵を設定しません。鍵がなくても EC は起動し、お会計は店頭払いだけになります。カードで支払う流れを試す PC だけ、次を用意します（鍵の値はこの文書・Git・ログに書きません）。
+
+1. Stripe のアカウントをテストモードにして、公開可能キー（`pk_test_`）と、制限付きキー（`rk_test_`。PaymentIntents と Refunds を書き込み、Events を読み取り）を作ります。標準の秘密鍵（`sk_test_`）でも動きます。
+2. Stripe CLI を `winget install Stripe.StripeCli` で入れ、`stripe login` でアカウントにつなぎます。
+3. `stripe listen --print-secret` が表示する Webhook の値（`whsec_`）を控えます。
+4. `.env` に `STRIPE_SECRET_KEY=`、`STRIPE_WEBHOOK_SECRET=`、`VITE_STRIPE_PUBLISHABLE_KEY=` の3行を書き、`start.bat` で起動し直します。
+5. カードで支払う間は、別の端末で `stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,refund.created,refund.updated,refund.failed,charge.refunded,charge.dispute.created --forward-to http://127.0.0.1:8086/api/payments/stripe/webhook`（今の Stripe CLI は `--events` が必須） を動かしておきます。業務 E2E の決済の試験は、試験の中で E2E の API（18286）向けに起動します。
+
+流れと決まりは [決済の決定](decisions/2026-11-13-stripe-card-payment.md) にあります。
+
 ### DBを作り直すとき
 
-`setup.bat` は既存のDBを削除しません。開発用・E2E用のDBを消して作り直すときは、`DB-reset.bat` を使います。対象の決め方、実行のしかた、確かめた内容は [database-reset.md](database-reset.md) にあります。
+`setup.bat` は既存のDBを削除しません。開発用・E2E用のDBを消して作り直すときは、`DB-reset.bat` を使います。対象の決め方、実行のしかた、確かめた内容は [database-reset.md](database-reset.md) にあります。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは、EC と Canvas の初期化の順番・権限の付け直しを含めた [他の PC の移行手順](migration-other-pc.md) に従います。
 
 ## Alternatives
 

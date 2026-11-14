@@ -13,7 +13,8 @@ test('packaged single-origin EC and Canvas preserve routing, models, photos and 
   expect(created.status()).toBe(201);
   const garden = await created.json();
   try {
-    const catalog = await request.get('/api/products?storeId=1').then((result) => result.json());
+    // Issue #113: the Canvas-ready sample products are sold by stores 2 and 3 (one store per product, DB v3).
+    const catalog = await request.get('/api/products').then((result) => result.json());
     const product = catalog.find((item) => item.modelComposition);
     expect(product).toBeTruthy();
     garden.objects.push({ id: randomUUID(), assetId: 'plant_modular', productId: product.id,
@@ -47,7 +48,7 @@ test('packaged single-origin EC and Canvas preserve routing, models, photos and 
     expect((await request.get('/api/health', { headers: { Origin: 'https://untrusted.invalid' } })).status()).toBe(403);
     expect((await request.get('/canvas/api/assets', { headers: { Origin: 'https://untrusted.invalid' } })).status()).toBe(403);
     await page.getByRole('tab', { name: /買い物リスト/ }).click();
-    await page.getByRole('button', { name: 'ECで買い物リストを確認', exact: true }).click();
+    await page.getByRole('button', { name: 'リストを確認', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/cart\\?garden=${garden.id}$`));
     const dialog = page.getByRole('dialog', { name: '庭に設置したものから追加', exact: true });
     await dialog.getByRole('button', { name: 'すべて選択', exact: true }).click();

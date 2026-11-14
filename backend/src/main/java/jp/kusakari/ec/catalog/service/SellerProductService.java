@@ -25,7 +25,8 @@ public class SellerProductService {
 
   @Transactional(readOnly = true)
   public List<ProductView> list(long storeId) {
-    auth.requireSeller(storeId);
+    // 一覧と在庫を見るだけなら、ロール未割り当ての担当者も所属店舗なら見られる（#105）。
+    auth.requireStoreViewer(storeId);
     return catalog.storeProducts(storeId).stream().map(mapper::toSellerView).toList();
   }
 

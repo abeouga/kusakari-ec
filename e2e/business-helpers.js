@@ -76,6 +76,22 @@ export function prepareMember(member, role) {
 }
 
 /**
+ * Issue #111: a staff account of the sample organization with the given store roles ('NONE' = member without a role).
+ * @param {{id:string}} member @param {Record<number,'MANAGER'|'STAFF'|'NONE'>} stores @param {boolean} [organizationAdmin]
+ */
+export function prepareStaff(member, stores, organizationAdmin = false) {
+  prepareMember(member, 'USER');
+  const rows = Object.entries(stores).map(([store, role]) => {
+    if (![1, 2, 3].includes(Number(store)) || !['MANAGER', 'STAFF', 'NONE'].includes(role))
+      throw new Error('Invalid fixture.');
+    return `(${Number(store)},'${member.id}',1,${role === 'NONE' ? 'NULL' : `'${role}'`})`;
+  });
+  sql(`UPDATE members SET account_type='SHOP_STAFF' WHERE id='${member.id}';
+       INSERT INTO organization_members(organization_id,member_id,role) VALUES(1,'${member.id}',${organizationAdmin ? "'ORG_ADMIN'" : 'NULL'});
+       ${rows.length ? `INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES ${rows.join(',')};` : ''}`);
+}
+
+/**
  * An owner adds a store without an application; a new store is unpublished, so buyers see it only after this.
  * @param {import('@playwright/test').APIRequestContext} request the owner's session
  * @param {string} name
@@ -148,7 +164,9 @@ export function productInput() {
 }
 
 export async function add(request, productId, quantity = 1) {
-  const cart = await call(request, '/cart').then((r) => r.json());
+  const opened = await call(request, '/cart');
+  expect(opened.status(), await opened.text()).toBe(200);
+  const cart = await opened.json();
   const result = await call(request, `/cart/items/${productId}`, 'PUT', { quantity, revision: cart.revision });
   expect(result.status(), await result.text()).toBe(200);
   return result.json();
@@ -167,6 +185,35 @@ export async function checkout(request) {
   // One order per pickup store (issue #70); callers that buy from a single store use `order`.
   const { orders } = await response.json();
   return { order: orders[0], orders, payload };
+}
+
+/**
+ * Confirmed photo covering the whole garden: Canvas shows the 3D garden and places items only in gardens with a photo
+ * (Canvas issue #15). The photo is a plain image drawn in the page; no external image is used.
+ * @param {import('@playwright/test').Page} page signed in as the garden's owner
+ * @param {any} garden the saved garden document
+ */
+export async function seedGardenPhoto(page, garden) {
+  if (!/^https?:\/\/127\.0\.0\.1:/.test(page.url())) await page.goto(`${ec}/`);
+  const dataUrl = await page.evaluate(() => {
+    const image = document.createElement('canvas');
+    image.width = 600;
+    image.height = 400;
+    const drawing = image.getContext('2d');
+    drawing.fillStyle = '#b8ccb2';
+    drawing.fillRect(0, 0, 600, 400);
+    return image.toDataURL('image/png');
+  });
+  const corners = [
+    { x: 0.1, y: 0.9 },
+    { x: 0.9, y: 0.9 },
+    { x: 0.9, y: 0.1 },
+    { x: 0.1, y: 0.1 },
+  ];
+  const photo = { dataUrl, imageWidth: 600, imageHeight: 400, corners, boundary: corners };
+  const saved = await call(page.request, `/gardens/${garden.id}`, 'PUT', { ...garden, photo }, canvas);
+  expect(saved.status(), await saved.text()).toBe(200);
+  return saved.json();
 }
 
 // Isolate password changes from the shared buyer/seller/administrator accounts.
@@ -214,6 +261,20 @@ export function createPasswordTestAccount() {
     throw error;
   }
   return { email, secret };
+}
+
+/**
+ * Issue #111: an account registered through the real sign-up (SignUp) has an unconfirmed address. The test cannot
+ * read the code sent to example.com, so the administrator API confirms it, as the code would.
+ * @param {string} email
+ */
+export function confirmSignUpTestAccount(email) {
+  if (!/^password-[a-f0-9-]{36}@example\.com$/.test(email)) throw new Error('Not an isolated password-test account.');
+  cognitoAccount('admin-confirm-sign-up', { Username: email });
+  cognitoAccount('admin-update-user-attributes', {
+    Username: email,
+    UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
+  });
 }
 
 export function deletePasswordTestAccount(email) {

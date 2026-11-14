@@ -7,8 +7,8 @@ const PAGE_SIZE = 12;
 
 // #65 「買い物リストに追加」ボタンを画面から外したため onAddToList を受け取らない。
 // ボタンを戻すときは型に onAddToList:(product:import('../types').Product)=>void を加え、引数とProductCardへの受け渡しを有効化する。
-/** @param {{products:import('../types').Product[], onDetail:(id:string)=>void, onAdd:(id:string)=>void, disabled:boolean}} props */
-export function CatalogProducts({ products, onDetail, onAdd, disabled }) {
+/** @param {{products:import('../types').Product[], onDetail:(id:string)=>void, onAdd:(id:string)=>void, disabled:boolean, canBuy:boolean}} props */
+export function CatalogProducts({ products, onDetail, onAdd, disabled, canBuy }) {
   const [page, setPage] = useState(1);
   const topRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const shouldScrollRef = useRef(false);
@@ -50,6 +50,7 @@ export function CatalogProducts({ products, onDetail, onAdd, disabled }) {
             // #65 買い物リスト追加ダイアログを開く処理の受け渡し。ボタンを戻すときに有効化する。
             // onAddToList={() => onAddToList(product)}
             disabled={disabled}
+            canBuy={canBuy}
           />
         ))}
       </div>

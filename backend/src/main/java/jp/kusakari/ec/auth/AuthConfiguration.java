@@ -86,7 +86,10 @@ public class AuthConfiguration {
     var resolver = new DefaultOAuth2AuthorizationRequestResolver(clients, "/api/auth/authorize");
     resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
     return http
-      .csrf(csrf -> csrf.ignoringRequestMatchers("/api/products/references", "/api/materials/quote"))
+      // Stripe の通知は会員のセッションを持たず、Stripe の署名で確かめる（PaymentController）。
+      .csrf(csrf ->
+        csrf.ignoringRequestMatchers("/api/products/references", "/api/materials/quote", "/api/payments/stripe/webhook")
+      )
       .addFilterBefore(
         new SessionValidityFilter(members, passwords, json),
         org.springframework.security.web.access.intercept.AuthorizationFilter.class
@@ -117,6 +120,8 @@ public class AuthConfiguration {
           )
           .permitAll()
           .requestMatchers("/api/products/references", "/api/materials/quote")
+          .permitAll()
+          .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/payments/stripe/webhook")
           .permitAll()
           .anyRequest()
           .authenticated()

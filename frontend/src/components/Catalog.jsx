@@ -200,9 +200,11 @@ export function Catalog({ shop, onDetail }) {
               // }}
               // Issue #10: signed-out visitors may press + and are sent to login instead of a cart.
               disabled={shop.busy || (!shop.cart && !shop.signedOut)}
+              // Issue #108: shop accounts and applicants cannot buy, so the cart button is not shown.
+              canBuy={!shop.buyerBlocked}
             />
           )}
-          {(shop.cart || shop.signedOut) && !products.length && (
+          {(shop.cart || shop.signedOut || shop.buyerBlocked) && !products.length && (
             <div className="empty">
               <Leaf size={30} />
               <h3>条件に合う植物が見つかりません。</h3>
