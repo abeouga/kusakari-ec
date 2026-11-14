@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import { sql } from './database.js';
-import { call, login } from './business-helpers.js';
 
 const current = (page) => page.locator('.hero-slide[aria-hidden="false"]');
 const hero = (page) => page.getByRole('region', { name: '公開中の商品' });
@@ -127,64 +124,3 @@ test('mobile layout and reduced motion keep product details operable', async ({ 
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-// Issue #113: no longer valid, kept for the decision whether to delete it. The buyer cannot choose a store any more
-// (the cart has no store and `PUT /api/cart/store` is gone, #119), and the carousel shows every store's public products,
-// so the one- and zero-product cases cannot happen without hiding the whole catalogue. `stores.hours` is also gone (v3).
-test.skip('store changes reset selection and handle one or zero public products after reload', async ({
-  page,
-}, testInfo) => {
-  const suffix = randomUUID().slice(0, 8);
-  const storeName = `Hero E2E ${suffix}`;
-  const ids = [`hero-${suffix}-a`, `hero-${suffix}-b`];
-  const storeId = Number(
-    sql(`INSERT INTO stores(name,address,latitude,longitude,hours)
-    VALUES('${storeName}','E2E fixture',35.68,139.76,'10:00-18:00'); SELECT LAST_INSERT_ID();`),
-  );
-  expect(storeId).toBeGreaterThan(3);
-  ids.forEach((id, index) => {
-    sql(`INSERT INTO products(id,sku,name,latin_name,category,description,size_label,care,price_yen,image_url,badge)
-      SELECT '${id}','${id}',name,latin_name,category,description,size_label,care,price_yen,image_url,badge
-      FROM products WHERE id='${index ? 'rosemary' : 'lavender'}';
-      INSERT INTO inventory(store_id,product_id,quantity) VALUES(${storeId},'${id}',5);`);
-  });
-  let originalStore;
-  try {
-    await login(page, 'test.user@example.com');
-    const cart = await call(page.request, '/cart').then((response) => response.json());
-    originalStore = cart.storeId;
-    await expect(current(page)).toBeVisible();
-    await page.getByRole('button', { name: '店舗を探す', exact: true }).click();
-    const card = page.locator('.store-card').filter({ hasText: storeName });
-    await card.getByRole('button', { name: 'この店舗で受け取る' }).click();
-    await expect(card.getByRole('button', { name: '選択中' })).toBeVisible();
-    await page.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true }).click();
-    await expect(current(page)).toHaveAttribute('data-product-id', ids[0]);
-    await saveProducts(page, testInfo, storeId, 'two-products');
-    await hero(page).getByRole('button', { name: '次の商品', exact: true }).click();
-    await expect(current(page)).toHaveAttribute('data-product-id', ids[1]);
-    sql(`UPDATE inventory SET publication_status='HIDDEN' WHERE store_id=${storeId} AND product_id='${ids[1]}';`);
-    await page.reload();
-    await expect(current(page)).toHaveAttribute('data-product-id', ids[0]);
-    await expect(hero(page).getByRole('button', { name: /の商品$/, exact: false })).toHaveCount(0);
-    expect(await saveProducts(page, testInfo, storeId, 'one-product-reloaded')).toHaveLength(1);
-    await page.screenshot({ path: testInfo.outputPath('one-product-reloaded.png') });
-    sql(`UPDATE inventory SET publication_status='HIDDEN' WHERE store_id=${storeId};`);
-    await page.reload();
-    await expect(hero(page)).toContainText('現在表示できる商品はありません。');
-    await expect(hero(page).getByRole('button')).toHaveCount(0);
-    expect(await saveProducts(page, testInfo, storeId, 'zero-products-reloaded')).toHaveLength(0);
-    await page.screenshot({ path: testInfo.outputPath('zero-products-reloaded.png') });
-  } finally {
-    if (originalStore) {
-      const cart = await call(page.request, '/cart').then((response) => response.json());
-      const restored = await call(page.request, '/cart/store', 'PUT', {
-        storeId: originalStore,
-        revision: cart.revision,
-      });
-      expect(restored.status()).toBe(200);
-    }
-    sql(
-      `UPDATE inventory SET publication_status='HIDDEN' WHERE store_id=${storeId}; UPDATE stores SET enabled=FALSE WHERE id=${storeId};`,
-    );
-  }
-});
