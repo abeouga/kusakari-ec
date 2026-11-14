@@ -168,15 +168,33 @@ function organizationFixture(label) {
   return { organization: Number(organization), store: Number(store), product, name: `E2E ${label} product ${suffix}` };
 }
 
+/**
+ * An accepted order at the store, so a closing store or an organization that stopped accepting orders stays in that
+ * state. Without an open order, the settlement (#144) moves it on to closed / suspended within a minute.
+ */
+function openOrderFixture(buyerId, storeId) {
+  if (!/^[a-f0-9-]{36}$/.test(buyerId)) throw new Error('Invalid buyer.');
+  const id = randomUUID();
+  sql(`INSERT INTO orders(id,cart_id,request_id,request_revision,buyer_member_id,store_id,store_name,store_address,
+      store_business_hours,status,total_yen,commission_rate_bp,commission_yen,payment_method,recipient_name,
+      recipient_phone,contact_email)
+    SELECT '${id}',c.id,'${randomUUID()}',0,'${buyerId}',s.id,s.name,s.address,s.business_hours,'ACCEPTED',1000,800,80,
+      'PAY_AT_STORE','','',''
+    FROM carts c JOIN stores s ON s.id=${Number(storeId)} WHERE c.member_id='${buyerId}';`);
+  return id;
+}
+
 // Issue #119: opening the cart removes lines that can no longer be bought; temporary states stay as "cannot buy".
 test('cart removes unbuyable lines, references explain why and closed stores are hidden', async ({ browser }) => {
   await mkdir(evidence, { recursive: true });
   const contexts = await Promise.all([1, 2, 3, 4].map(() => browser.newContext()));
   const [owner, buyer, admin, visitor] = await Promise.all(contexts.map((c) => c.newPage()));
   const ownerMember = await login(owner, 'test.seller@example.com');
+  const openOrders = [];
   try {
     prepareMember(ownerMember, 'SHOP_OWNER');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    const buyerMember = await login(buyer, 'test.user@example.com');
+    prepareMember(buyerMember, 'USER');
     prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
     const suffix = randomUUID().slice(0, 8);
     const stores = {};
@@ -209,6 +227,8 @@ test('cart removes unbuyable lines, references explain why and closed stores are
     const paused = organizationFixture('paused');
     const ids = [...Object.values(products).map((p) => p.id), stopped.product, paused.product];
     for (const id of ids) await add(buyer.request, id);
+    // Keep the closing store closing and the paused organization not accepting while the test runs.
+    openOrders.push(openOrderFixture(buyerMember.id, stores.closing), openOrderFixture(buyerMember.id, paused.store));
 
     // Make each line unbuyable in a different way.
     expect((await call(owner.request, `/products/${products.deleted.id}`, 'DELETE')).status()).toBe(200);
@@ -312,6 +332,8 @@ test('cart removes unbuyable lines, references explain why and closed stores are
       JSON.stringify({ cart, references, visibility, closing }, null, 2),
     );
   } finally {
+    // The fixture orders end as completed, so the buyer has no open purchase left from this test.
+    for (const id of openOrders) sql(`UPDATE orders SET status='COMPLETED',picked_up_at=NOW(6) WHERE id='${id}';`);
     prepareMember(ownerMember, 'SELLER');
     await Promise.all(contexts.map((c) => c.close()));
   }
