@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { sql } from './database.js';
 import { ec, call, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -30,8 +31,8 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
   const name = `CRUDデモ植物 ${randomUUID().slice(0, 8)}`;
   let product;
   try {
-    prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
     await page.goto(`${ec}/`);
     await page.locator('.site-footer').getByRole('button', { name: '商品管理', exact: true }).click();
     await page

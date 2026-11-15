@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, add, prepareMember, productInput, seedGardenPhoto } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/shopping-picker';
 
@@ -10,7 +11,7 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
   browser,
 }) => {
   await mkdir(evidence, { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
   // The garden dialog cannot choose a product that is already in the cart, so the product starts outside it.
@@ -70,7 +71,7 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
     // Another authenticated owner cannot read or write this garden's list. The operator can use shopping lists (#108);
     // a shop account would be refused before ownership is checked (403 BUYER_REQUIRED).
     const otherPage = await other.newPage();
-    prepareMember(await login(otherPage, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(otherPage, ADMIN_EMAIL), 'ADMIN');
     expect((await call(otherPage.request, `/shopping-lists/${a.id}`)).status()).toBe(404);
     expect((await call(otherPage.request, `/shopping-lists/${a.id}/items/${product.id}`, 'PUT')).status()).toBe(404);
     const foreignLists = await call(otherPage.request, '/shopping-lists').then((r) => r.json());
@@ -119,7 +120,7 @@ test('product card has no shopping-list button; a saved list stays owned, surviv
 // ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
 test.skip('picker creates a numbered garden project and saves the product into it', async ({ page, browser }) => {
   await mkdir(evidence, { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   const products = await call(page.request, '/products?storeId=1').then((r) => r.json());
   const product = products.find((p) => p.active);
   expect(product).toBeTruthy();
@@ -164,7 +165,7 @@ test.skip('picker creates a numbered garden project and saves the product into i
     await page.goto(`${ec}/cart?garden=${added[0].gardenId}`);
     await expect(page.getByTestId(`garden-item-product:${product.id}`)).toContainText(product.name);
     const otherPage = await other.newPage();
-    prepareMember(await login(otherPage, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(otherPage, ADMIN_EMAIL), 'ADMIN');
     expect((await call(otherPage.request, `/shopping-lists/${added[0].gardenId}`)).status()).toBe(404);
     await writeFile(`${evidence}/created-garden.json`, JSON.stringify({ garden, detail }, null, 2));
   } finally {
@@ -175,7 +176,7 @@ test.skip('picker creates a numbered garden project and saves the product into i
 
 test('a product saved from EC appears in the Canvas list and placing it does not count it twice', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   // The Canvas sample products are sold by stores 2 and 3, so the whole catalogue is searched (#119).
   const products = await call(page.request, '/products').then((r) => r.json());
   const product = products.find(
@@ -264,7 +265,7 @@ test('a product saved from EC appears in the Canvas list and placing it does not
 // ダイアログは別の形で戻す可能性があるため残しており、ボタンを戻すときにこのテストを有効化する。
 test.skip('unavailable list shows an error with retry; signed-out users must log in', async ({ page, request }) => {
   expect((await request.get(`${ec}/api/shopping-lists`)).status()).toBe(401);
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   await page.goto(ec);
   await page.route('**/api/shopping-lists', (route) => route.abort());
   await page
@@ -292,14 +293,14 @@ test('EC-B24/B25 garden dialog shows cart items, selects what can be added and r
   const products = [];
   let garden;
   try {
-    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
+    prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
     for (const stock of [2, 5]) {
       const created = await call(seller.request, '/products', 'POST', { ...productInput(), stock });
       expect(created.status(), await created.text()).toBe(200);
       products.push(await created.json());
     }
     const [scarce, plenty] = products;
-    prepareMember(await login(page, 'test.user@example.com'), 'USER');
+    prepareMember(await login(page, USER_EMAIL), 'USER');
     const created = await call(
       page.request,
       '/gardens',

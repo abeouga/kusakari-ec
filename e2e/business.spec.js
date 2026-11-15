@@ -14,6 +14,7 @@ import {
   fillApplication,
   openStore,
 } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -25,8 +26,8 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
   const buyer = await buyerContext.newPage();
   const seller = await sellerContext.newPage();
   try {
-    const sellerMember = await login(seller, 'test.seller@example.com');
-    const buyerMember = await login(buyer, 'test.user@example.com');
+    const sellerMember = await login(seller, MANAGER_EMAIL);
+    const buyerMember = await login(buyer, USER_EMAIL);
     prepareMember(sellerMember, 'SELLER');
     prepareMember(buyerMember, 'USER');
     const input = productInput();
@@ -117,7 +118,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
     try {
-      prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+      prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
       expect(
         (
           await call(admin.request, `/operator/products/${product.id}/moderation`, 'PUT', {
@@ -179,7 +180,7 @@ test('seller publication, buyer cart, product placement, checkout, pickup and pe
     expect((await replay.json()).orders[0].id).toBe(order.id);
     expect(await stock()).toBe(4);
     expect((await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(0);
-    await login(buyer, 'test.user@example.com');
+    await login(buyer, USER_EMAIL);
     await buyer.goto(`${ec}/purchases`);
     await expect(buyer.getByTestId(`order-${order.id}`)).toContainText(input.name);
     await seller.goto(`${ec}/seller/orders`);
@@ -217,9 +218,9 @@ test('concurrent final stock, cancellation locking, access control and catalog m
   const [buyer, seller, admin] = await Promise.all(contexts.map((c) => c.newPage()));
   try {
     for (const [page, email, role] of [
-      [buyer, 'test.user@example.com', 'USER'],
-      [seller, 'test.seller@example.com', 'SELLER'],
-      [admin, 'test.admin@example.com', 'ADMIN'],
+      [buyer, USER_EMAIL, 'USER'],
+      [seller, MANAGER_EMAIL, 'SELLER'],
+      [admin, ADMIN_EMAIL, 'ADMIN'],
     ])
       prepareMember(await login(page, email), role);
     const input = { ...productInput(), stock: 1 };
@@ -314,15 +315,15 @@ test('account, applications with private documents, store profile, categories an
   const admin = await adminContext.newPage();
   let member;
   try {
-    member = await login(user, 'test.user@example.com');
+    member = await login(user, USER_EMAIL);
     // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
     prepareMember(member, 'SHOP_OWNER_APPLICANT');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     await user.goto(`${ec}/seller/application`);
     await fillApplication(user, {
       company: `検証店舗 ${randomUUID().slice(0, 8)}`,
       contact: '担当者',
-      email: 'test.user@example.com',
+      email: USER_EMAIL,
       address: '東京都 検証用店舗',
       phone: '0312345678',
     });
@@ -372,7 +373,7 @@ test('account, applications with private documents, store profile, categories an
     expect(
       (await call(admin.request, `/operator/members/${member.id}/enabled`, 'PUT', { enabled: true })).status(),
     ).toBe(200);
-    await login(user, 'test.user@example.com');
+    await login(user, USER_EMAIL);
     expect((await call(user.request, '/notifications')).status()).toBe(200);
     expect((await call(user.request, '/orders').then((r) => r.json())).code).toBe('BUYER_REQUIRED');
     // Withdrawal is verified with dedicated accounts in business-account.spec.js: this shared buyer keeps

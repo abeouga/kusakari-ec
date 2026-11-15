@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add, openStore } from './business-helpers.js';
 import { sql } from './database.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/purchase-restrictions';
 const buyerOnly = '店舗・出店申請用のアカウントでは購入できません。購入は購入者のアカウントでご利用ください。';
@@ -18,10 +19,10 @@ test('shop accounts and applicants cannot use the cart, orders or garden shoppin
   await mkdir(evidence, { recursive: true });
   const contexts = await Promise.all([browser.newContext(), browser.newContext(), browser.newContext()]);
   const [shop, buyer, admin] = await Promise.all(contexts.map((c) => c.newPage()));
-  const shopMember = await login(shop, 'test.seller@example.com');
+  const shopMember = await login(shop, MANAGER_EMAIL);
   try {
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     const missingOrder = randomUUID();
     const buyerApis = [
       ['/cart', 'GET'],
@@ -91,7 +92,7 @@ test('shop accounts and applicants cannot use the cart, orders or garden shoppin
 // Issue #105: STAFF edits products (prices too); an unassigned staff member only reads the store's products.
 test('staff edit prices and unassigned staff only read their store', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  const member = await login(page, 'test.seller@example.com');
+  const member = await login(page, MANAGER_EMAIL);
   prepareMember(member, 'SELLER');
   const input = productInput();
   const created = await call(page.request, '/products', 'POST', input);
@@ -189,13 +190,13 @@ test('cart removes unbuyable lines, references explain why and closed stores are
   await mkdir(evidence, { recursive: true });
   const contexts = await Promise.all([1, 2, 3, 4].map(() => browser.newContext()));
   const [owner, buyer, admin, visitor] = await Promise.all(contexts.map((c) => c.newPage()));
-  const ownerMember = await login(owner, 'test.seller@example.com');
+  const ownerMember = await login(owner, MANAGER_EMAIL);
   const openOrders = [];
   try {
     prepareMember(ownerMember, 'SHOP_OWNER');
-    const buyerMember = await login(buyer, 'test.user@example.com');
+    const buyerMember = await login(buyer, USER_EMAIL);
     prepareMember(buyerMember, 'USER');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     const suffix = randomUUID().slice(0, 8);
     const stores = {};
     for (const key of ['suspended', 'closed', 'closing'])

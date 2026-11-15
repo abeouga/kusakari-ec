@@ -2,13 +2,14 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/cart-add-from-garden';
 
 // Issue #64: the cart has no "cart / garden list" segments; the dashed card opens a dialog that adds garden items to the cart.
 test('cart adds a garden item through the dashed card dialog and keeps it after reload', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  await login(page, 'test.user@example.com');
+  await login(page, USER_EMAIL);
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
   const products = await call(page.request, '/products').then((r) => r.json());
   const inCart = new Set(beforeCart.items.map((item) => item.product.id));

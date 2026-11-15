@@ -11,6 +11,8 @@ param(
 . "$PSScriptRoot\common.ps1"
 . "$PSScriptRoot\database.ps1"
 . "$PSScriptRoot\database-verify.ps1"
+. "$PSScriptRoot\member-role.ps1"
+. "$PSScriptRoot\set-test-accounts.ps1"
 
 # 消してよい DB は、この2つだけ。入力や .env の値からは決めない。
 $resetDatabases = @('kusakari', 'kusakari_e2e')
@@ -221,6 +223,8 @@ try {
                 Write-Host "$db を作り直しました。"
             }
             Invoke-SchemaVerification
+            # テスト用アカウント9つですぐにログインできるようにする（#157）。失敗しても、作り直した DB はそのまま使える。
+            try { Set-TestAccounts } catch { Write-Host "テスト用アカウントをそろえられませんでした: $($_.Exception.Message)" }
             Write-Host ''
             Write-Host 'EC の DB の初期化が完了しました。start.bat で起動してください。'
             Write-Host 'Canvas の庭は、作り直した EC の会員と結び付きません。Canvas 側の DB も続けて初期化してください。'

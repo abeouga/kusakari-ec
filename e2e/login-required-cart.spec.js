@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, login, call, password, prepareMember } from './business-helpers.js';
 import { sql } from './database.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 // Issue #10: signed-out visitors cannot add to or open a cart; after login the member cart works as usual.
 test.use({ trace: 'off' });
@@ -22,7 +23,7 @@ test('signed-out visitors are sent to login instead of using a cart', async ({ p
   // Detach any earlier cart of the test member so this run starts from its own empty cart.
   const fixtureContext = await browser.newContext();
   try {
-    prepareMember(await login(await fixtureContext.newPage(), 'test.user@example.com'), 'USER');
+    prepareMember(await login(await fixtureContext.newPage(), USER_EMAIL), 'USER');
   } finally {
     await fixtureContext.close();
   }
@@ -75,7 +76,7 @@ test('signed-out visitors are sent to login instead of using a cart', async ({ p
   // Logging in after opening the cart returns to the cart page.
   await page.goto(`${ec}/cart`);
   await expect(page).toHaveURL(loginUrl(`${ec}/cart`));
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(USER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('main').getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(`${ec}/cart`);

@@ -11,6 +11,7 @@ import {
   deletePasswordTestAccount,
   openStore,
 } from './business-helpers.js';
+import { ADMIN_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 async function submitApplication(page, input) {
   const csrf = await call(page.request, '/auth/csrf').then((r) => r.json());
@@ -34,14 +35,14 @@ test('application rejection permits resubmission', async ({ browser }) => {
   const admin = await adminContext.newPage();
   let member;
   try {
-    member = await login(user, 'test.user@example.com');
+    member = await login(user, USER_EMAIL);
     // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
     prepareMember(member, 'SHOP_OWNER_APPLICANT');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     const input = {
       company: `再申請検証 ${randomUUID().slice(0, 8)}`,
       contact: '検証担当',
-      email: 'test.user@example.com',
+      email: USER_EMAIL,
       address: '東京都 検証用',
       phone: '0312345678',
     };
@@ -89,15 +90,15 @@ test('approved applicant manages only the new store; stale stock, confirmations 
   const [user, admin] = await Promise.all(contexts.map((c) => c.newPage()));
   let member;
   try {
-    member = await login(user, 'test.user@example.com');
+    member = await login(user, USER_EMAIL);
     // Only an account from the business sign-up applies; the fixture marks the shared buyer as one.
     prepareMember(member, 'SHOP_OWNER_APPLICANT');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     const company = `新規店舗 ${randomUUID().slice(0, 8)}`;
     const submitted = await submitApplication(user, {
       company,
       contact: '新規担当',
-      email: 'test.user@example.com',
+      email: USER_EMAIL,
       address: '東京都 新規店舗',
       phone: '0312345678',
     });
@@ -230,8 +231,8 @@ test('approved applicant manages only the new store; stale stock, confirmations 
     const search = admin.getByLabel('名前・メール検索');
     await search.fill(`該当なし-${randomUUID()}`);
     await expect(admin.getByText('検索条件に一致する会員はありません。')).toBeVisible();
-    await search.fill('test.user@example.com');
-    const card = admin.locator('section.workspace-card').filter({ hasText: 'test.user@example.com' });
+    await search.fill(USER_EMAIL);
+    const card = admin.locator('section.workspace-card').filter({ hasText: USER_EMAIL });
     const confirmStatus = admin.getByRole('alertdialog', { name: '利用状況変更の確認' });
     await card.getByRole('button', { name: '利用を停止', exact: true }).click();
     await expect(confirmStatus).toContainText('停止中はログインできません');
@@ -269,7 +270,7 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
   const input = {
     company: `申請確認 ${randomUUID().slice(0, 8)}`,
     contact: '確認担当',
-    email: 'test.user@example.com',
+    email: USER_EMAIL,
     address: '東京都 申請確認',
     phone: '03-1234-5678',
   };
@@ -282,7 +283,7 @@ test('EC-B17/B18 application is confirmed before submission, shows its review an
   };
   try {
     prepareMember(await login(user, account.email, account.secret), 'SHOP_OWNER_APPLICANT');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     const sidebar = user.locator('.workspace-sidebar');
     // Direct access to the status page before applying leads to the application form.
     await user.goto(`${ec}/seller/application/status`);

@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ec, call, login, prepareMember, productInput, add, capture } from './business-helpers.js';
 import { replenishOrder, sql } from './database.js';
 import { eventFor, intentOf, signature, startStripeListener, stripeApi, stripeReady } from './stripe-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #132/#133: card payments and refunds against the real Stripe test mode, the real API and MySQL.
 // The API is never mocked: Stripe sends its events through `stripe listen` to the E2E API.
@@ -32,8 +33,8 @@ test.beforeAll(async ({ browser }) => {
   sellerContext = await browser.newContext();
   buyer = await buyerContext.newPage();
   seller = await sellerContext.newPage();
-  prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
-  prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+  prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
+  prepareMember(await login(buyer, USER_EMAIL), 'USER');
 });
 
 test.afterAll(async () => {

@@ -31,7 +31,9 @@ EC と Canvas のフォルダーで、それぞれ次の順に行う。PowerShel
 
 ### 権限の付け方（開発用）
 
-初期化の後は、どのアカウントも購入者（`USER`）として作られる。運営や店舗側として使うアカウントは、一度ログインしてから、EC のフォルダーで次を実行する（[会員の種別とロールの値](member-roles.md)）。
+テスト用アカウント9つ（`user01@example.com`・`admin01@example.com`・`owner01@example.com` など）は、`DB-reset.bat` と `setup.bat` が最後に会員と種別を入れるので、初期化の後すぐにそれぞれのロールでログインできる（[テスト用アカウントの作り直し](decisions/2026-11-15-test-accounts.md)、#157）。AWS の環境は要らない。パスワードは9つで共通で、管理者から別の経路で受け取る。
+
+それ以外のアカウントは、初めてログインしたときに購入者（`USER`）として作られる。運営や店舗側として使うときは、一度ログインしてから、EC のフォルダーで次を実行する（[会員の種別とロールの値](member-roles.md)）。
 
 - 運営：`powershell -ExecutionPolicy Bypass -File scripts\set-member-role.ps1 -Email <メールアドレス> -Role ADMIN`
 - サンプルの組織（店舗1〜3）のオーナー：`... -Role SHOP_OWNER -OrganizationId 1`

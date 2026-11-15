@@ -13,6 +13,7 @@ import {
   checkout,
 } from './business-helpers.js';
 import { sql } from './database.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/commission';
 const price = 3333;
@@ -42,10 +43,10 @@ test('sales pages show the stored commission and a closed store stays readable',
   const [owner, buyer, admin] = await Promise.all(contexts.map((context) => context.newPage()));
   let buyerMember;
   try {
-    prepareMember(await login(owner, 'test.seller@example.com'), 'SHOP_OWNER');
-    buyerMember = await login(buyer, 'test.user@example.com');
+    prepareMember(await login(owner, MANAGER_EMAIL), 'SHOP_OWNER');
+    buyerMember = await login(buyer, USER_EMAIL);
     prepareMember(buyerMember, 'USER');
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
 
     const storeName = `手数料確認店 ${randomUUID().slice(0, 6)}`;
     const storeId = await openStore(owner.request, storeName);

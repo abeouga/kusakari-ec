@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember, seedGardenPhoto } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: the garden belongs to the signed-in buyer (canvas#64), so the fixture is made through the real Canvas API
 // with that session. Canvas shows the 3D garden only after the garden's photo is confirmed (Canvas issue #15).
 async function fixture(page) {
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   const created = await call(
     page.request,
     '/gardens',

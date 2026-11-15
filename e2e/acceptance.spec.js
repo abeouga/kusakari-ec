@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { ec, canvas, login, call, seedGardenPhoto } from './business-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // This explicit acceptance run preserves its order and garden in the development DB.
 // If rerun after purchase, verify the recorded order; never submit a second purchase.
-// Issue #113 (DB v3): the olive is the sample product 'olive' of store 1. Before the run, test.user must be a buyer
-// (USER) and test.seller a staff member of store 1 in the development DB (scripts/set-member-role.ps1
-// -Role SHOP_STAFF -StoreId 1); fixtures cannot change that DB.
+// Issue #113 (DB v3): the olive is the sample product 'olive' of store 1. user01 (buyer) and manager01 (MANAGER of
+// store 1) are set up in the development DB by DB-reset.bat, setup.bat or scripts/set-test-accounts.ps1 (#157);
+// fixtures cannot change that DB.
 test('existing olive: seller publication, buyer placement and one retained pickup order', async ({ browser }) => {
   const buyerContext = await browser.newContext();
   const sellerContext = await browser.newContext();
@@ -15,8 +16,8 @@ test('existing olive: seller publication, buyer placement and one retained picku
   const evidence = 'artifacts/acceptance/purchase.json';
   try {
     await mkdir('artifacts/acceptance', { recursive: true });
-    await login(seller, 'test.seller@example.com');
-    await login(buyer, 'test.user@example.com');
+    await login(seller, MANAGER_EMAIL);
+    await login(buyer, USER_EMAIL);
     const products = await call(buyer.request, '/products?storeId=1').then((r) => r.json());
     const product = products.find((p) => p.id === 'olive');
     expect(product.name).toBe('オリーブ');
@@ -79,7 +80,7 @@ test('existing olive: seller publication, buyer placement and one retained picku
       saved = { orderId: order.id, gardenId, productId: product.id, before, after: before - 1, order };
       await writeFile(evidence, JSON.stringify(saved, null, 2));
     }
-    await login(buyer, 'test.user@example.com');
+    await login(buyer, USER_EMAIL);
     const stock = await call(buyer.request, '/products?storeId=1')
       .then((r) => r.json())
       .then((ps) => ps.find((p) => p.id === product.id).stock);

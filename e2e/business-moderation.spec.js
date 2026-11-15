@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { ec, call, login, prepareMember, productInput, add, openStore, capture } from './business-helpers.js';
 import { sql } from './database.js';
 import { e2eDatabasePort, importRuntimeTools } from '../scripts/runtime-tools.mjs';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #16: the operator warns a product or store before (or without) suspending it, through the real API, MySQL and
 // Cognito. Every store and product here is created by the test in the sample organization; sample data is untouched.
@@ -31,9 +32,9 @@ test.beforeAll(async ({ browser }) => {
   owner = await (await browser.newContext()).newPage();
   buyer = await (await browser.newContext()).newPage();
   admin = await (await browser.newContext()).newPage();
-  prepareMember(await login(owner, 'test.seller@example.com'), 'SHOP_OWNER');
-  prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
-  prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+  prepareMember(await login(owner, MANAGER_EMAIL), 'SHOP_OWNER');
+  prepareMember(await login(buyer, USER_EMAIL), 'USER');
+  prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
 });
 
 test.afterAll(async () => {
