@@ -14,7 +14,7 @@ Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニ�
 - **起動:** `start.bat` をダブルクリック
 - **停止:** `stop.bat` をダブルクリック
 
-初回は `setup.bat` で接続設定と依存を準備します。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは [他の PC の移行手順](docs/migration-other-pc.md) を参照してください（EC と Canvas の DB の初期化を含みます）。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
+初回は `setup.bat` で接続設定と依存を準備します。ほかの PC で実行するスクリプトと実行順は [ほかの PC で実行するスクリプトと実行順](docs/other-pc-scripts.md) にまとめています。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは [他の PC の移行手順](docs/migration-other-pc.md) を参照してください（EC と Canvas の DB の初期化を含みます）。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
 再実行時は、この作業フォルダから起動したWeb/APIを停止してから同じ5186/8086で作り直します。別のプロセスが固定ポートを使っている場合は停止せず、エラーにします。代替ポートへ移動しません。
 Javaや依存を更新した場合は、停止 → ビルド → 起動の順に実行します。
 
