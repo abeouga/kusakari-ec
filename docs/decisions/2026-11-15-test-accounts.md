@@ -11,7 +11,7 @@
 - User Pool に登録するスクリプト（kusakari-terraform の `scripts/register-test-users.py`）は v3 の前のテーブル（`auth_members`）に書き込む作りで、今の DB では動かない（abeouga/kusakari-terraform#1）。
 - EC（`frontend/src/App.jsx`）と Canvas（`frontend/src/components/SiteHeader.jsx`）のヘッダーは、運営画面へのリンクを「メールが `test.admin@example.com` で、種別が `ADMIN`」のときだけ出している。アカウントの名前を変えると、運営のアカウントでもリンクが出なくなる。
 
-2026-11-15 に、ユーザーが下の案で決めた（購入者の名前は `buyer01` ではなく `user01`、組織2はスクリプトで作る）。
+2026-11-15 に、ユーザーが下の案で決めた（購入者の名前は `buyer01` ではなく `user01`、組織2はスクリプトで作る）。2026-11-16 に、4 の会員の作り方を改めた（ほかの PC では AWS の環境もパスワードも要らず、スクリプトを実行するだけで Cognito でログインできる状態にする、というユーザーの指定）。
 
 ## Decision
 
@@ -87,30 +87,39 @@ flowchart LR
 
 ### 4. 各 PC の開発用 DB への種別の付け方
 
-EC のリポジトリに、テスト用アカウントの一覧を持つスクリプト（`scripts/set-test-accounts.ps1`）を作り、各 PC で1回実行すれば全員の種別がそろうようにする。kusakari-terraform の登録のスクリプトは User Pool への登録と削除だけを行い、EC の DB には書き込まない。
+EC のリポジトリに、テスト用アカウントの一覧を持つスクリプト（`scripts/set-test-accounts.ps1`）を作る。一覧には、9つのメールアドレス・表示名・種別とロールに加えて、User Pool の ID（`sub`）と発行元（`issuer`）を書いておく。スクリプトはこの一覧から会員を作り、種別とロールを付ける。AWS にも Cognito にも接続せず、パスワードも使わない。
 
-- 会員がまだない（そのアカウントでまだログインしていない）ときは、スクリプトが User Pool から ID（`sub`）を読み取り（`aws cognito-idp admin-get-user`、プロファイル `kusakari-dev`）、会員（`members`、メール確認済み）を先に作る。AWS の読み取り権限がない PC では、まだログインしていないアカウントを飛ばして一覧で知らせる（一度ログインしてから再実行すればそろう）。
+- `DB-reset.bat`（`scripts/reset-database-core.ps1`）と `setup.bat` は、開発用 DB の確認が終わった最後にこのスクリプトを実行する。DB を作り直すか、環境を作るだけで、9つのアカウントですぐに Cognito のログインができ、それぞれのロールの画面と認証の試験を確かめられる。スクリプトは単独でも実行できる。
+- EC の会員は、User Pool と ID（`issuer` と `subject`）で見分けている。一覧の ID で会員の行を先に作っておけば、初めてログインしたときに EC はその行をそのまま使う（`AuthService.provision`、#108）。
+- `.env` の `KUSAKARI_COGNITO_ISSUER` が一覧の `issuer` と違う PC（別の User Pool を使っている PC）では、何も変えずに知らせるだけにする。作り直しとセットアップは止めない。
+- ID は、kusakari-terraform の登録のスクリプトが登録した後に出力する。User Pool でアカウントを作り直すと ID が変わるので、そのときは一覧を直してコミットする。ID はログインに使えない識別子なので、公開のリポジトリに書いてよい（ユーザーの判断）。
+- ログインそのもの（画面と E2E）にはパスワードが要る。パスワードは今までどおり Git に入れず、kusakari-terraform の `.env.test-accounts`（`KUSAKARI_TEST_PASSWORD`）に置く。
 - 種別とロールの付け方は `scripts/set-member-role.ps1` を中で使い回す。`set-member-role.ps1` は、申請中（`-Role SHOP_OWNER_APPLICANT`）、ロールなし（`-StoreRole NONE`）、ORG_ADMIN（`-OrganizationAdmin`）を付けられるように直す。今の使い方（引数）は変えない。
 - 今と同じく、すでに別のオーナーがいる組織、別の組織の担当者、店舗側のアカウントから運営への変更は、変えずに止める。対象は開発用 DB（`kusakari`）だけで、E2E 用 DB（`kusakari_e2e`）は E2E が試験ごとに準備する。
 
 ```mermaid
 flowchart TB
-  subgraph TF["kusakari-terraform（全 PC 共通で1回）"]
-    REG["register-test-users.py<br/>9つを登録・確認済みにする"]
+  subgraph TF["この PC だけ（AWS の環境がある PC）"]
+    REG["register-test-users.py<br/>9つを登録し、ID（sub）を出力する"]
   end
   POOL[("User Pool<br/>kusakari-development")]
   REG --> POOL
+  REG -. ID を一覧に書いてコミット .-> LIST
 
   subgraph PC["各 PC（EC のリポジトリ）"]
-    SEED["set-test-accounts.ps1<br/>一覧を持ち、1回で全員に付ける<br/>組織2も作る"]
+    RESET["DB-reset.bat / setup.bat"]
+    SEED["set-test-accounts.ps1<br/>LIST：メール・ID・種別とロール<br/>組織2も作る"]
     ROLE["set-member-role.ps1<br/>申請中・ロールなし・ORG_ADMIN を追加"]
-    DB[("開発用 DB kusakari<br/>members / organizations /<br/>organization_members / store_members")]
+    DB[("開発用 DB kusakari")]
+    RESET -- 最後に実行 --> SEED
+    SEED -- 会員を作る --> DB
     SEED -- 中で使い回す --> ROLE
     ROLE --> DB
   end
+  LIST[["ID の一覧（スクリプトの中）"]]
+  LIST --- SEED
 
-  POOL -- sub を読み取るだけ --> SEED
-  SEED -- 会員がなければ先に作る --> DB
+  USER["ログインする人・E2E<br/>（パスワードだけ要る）"] -- Cognito でログイン --> POOL
 ```
 
 ### 5. 運営画面へのリンクの表示条件
@@ -129,8 +138,8 @@ EC と Canvas のヘッダーは、メールアドレスを見ずに、種別が
 
 ```mermaid
 flowchart TB
-  T1["1. kusakari-terraform#1：新しい9つを User Pool に登録<br/>（今の3つは残す）"]
-  T2["2. EC：set-test-accounts.ps1 と set-member-role.ps1 の修正、<br/>ヘッダーの表示条件、E2E と文書の切り替え"]
+  T1["1. kusakari-terraform#1：新しい9つを User Pool に登録し、ID を出力<br/>（今の3つは残す）"]
+  T2["2. EC：ID の一覧を持つ set-test-accounts.ps1、DB-reset と setup から実行、<br/>set-member-role.ps1 の修正、ヘッダーの表示条件、E2E と文書の切り替え"]
   T3["3. Canvas：E2E（e2e/auth-session.ts）、ヘッダーの表示条件、文書の切り替え"]
   T4["4. EC と Canvas の全 E2E と受け入れ試験が通ることを確かめる"]
   T5["5. kusakari-terraform#1：今の3つを User Pool から消す"]
@@ -149,12 +158,16 @@ flowchart TB
 - 組織2をサンプルデータ（`V2__sample_data.sql`）に足す：main に入った V2 を書き換えると全 PC で DB の作り直しが要り、マイグレーション（V4）で足すと本番相当のデータにテスト用の組織が入るため。
 - `set-member-role.ps1` を直して1つずつ実行する：9つを PC ごとに手で実行するのは手間で、付け方が PC ごとにずれやすいため、一覧を持つスクリプトにした（中では使い回す）。
 - kusakari-terraform の登録のスクリプトが DB の種別まで付ける（v3 の前の作りと同じ）：Cognito を扱うリポジトリが各 PC の EC の DB の構成に依存し、v3 の前のように DB の変更で動かなくなるため。
-- 9つすべてで一度ログインしてからスクリプトを実行する：PC ごとに9回ログインが要るため、AWS の読み取り権限がある PC では `sub` を読み取って会員を先に作る。権限がない PC だけ、この方法になる。
+- 9つすべてで一度ログインしてからスクリプトを実行する：PC ごとに9回ログインが要るため。
+- スクリプトが AWS（`aws cognito-idp admin-get-user`）で ID を読み取る（2026-11-15 の最初の決定）：ほかの PC にも AWS の環境と権限が要るため。
+- スクリプトがパスワードでログインして ID を読み取る：スクリプトにパスワードを渡す必要があり、パスワードのない PC では種別を付けられないため。
+- 会員をメールアドレスだけで先に作り、初めてログインしたときにメールアドレスで結び付ける：会員の見分け方（ログインの仕組み）を変えることになるため。
 - 運営画面へのリンクの条件を `admin01@example.com` に書き換える：アカウントを作り直すたびに画面のコードを直すことになるため。
 
 ## Consequences
 
-- 各 PC の作業：DB を初期化した後に `scripts/set-test-accounts.ps1` を1回実行すれば、9つの種別と組織2がそろう。AWS の読み取り権限がない PC では、まだログインしていないアカウントで一度ログインしてから再実行する。
+- 各 PC の作業：`DB-reset.bat` か `setup.bat` を実行すれば、9つの種別と組織2がそろう。AWS の環境もパスワードも要らない。ログインする人と E2E には、今までどおりパスワード（`.env.test-accounts`）が要る。
+- User Pool でテスト用アカウントを作り直したときは、ID が変わるので、スクリプトの一覧を直してコミットし、各 PC でスクリプトを実行し直す。
 - 組織2と店舗は、各 PC の開発用 DB にだけ作られる。E2E 用 DB とサンプルデータには入らない。
 - `applicant01` の申請は DB を初期化するまで1回だけ確かめられる。2回目以降は E2E か、DB の初期化が要る。
 - 運営画面へのリンクは、種別が `ADMIN` のアカウントならどのメールアドレスでも出るようになる。
