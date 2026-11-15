@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/canvas-cart-popup';
 
@@ -32,7 +33,7 @@ async function seedPhoto(page, garden) {
 // Issue #88: Canvas "リストを確認" opens the cart with the "add from garden" dialog instead of a garden-only list screen.
 test('Canvas list button opens the cart dialog for that garden and the added item persists', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  await login(page, 'test.user@example.com');
+  await login(page, USER_EMAIL);
   const beforeCart = await call(page.request, '/cart').then((r) => r.json());
   const products = await call(page.request, '/products').then((r) => r.json());
   const inCart = new Set(beforeCart.items.map((item) => item.product.id));

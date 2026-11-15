@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, login, call, prepareMember } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: the workspace needs a signed-in member, and each account sees only its own menus (#108). The seller and
 // operator sidebars (icons, folding) are covered by business-sidebar-collapse.spec.js; this file keeps the buyer side
@@ -12,7 +13,7 @@ test('buyer sidebar returns to the shop and keeps the account pages on desktop a
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir('artifacts/e2e', { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   const sidebar = page.locator('.workspace-sidebar');
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
@@ -47,8 +48,8 @@ test('buyer sidebar returns to the shop and keeps the account pages on desktop a
 
 test('removed seller and operator pages forward to the first page of each menu', async ({ page }) => {
   for (const [email, role, removed, first, title] of [
-    ['test.seller@example.com', 'SELLER', ['/seller', '/seller/messages'], '/seller/products', '商品管理'],
-    ['test.admin@example.com', 'ADMIN', ['/operator', '/operator/settlements'], '/operator/members', '会員管理'],
+    [MANAGER_EMAIL, 'SELLER', ['/seller', '/seller/messages'], '/seller/products', '商品管理'],
+    [ADMIN_EMAIL, 'ADMIN', ['/operator', '/operator/settlements'], '/operator/members', '会員管理'],
   ]) {
     prepareMember(await login(page, email), role);
     for (const path of removed) {

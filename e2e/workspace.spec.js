@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, login, prepareMember } from './business-helpers.js';
+import { ADMIN_EMAIL } from './test-accounts.js';
 
 // Issue #113: the workspace runs on real Cognito and MySQL; the demo screens with shared mock data are gone.
 
 test('operator category CRUD and responsive navigation', async ({ page }) => {
-  prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
+  prepareMember(await login(page, ADMIN_EMAIL), 'ADMIN');
   const name = `確認用カテゴリ${Date.now().toString(36)}`;
   await page.goto(`${ec}/operator/categories`);
   const main = page.locator('.workspace-main');
@@ -37,7 +38,7 @@ test('buyer, seller and operator routes render without script errors', async ({ 
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir('artifacts/e2e', { recursive: true });
   // The operator may open the buyer, seller and operator pages (#108); the seller pages act on the sample stores.
-  prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
+  prepareMember(await login(page, ADMIN_EMAIL), 'ADMIN');
   const routes = [
     '/account',
     '/notifications',

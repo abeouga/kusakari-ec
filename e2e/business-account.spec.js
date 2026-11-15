@@ -14,6 +14,7 @@ import {
   openStore,
 } from './business-helpers.js';
 import { sql } from './database.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -30,7 +31,7 @@ async function submitApplication(request, company) {
           JSON.stringify({
             company,
             contact: '退会検証',
-            email: 'test.seller@example.com',
+            email: MANAGER_EMAIL,
             address: '東京都 退会検証',
             phone: '0312345678',
           }),
@@ -51,7 +52,7 @@ test('EC-B21 withdrawal is refused while purchases, listings or store orders are
   try {
     const buyerMember = await login(buyer, buyerAccount.email, buyerAccount.secret);
     const sellerMember = await login(seller, sellerAccount.email, sellerAccount.secret);
-    prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
     // A dedicated store: an approved application makes the second account an owner, who then opens a store.
     // Only an account from the business sign-up applies, so the fixture marks it as one.
     prepareMember(sellerMember, 'SHOP_OWNER_APPLICANT');

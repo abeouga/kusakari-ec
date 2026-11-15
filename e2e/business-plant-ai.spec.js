@@ -2,6 +2,7 @@ import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -36,7 +37,7 @@ async function chooseCategory(page, form, category) {
 test('plant AI validates input and preserves form on missing credentials or disconnected API', async ({ page }) => {
   test.setTimeout(180000);
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   for (const invalid of [
     { ...input, heightCm: 3 },
     { ...input, extra: true },
@@ -126,7 +127,7 @@ test('plant AI real Luna infers photo features, supports undo and persists a ver
   test.skip(!live, 'Set KUSAKARI_EC_E2E_OPENAI_API_KEY to opt into two paid Luna requests.');
   test.setTimeout(300000);
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${ec}/seller/products/new`);
   const form = page.locator('.product-form');

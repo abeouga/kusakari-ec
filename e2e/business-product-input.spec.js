@@ -2,6 +2,7 @@ import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -11,7 +12,7 @@ test('product sliders preserve optional values, keyboard precision and persisted
   test.setTimeout(240000);
   const dir = 'artifacts/business/product-input';
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.goto(`${ec}/seller/products/new`);
   const form = page.locator('.product-form');
   for (const name of ['ageYears', 'modelHeight', 'potDiameterCm'])

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add } from './business-helpers.js';
 import { replenishOrder, sql } from './database.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -25,8 +26,8 @@ test('cart lines keep their own pickup store and checkout splits orders per stor
   buyer.on('pageerror', (error) => errors.push(error.message));
   let omiyaOrder;
   try {
-    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
     const input = productInput();
     const created = await call(seller.request, '/products', 'POST', input);
     expect(created.status(), await created.text()).toBe(200);

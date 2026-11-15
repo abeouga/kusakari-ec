@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ec, call, login, prepareMember, productInput, add, checkout, openStore, capture } from './business-helpers.js';
 import { sql } from './database.js';
 import { intentOf, startStripeListener, stripeApi, stripeReady } from './stripe-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #79 (store closure) and #109 (organization suspension) through the real API, MySQL, Cognito and Stripe test mode.
 // Every store and organization here is created by the test; the sample stores and organization are never closed.
@@ -29,9 +30,9 @@ test.beforeAll(async ({ browser }) => {
   owner = await (await browser.newContext()).newPage();
   buyer = await (await browser.newContext()).newPage();
   admin = await (await browser.newContext()).newPage();
-  prepareMember(await login(owner, 'test.seller@example.com'), 'SHOP_OWNER');
-  prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
-  prepareMember(await login(admin, 'test.admin@example.com'), 'ADMIN');
+  prepareMember(await login(owner, MANAGER_EMAIL), 'SHOP_OWNER');
+  prepareMember(await login(buyer, USER_EMAIL), 'USER');
+  prepareMember(await login(admin, ADMIN_EMAIL), 'ADMIN');
 });
 
 test.afterAll(async () => {

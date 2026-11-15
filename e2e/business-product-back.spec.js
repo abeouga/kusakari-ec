@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, capture, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -14,7 +15,7 @@ test('seller returns from product registration and product editing with the back
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const created = await call(page.request, '/products', 'POST', productInput());
   expect(created.status(), await created.text()).toBe(200);
   const product = await created.json();

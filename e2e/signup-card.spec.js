@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -35,7 +36,7 @@ test('sign-up opens inside the login card without leaving the page and reports r
   const email = card.getByLabel('メールアドレス', { exact: true });
   const password = card.getByLabel('パスワード（8文字以上）', { exact: true });
   const confirmPassword = card.getByLabel('パスワード（確認）', { exact: true });
-  await email.fill('test.user@example.com');
+  await email.fill(USER_EMAIL);
   await password.fill('signup-card-e2e-1');
   await confirmPassword.fill('signup-card-e2e-2');
   await card.getByRole('button', { name: '確認コードを送信', exact: true }).click();

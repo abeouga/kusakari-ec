@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -26,7 +27,7 @@ test('account header link is hidden for guests and visible after login in EC and
   await page.goto(canvas);
   await expect(page).toHaveURL(new RegExp(`${ec}/account/login\\?returnTo=`));
   await expect(account).toHaveCount(0);
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(USER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(canvas + '/');
@@ -63,12 +64,12 @@ test('custom EC login shares a real Cognito session with Canvas and redirects ag
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const missingCsrf = await page.request.post('/api/auth/login', {
-    data: { email: 'test.user@example.com', password },
+    data: { email: USER_EMAIL, password },
   });
   expect(missingCsrf.status()).toBe(403);
   await page.goto(canvas);
   await expect(page).toHaveURL(`${ec}/account/login?returnTo=${encodeURIComponent(canvas + '/')}`);
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(USER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill('deliberately-invalid');
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('メールアドレスまたはパスワードが正しくありません。');
@@ -81,7 +82,7 @@ test('custom EC login shares a real Cognito session with Canvas and redirects ag
   expect(after?.value).not.toBe(before);
   expect(after?.httpOnly).toBe(true);
   const me = await (await page.request.get(`${ec}/api/auth/me`)).json();
-  expect(me).toMatchObject({ authenticated: true, email: 'test.user@example.com', accountType: 'USER' });
+  expect(me).toMatchObject({ authenticated: true, email: USER_EMAIL, accountType: 'USER' });
   await page.reload();
   // Canvas shows 新しい庭をつくる as the first card's button in the garden list.
   await expect(page.getByRole('button', { name: '新しい庭をつくる', exact: true })).toBeVisible();
@@ -155,13 +156,13 @@ test('custom login rejects external return targets and preserves EC sessions aft
   await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '出店者', exact: true })).toHaveCount(0);
   await expect(page.locator('.kusakari-site-header').getByRole('link', { name: '管理者画面' })).toHaveCount(0);
   await page.goto('/account/login?returnTo=https%3A%2F%2Funtrusted.example%2F');
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.seller@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(MANAGER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(ec + '/');
   await page.reload();
   const me = await (await page.request.get('/api/auth/me')).json();
-  expect(me).toMatchObject({ authenticated: true, email: 'test.seller@example.com' });
+  expect(me).toMatchObject({ authenticated: true, email: MANAGER_EMAIL });
   for (const path of ['/', '/cart', '/account', '/seller']) {
     await page.goto(path);
     await expect(page.locator('.kusakari-site-header')).toBeVisible();
@@ -195,13 +196,13 @@ test('custom login rejects external return targets and preserves EC sessions aft
 
 test('only the designated admin sees the admin header link in EC and Canvas', async ({ page }) => {
   await page.goto('/account/login');
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.admin@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(ADMIN_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(ec + '/');
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
     authenticated: true,
-    email: 'test.admin@example.com',
+    email: ADMIN_EMAIL,
     accountType: 'ADMIN',
   });
   for (const url of [ec + '/', ec + '/account', ec + '/operator', canvas + '/']) {
@@ -221,13 +222,13 @@ test('only the designated admin sees the admin header link in EC and Canvas', as
 
 test('account entry from Canvas shows member settings without guest or technical menu items', async ({ page }) => {
   await page.goto('/account/login');
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(USER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
   await expect(page).toHaveURL(ec + '/');
   expect(await (await page.request.get('/api/auth/me')).json()).toMatchObject({
     authenticated: true,
-    email: 'test.user@example.com',
+    email: USER_EMAIL,
     accountType: 'USER',
   });
   for (const [name, url] of [

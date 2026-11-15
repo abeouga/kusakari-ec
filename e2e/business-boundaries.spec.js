@@ -2,15 +2,16 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add, checkout } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test('price changes, store suspension, private attachments and pickup cancellation race', async ({ browser }) => {
   const contexts = await Promise.all([browser.newContext(), browser.newContext(), browser.newContext()]);
   const [buyer, seller, admin] = await Promise.all(contexts.map((c) => c.newPage()));
   try {
     for (const [page, email, role] of [
-      [buyer, 'test.user@example.com', 'USER'],
-      [seller, 'test.seller@example.com', 'SELLER'],
-      [admin, 'test.admin@example.com', 'ADMIN'],
+      [buyer, USER_EMAIL, 'USER'],
+      [seller, MANAGER_EMAIL, 'SELLER'],
+      [admin, ADMIN_EMAIL, 'ADMIN'],
     ])
       prepareMember(await login(page, email), role);
     const input = productInput();
@@ -103,8 +104,8 @@ test('pickup status changes are confirmed, cancellable and show the latest order
   const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
   const [buyer, seller] = await Promise.all(contexts.map((c) => c.newPage()));
   try {
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
-    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
+    prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
     const created = await call(seller.request, '/products', 'POST', productInput());
     expect(created.status(), await created.text()).toBe(200);
     await add(buyer.request, (await created.json()).id);

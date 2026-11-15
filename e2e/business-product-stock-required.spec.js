@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, capture, login, prepareMember, productInput } from './business-helpers.js';
 import { sql } from './database.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -38,7 +39,7 @@ test('new product stock must be 1 or more in the wizard and the API, and only re
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${ec}/seller/products/new`);
   await page.reload();

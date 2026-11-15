@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add, checkout } from './business-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -10,8 +11,8 @@ test('header order history opens account order cards with thumbnails and a cance
   const buyer = await buyerContext.newPage();
   const seller = await sellerContext.newPage();
   try {
-    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
     const input = productInput();
     const created = await call(seller.request, '/products', 'POST', input);
     expect(created.status(), await created.text()).toBe(200);
