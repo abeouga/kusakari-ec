@@ -4,7 +4,7 @@
 
 店舗側アカウントの作り直し（#103）で、EC の DB は新しい構成（v3、Flyway の `V1__schema.sql` から）に置き換わった。旧構成（V1〜V15）の DB を持つ PC では、新しい main を取得しただけでは API が起動しない（Flyway の履歴が合わない）。既存のデータは移行しない（#102 決定事項2）ので、EC と Canvas の DB を初期化して作り直す。
 
-初期化のスクリプト（EC の `DB-reset.bat`、Canvas の `DB-reset.bat`）はそれぞれの文書（[EC](database-reset.md)、Canvas の `docs/database-reset.md`）にある。この文書は、他の PC が両方を正しい順番で行い、使える状態に戻すまでの手順をまとめる。
+ほかの PC で実行するスクリプトの一覧と実行順の図は [ほかの PC で実行するスクリプトと実行順](other-pc-scripts.md) にある。初期化のスクリプト（EC の `DB-reset.bat`、Canvas の `DB-reset.bat`）はそれぞれの文書（[EC](database-reset.md)、Canvas の `docs/database-reset.md`）にある。この文書は、他の PC が両方を正しい順番で行い、使える状態に戻すまでの手順をまとめる。
 
 ## Decision
 
@@ -19,7 +19,7 @@
 
 EC と Canvas のフォルダーで、それぞれ次の順に行う。PowerShell は EC・Canvas のフォルダーで開く。
 
-1. 両方の `stop.bat` で、Web と API を止める
+1. EC の `stop.bat` で Web と API を止める。Canvas は `start.bat` の画面で Ctrl+C を押して止める（Canvas には `stop.bat` がない）
 2. 両方で `git fetch origin` し、`main` を取得する（`git switch main` → `git pull`）。自分の変更があるときは、先にコミットするか退避する
 3. EC で依存を入れ直す：`npm install`。**`npm ci` は使わない**（Windows で `frontend` のソースを消したことがある）
 4. EC で API を作り直す：`npm run build:api`。初期化の後の確認は、このフォルダーの API の JAR でテーブルを作るため、古い JAR のままにしない
