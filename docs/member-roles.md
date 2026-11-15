@@ -20,6 +20,7 @@
   - `-Role ADMIN`：購入者を運営にします。
   - `-Role SHOP_OWNER -OrganizationId 1`：オーナーのいない組織（DBの初期化後のサンプルの組織）のオーナーにします。
   - `-Role SHOP_STAFF -StoreId 1 [-StoreRole MANAGER|STAFF]`：その店舗の担当者にします。
+- テスト用アカウント（`user01@example.com` など9つ）の一覧と、各 PC の DB に全員の種別を1回で付ける方法は [テスト用アカウントの作り直し](decisions/2026-11-15-test-accounts.md)（#156）で決めました。スクリプトの実装は #157 で行います。
 
 ## Alternatives
 
