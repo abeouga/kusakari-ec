@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -13,7 +14,7 @@ test('product images persist after editing and removed guidance is unavailable',
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.goto(`${ec}/seller/products/new`);
   const form = page.locator('.product-form');
   const name = `商品画像検証用植物 ${Date.now()}`;
@@ -133,7 +134,7 @@ test('product images persist after editing and removed guidance is unavailable',
 });
 
 test('product image API rejects unsupported files, oversized uploads and foreign origins', async ({ page }) => {
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const csrf = await page.request.get(`${ec}/api/auth/csrf`).then((r) => r.json());
   const upload = (file, extra = {}) =>
     page.request.post(`${ec}/api/product-images`, {

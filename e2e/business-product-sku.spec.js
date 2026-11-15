@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -12,7 +13,7 @@ const assigned = /^KS-\d{8}-[2-9A-HJ-NP-Z]{6}$/;
 test('product number is assigned on registration and kept on edit', async ({ page }) => {
   const dir = 'artifacts/business/product-sku';
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.goto(`${ec}/seller/products/new`);
   const form = page.locator('.product-form');
   await form.getByRole('button', { name: '次へ', exact: true }).click();

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -23,7 +24,7 @@ test('review step shows the product like its card with the 3D preview at 1440px 
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const saved = [];
 
   for (const width of [1440, 390]) {

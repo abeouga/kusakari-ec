@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -8,7 +9,7 @@ test.use({ trace: 'off' });
 test('account settings have no address management and the other settings still open', async ({ page }) => {
   const dir = 'artifacts/business/account-no-address';
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   await page.goto(`${ec}/account`);
   await page.reload();
   const settings = page.locator('.workspace-sidebar').getByRole('navigation', { name: 'アカウント設定', exact: true });

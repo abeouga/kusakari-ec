@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, capture, login, prepareMember } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -23,7 +24,7 @@ const operatorMenu = ['会員管理', '商品管理', 'カテゴリ管理', '出
 for (const [role, email, group, labels, entry, start, startTitle, next, title] of [
   [
     'SELLER',
-    'test.seller@example.com',
+    MANAGER_EMAIL,
     '出店者メニュー',
     sellerMenu,
     '/seller',
@@ -34,7 +35,7 @@ for (const [role, email, group, labels, entry, start, startTitle, next, title] o
   ],
   [
     'ADMIN',
-    'test.admin@example.com',
+    ADMIN_EMAIL,
     '運営者メニュー',
     operatorMenu,
     '/operator',

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { sql, removeScarceProduct } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: a product belongs to one store and has one inventory row (v3, #110). The seller is the MANAGER of sample
 // store 1 ('SELLER'); the buyer is the test buyer. Both sign in with real Cognito.
@@ -60,7 +61,7 @@ test('seller table search, sorting, pagination and bulk actions persist', async 
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
-    prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+    prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
     await page.goto(`${ec}/seller/products`);
     await page.getByRole('searchbox', { name: '商品検索', exact: true }).fill(prefix);
     const rows = page.locator('.seller-product-table tbody tr');
@@ -161,8 +162,8 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
   browser,
 }) => {
   const { ids } = fixtures(3);
-  const seller = await member(browser, 'test.seller@example.com', 'SELLER');
-  const buyer = await member(browser, 'test.user@example.com', 'USER');
+  const seller = await member(browser, MANAGER_EMAIL, 'SELLER');
+  const buyer = await member(browser, USER_EMAIL, 'USER');
   try {
     const empty = await call(buyer.request, '/cart').then((r) => r.json());
     const cart = await call(buyer.request, `/cart/items/${ids[0]}`, 'PUT', {
@@ -228,8 +229,8 @@ test('store status enforces atomic batches, cart and Canvas availability, and pr
 test('checkout and visibility changes serialize on store inventory', async ({ browser }) => {
   test.setTimeout(120000);
   const { ids } = fixtures(3);
-  const seller = await member(browser, 'test.seller@example.com', 'SELLER');
-  const buyer = await member(browser, 'test.user@example.com', 'USER');
+  const seller = await member(browser, MANAGER_EMAIL, 'SELLER');
+  const buyer = await member(browser, USER_EMAIL, 'USER');
   try {
     for (const id of ids) {
       const empty = await call(buyer.request, '/cart').then((r) => r.json());
@@ -263,7 +264,7 @@ test('product management edits stock and visibility of the chosen store', async 
   test.setTimeout(90000);
   const { ids } = fixtures(1);
   try {
-    prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+    prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
     await page.goto(`${ec}/seller/products`);
     await expect(page.getByRole('link', { name: '在庫', exact: true })).toHaveCount(0);
     await page.getByLabel('商品検索').fill(ids[0]);

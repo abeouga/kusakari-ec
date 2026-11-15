@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -52,7 +53,7 @@ test('garden step previews automatically, guides required input and saves groupe
   page.on('request', (r) => {
     if (r.resourceType() === 'document' && r.url().includes('/model-preview')) loads.push(r.url());
   });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const saved = [];
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -236,7 +237,7 @@ test('editing keeps every saved plant value and products without a garden object
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const base = productInput();
   const profile = {
     ...base.plantModelProfile,
@@ -320,7 +321,7 @@ test('non-plant category keeps only the product height and saves no plant model'
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const category = '鉢・庭材';
   expect(await (await call(page.request, '/categories')).json()).toContain(category);
   const read = async (id) => (await (await call(page.request, '/products?storeId=1')).json()).find((p) => p.id === id);

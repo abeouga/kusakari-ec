@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput } from './business-helpers.js';
 import { addImages } from './product-images.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -33,7 +34,7 @@ test('product wizard registers through the progress bar, dialogs and image step 
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   // An administrator manages every store, published or not, so the map shows several pins.
-  prepareMember(await login(page, 'test.admin@example.com'), 'ADMIN');
+  prepareMember(await login(page, ADMIN_EMAIL), 'ADMIN');
   // The managed list has no positions; the public list of open stores supplies them, as the screen does.
   const open = await (await call(page.request, '/stores')).json();
   const stores = (await (await call(page.request, '/seller/stores')).json()).map((store) => ({
@@ -288,7 +289,7 @@ test('Esc in the category dialog keeps the product manager dialog open while edi
   await mkdir(dir, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const input = productInput();
   const created = await call(page.request, '/products', 'POST', input);
   expect(created.status(), await created.text()).toBe(200);

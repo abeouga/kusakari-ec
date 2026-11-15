@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -9,7 +10,7 @@ test.use({ trace: 'off' });
 test('product form fields are left aligned and checkboxes keep their size', async ({ page }) => {
   const dir = 'artifacts/business/product-form-alignment';
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   await page.goto(`${ec}/seller/products/new`);
   await page.reload();
   const form = page.locator('.product-form');

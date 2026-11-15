@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember, seedGardenPhoto } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: Canvas and the cart are for a signed-in buyer (canvas#64, #108); the garden is saved by the real Canvas API.
 test('EC to Canvas to project shopping list to selected purchase and persisted cart', async ({ page }) => {
   let id;
   try {
-    prepareMember(await login(page, 'test.user@example.com'), 'USER');
+    prepareMember(await login(page, USER_EMAIL), 'USER');
     await page.goto(`${ec}/`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('link', { name: /Canvasでお気に入りの植物を探す/ }).click();
     await expect(page).toHaveURL(`${canvas}/`);

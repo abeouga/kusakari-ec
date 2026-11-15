@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add, checkout } from './business-helpers.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -23,8 +24,8 @@ test('seller sales page counts pending and approved cancellations', async ({ bro
   const dir = 'artifacts/business/sales-cancellation';
   await mkdir(dir, { recursive: true });
   try {
-    prepareMember(await login(seller, 'test.seller@example.com'), 'SELLER');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(seller, MANAGER_EMAIL), 'SELLER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
     const created = await call(seller.request, '/products', 'POST', productInput());
     expect(created.status(), await created.text()).toBe(200);
     await add(buyer.request, (await created.json()).id, 1);

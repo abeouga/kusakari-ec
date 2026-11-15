@@ -2,6 +2,7 @@ import { addImages } from './product-images.js';
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -19,7 +20,7 @@ test('product wizard navigation, validation, responsive screenshots and edit tab
     if (r.url().endsWith('/api/products') && r.method() === 'POST') writes++;
   });
   page.on('pageerror', (error) => errors.push(error.message));
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     const beforeWrites = writes;

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, login, call } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/materials-removed';
 
@@ -9,7 +10,7 @@ test('top page and /materials no longer show the material JSON screen', async ({
   await mkdir(evidence, { recursive: true });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await login(page, 'test.user@example.com');
+  await login(page, USER_EMAIL);
   await page.goto(`${ec}/`);
   await expect(page.getByTestId('product-olive')).toBeVisible();
   await page.reload();

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, capture, login, prepareMember } from './business-helpers.js';
+import { MANAGER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -11,7 +12,7 @@ test('seller screen opens on product management without a dashboard', async ({ p
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir(dir, { recursive: true });
-  prepareMember(await login(page, 'test.seller@example.com'), 'SELLER');
+  prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
   const sidebar = page.locator('.workspace-sidebar');
   const nav = sidebar.getByRole('navigation', { name: '出店者メニュー', exact: true });
   const heading = page.locator('.workspace-main h1');

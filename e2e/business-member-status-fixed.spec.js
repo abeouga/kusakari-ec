@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { ec, call, login, prepareMember, capture } from './business-helpers.js';
 import { sql } from './database.js';
+import { ADMIN_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'retain-on-failure' });
 
@@ -23,14 +24,14 @@ function createWithdrawnMember() {
 test('EC-A02 administrators and withdrawn members show why their status cannot change', async ({ page }) => {
   const dir = 'artifacts/business/member-status-fixed';
   await mkdir(dir, { recursive: true });
-  const admin = await login(page, 'test.admin@example.com');
+  const admin = await login(page, ADMIN_EMAIL);
   prepareMember(admin, 'ADMIN');
   const withdrawn = createWithdrawnMember();
   const message = '管理者または退会済み会員の状態は変更できません。';
   const confirmStatus = page.getByRole('alertdialog', { name: '利用状況変更の確認' });
   const search = page.getByLabel('名前・メール検索');
   const cases = [
-    { email: 'test.admin@example.com', id: admin.id, button: '利用を停止', confirm: '利用停止を確定', state: '利用中' },
+    { email: ADMIN_EMAIL, id: admin.id, button: '利用を停止', confirm: '利用停止を確定', state: '利用中' },
     { email: withdrawn.email, id: withdrawn.id, button: '利用を再開', confirm: '利用再開を確定', state: '退会済み' },
   ];
 

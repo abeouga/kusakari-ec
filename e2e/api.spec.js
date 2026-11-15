@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createScarceProduct, removeScarceProduct, replenishOrder, sql } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
+import { ADMIN_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: the cart and orders belong to a signed-in buyer (#10), mutations carry the CSRF token, and an order is
 // paid at the store unless a card is chosen (#131). The two buyers are the test buyer and the operator (#108).
@@ -24,8 +25,8 @@ const order = (request, cart, expectedTotalYen = cart.totalYen, requestId = rand
   });
 
 test('API validation, cart revision conflict, price confirmation and session isolation', async ({ browser }) => {
-  const a = await buyer(browser, 'test.user@example.com', 'USER');
-  const b = await buyer(browser, 'test.admin@example.com', 'ADMIN');
+  const a = await buyer(browser, USER_EMAIL, 'USER');
+  const b = await buyer(browser, ADMIN_EMAIL, 'ADMIN');
   try {
     let cart = await call(a.request, '/cart').then((r) => r.json());
     const put = (data) => call(a.request, '/cart/items/olive', 'PUT', data);
@@ -82,7 +83,7 @@ test('API validation, cart revision conflict, price confirmation and session iso
 });
 
 test('same checkout key returns one persisted order and decrements stock once', async ({ browser }) => {
-  const a = await buyer(browser, 'test.user@example.com', 'USER');
+  const a = await buyer(browser, USER_EMAIL, 'USER');
   let first;
   try {
     const stock = async () =>
@@ -117,8 +118,8 @@ test('same checkout key returns one persisted order and decrements stock once', 
 test('two buyers competing for the last unit cannot oversell', async ({ browser }) => {
   const productId = createScarceProduct();
   const buyers = [
-    await buyer(browser, 'test.user@example.com', 'USER'),
-    await buyer(browser, 'test.admin@example.com', 'ADMIN'),
+    await buyer(browser, USER_EMAIL, 'USER'),
+    await buyer(browser, ADMIN_EMAIL, 'ADMIN'),
   ];
   try {
     const carts = await Promise.all(

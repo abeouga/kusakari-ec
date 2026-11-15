@@ -60,7 +60,7 @@ ECルートで`.\start.bat`、別ウィンドウでCanvasルートの`.\start.ba
 - Canvas: http://127.0.0.1:5173/
 - API疎通: http://127.0.0.1:8086/api/health / http://127.0.0.1:8080/health/ready
 
-ブラウザーの「ログイン」からCognitoへ進み、既存のテストアカウントまたはメール確認済みの利用者でログインします。テストアカウントは`test.user@example.com`と`test.seller@example.com`です。パスワードは管理者から別の経路で受け取り、リポジトリには記載しません。
+ブラウザーの「ログイン」からCognitoへ進み、既存のテストアカウントまたはメール確認済みの利用者でログインします。テストアカウントは`user01@example.com`など9つです（次の節）。パスワードは9つで共通で、管理者から別の経路で受け取り、リポジトリには記載しません。
 
 両画面は必ず`127.0.0.1`で開きます。`localhost`やPC名と混在させないでください。ポート5186/8086/5173/8080が使用中なら競合を解消します。CognitoのCallbackはポートまで一致する必要があるため、別ポートへの自動退避やLAN公開はこの設定では利用しません。
 
@@ -68,19 +68,31 @@ ECルートで`.\start.bat`、別ウィンドウでCanvasルートの`.\start.ba
 
 Cognitoの利用者は共通ですが、会員の種別はECの`members.account_type`に保存され、PCごと・DBごと（開発`kusakari`、E2E`kusakari_e2e`）に別です。初回ログインでは必ず購入者（`USER`）として作られます。別PCの権限、既存の庭や商品は自動同期されません。
 
-通常の出店は、新規登録で「企業様向け」を選ぶ → 出店申請 → 運営の承認 → オーナーが店舗を作成、の順です。開発では、DBの初期化後に入っているサンプルの組織（ID 1、オーナーなし、店舗3つ）を次の手順で操作できるようにします。
+通常の出店は、新規登録で「企業様向け」を選ぶ → 出店申請 → 運営の承認 → オーナーが店舗を作成、の順です。
 
-1. ECを`.\start.bat`で起動し、`test.seller@example.com`と`test.admin@example.com`でそれぞれ一度ログインしてからログアウトします。
-2. ECルートのPowerShellで次を実行します。E2E用DBにも設定する場合は、同じコマンドに`-Database kusakari_e2e`を付けて実行します。
+開発用のテストアカウント9つは、`setup.bat`と`DB-reset.bat`が最後に開発用DB（`kusakari`）へ会員と種別を入れるので、何もしなくてもすぐにログインでき、それぞれのロールの画面になります（[テスト用アカウントの作り直し](decisions/2026-11-15-test-accounts.md)、#157）。AWSの環境もパスワードも要りません。DBを作り直さずにそろえ直すときは、ECルートで`powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-test-accounts.ps1`を実行します。
 
-   ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email test.seller@example.com -Role SHOP_OWNER -OrganizationId 1
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email test.admin@example.com -Role ADMIN
-   ```
+| アカウント | 種別とロール |
+|---|---|
+| user01@example.com | 購入者（USER） |
+| admin01@example.com | 運営（ADMIN） |
+| owner01@example.com | サンプルの組織（ID 1、店舗1〜3）のオーナー |
+| orgadmin01@example.com | サンプルの組織の ORG_ADMIN、店舗2の MANAGER |
+| manager01@example.com | 店舗1の MANAGER |
+| staff01@example.com | 店舗1の STAFF |
+| unassigned01@example.com | 店舗1の担当でロールなし |
+| applicant01@example.com | 申請中（SHOP_OWNER_APPLICANT） |
+| owner02@example.com | テスト組織2（非公開の店舗1つ）のオーナー |
 
-3. ECの画面を再読み込みし、`http://127.0.0.1:5186/api/auth/me`が`accountType: SHOP_OWNER`、`organizationId: 1`、`storeIds: [1, 2, 3]`を返すことを確認します。再ログインは不要です。
+テストアカウント以外の会員の種別を開発用に変えるときは、一度ログインしてから、ECルートのPowerShellで次のように実行します。E2E用DBに設定する場合は`-Database kusakari_e2e`を付けます。
 
-店舗の担当者として試すときは、`-Role SHOP_STAFF -StoreId 1 -StoreRole MANAGER`（または`STAFF`）を使います。
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email <メールアドレス> -Role ADMIN
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email <メールアドレス> -Role SHOP_OWNER -OrganizationId 1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps1 -Email <メールアドレス> -Role SHOP_STAFF -StoreId 1 -StoreRole MANAGER
+```
+
+`-StoreRole`は`MANAGER`・`STAFF`・`NONE`（ロールなし）、組織のORG_ADMINにするときは`-OrganizationAdmin`、申請中にするときは`-Role SHOP_OWNER_APPLICANT`です。ECの画面を再読み込みすると反映され、再ログインは不要です。
 
 スクリプトは`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。MySQLクライアントやrootパスワードは不要です。未ログイン、利用停止中・退会済み、存在しない組織・店舗、すでにオーナーのいる組織、店舗側のアカウントから`ADMIN`への変更は、変更せずに停止します。
 

@@ -6,6 +6,8 @@
 . "$PSScriptRoot\common.ps1"
 . "$PSScriptRoot\database.ps1"
 . "$PSScriptRoot\database-verify.ps1"
+. "$PSScriptRoot\member-role.ps1"
+. "$PSScriptRoot\set-test-accounts.ps1"
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 Set-Location $projectRoot
 $lock = $null
@@ -28,5 +30,7 @@ try {
     }
     # Exercise Spring/Flyway for both DBs; never reset application data.
     Invoke-SchemaVerification
+    # Test accounts can log in right away (#157). A failure here leaves the verified database as it is.
+    try { Set-TestAccounts } catch { Write-Host "テスト用アカウントをそろえられませんでした: $($_.Exception.Message)" }
     Write-Host 'セットアップが完了しました。start.batで起動してください。'
 } finally { if ($lock) { $lock.Dispose() } }

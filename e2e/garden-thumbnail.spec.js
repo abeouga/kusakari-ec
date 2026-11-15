@@ -2,10 +2,11 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: the garden and its thumbnails belong to the signed-in buyer, so every Canvas call carries the session.
 test('thumbnail prefers newest saved image, falls back after deletion and rejects stale captures', async ({ page }) => {
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   /** @param {string} path @param {string} [method] @param {any} [data] */
   const canvasApi = (path, method = 'GET', data = undefined) => call(page.request, path, method, data, canvas);
   const garden = await canvasApi('/gardens', 'POST', { name: 'サムネイル検証-' + randomUUID().slice(0, 8) }).then((r) =>

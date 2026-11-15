@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createScarceProduct, removeScarceProduct, replenishOrder, sql } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 // Issue #113: a cart needs a signed-in buyer (#10), the pickup store is the product's store (#70, #119), and the
 // order is paid at the store unless a card is chosen (#131).
 async function buyer(page) {
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   await page.goto(`${ec}/`);
 }
 

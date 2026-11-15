@@ -105,9 +105,7 @@ export default function App() {
           activeSection={path === '/' ? 'plants' : ''}
           cartCount={canBuy ? itemCount : null}
           authenticated={session?.authenticated ?? false}
-          showAdmin={
-            session?.authenticated && session.email === 'test.admin@example.com' && session.accountType === 'ADMIN'
-          }
+          showAdmin={session?.authenticated && session.accountType === 'ADMIN'}
           showSeller={canSell(session)}
           onPanel={openHeaderPanel}
           onNavigate={navigateFromHeader}

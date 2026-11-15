@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { replenishOrder, sql } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
+import { ADMIN_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 // The product CRUD scenario moved to business-product-crud.spec.js (signed-in seller, issue #46).
 // Issue #113: purchases are picked up at the product's store without shipping (#11, #70), so the buyer keeps only an
@@ -26,7 +27,7 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
   let checkoutBody;
   const otherContext = await browser.newContext();
   try {
-    prepareMember(await login(page, 'test.user@example.com'), 'USER');
+    prepareMember(await login(page, USER_EMAIL), 'USER');
     await saveContact(page, 'デモ受取者');
     await page.reload();
     await expect(page.getByLabel('受取人', { exact: true })).toHaveValue('デモ受取者');
@@ -74,7 +75,7 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
 
     // Another member cannot read, edit or hide this order.
     const other = await otherContext.newPage();
-    prepareMember(await login(other, 'test.admin@example.com'), 'ADMIN');
+    prepareMember(await login(other, ADMIN_EMAIL), 'ADMIN');
     const details = {
       recipientName: updated.details.recipientName,
       recipientPhone: updated.details.recipientPhone,
@@ -123,7 +124,7 @@ test('pickup contact CRUD, order snapshot edit and history hiding are persisted 
 
 test('mobile detail and pickup contact form fit the screen and survive reload', async ({ page }) => {
   await mkdir('artifacts/e2e', { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${ec}/`);
   await expect(page.getByTestId('product-olive')).toBeVisible();

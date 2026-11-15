@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember, seedGardenPhoto } from './business-helpers.js';
+import { USER_EMAIL } from './test-accounts.js';
 
 const ids = ['silver-tree', 'conifer', 'round-shrub', 'herb-shrub', 'pink-flower', 'white-flower'].map(
   (id) => 'garden-demo-' + id,
@@ -14,7 +15,7 @@ test('seeded products render, drag, persist and transfer from the garden list to
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir(evidence, { recursive: true });
-  prepareMember(await login(page, 'test.user@example.com'), 'USER');
+  prepareMember(await login(page, USER_EMAIL), 'USER');
   const products = await call(page.request, '/products?storeId=3').then((r) => r.json());
   const added = products.filter((p) => ids.includes(p.id));
   expect(added).toHaveLength(6);

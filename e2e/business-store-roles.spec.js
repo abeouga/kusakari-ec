@@ -14,6 +14,7 @@ import {
   deletePasswordTestAccount,
 } from './business-helpers.js';
 import { sql } from './database.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/invitations';
 
@@ -56,7 +57,7 @@ test('account list scope and role assignment permissions', async ({ browser }) =
   await mkdir(evidence, { recursive: true });
   const context = await browser.newContext();
   const seller = await context.newPage();
-  const manager = await login(seller, 'test.seller@example.com');
+  const manager = await login(seller, MANAGER_EMAIL);
   prepareMember(manager, 'SELLER');
   const [owner, staff, otherStaff, admin] = await temporaryAccounts(browser, 4);
   try {
@@ -162,7 +163,7 @@ test('account list scope and role assignment permissions', async ({ browser }) =
 // Issue #112: switching the store shows that store's products; the choice survives a reload.
 test('store switching shows each store products and survives a reload', async ({ page }) => {
   await mkdir(evidence, { recursive: true });
-  const manager = await login(page, 'test.seller@example.com');
+  const manager = await login(page, MANAGER_EMAIL);
   prepareStaff(manager, { 1: 'MANAGER', 2: 'MANAGER' });
   const created = [];
   try {
@@ -214,9 +215,9 @@ test('store staff share products, orders and notices; roles limit what each acco
   await mkdir(evidence, { recursive: true });
   const contexts = await Promise.all([1, 2].map(() => browser.newContext()));
   const [seller, buyer] = await Promise.all(contexts.map((c) => c.newPage()));
-  const manager = await login(seller, 'test.seller@example.com');
+  const manager = await login(seller, MANAGER_EMAIL);
   prepareMember(manager, 'SELLER');
-  prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+  prepareMember(await login(buyer, USER_EMAIL), 'USER');
   const [staff, otherStaff, owner] = await temporaryAccounts(browser, 3);
   // #108: like a Cognito user left after a database reset, an account without a member gets one (USER) at first login.
   expect(staff.membersBefore).toBe(0);

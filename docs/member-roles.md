@@ -19,8 +19,9 @@
 - 開発用に種別を直接付け替えるときは`scripts/set-member-role.ps1`を使います。`.env`のDB接続と`KUSAKARI_COGNITO_ISSUER`を使い、そのUser Poolでログイン済みの有効な会員1件だけを変更します。
   - `-Role ADMIN`：購入者を運営にします。
   - `-Role SHOP_OWNER -OrganizationId 1`：オーナーのいない組織（DBの初期化後のサンプルの組織）のオーナーにします。
-  - `-Role SHOP_STAFF -StoreId 1 [-StoreRole MANAGER|STAFF]`：その店舗の担当者にします。
-- テスト用アカウント（`user01@example.com` など9つ）の一覧と、各 PC の DB に全員の種別を1回で付ける方法は [テスト用アカウントの作り直し](decisions/2026-11-15-test-accounts.md)（#156）で決めました。スクリプトの実装は #157 で行います。
+  - `-Role SHOP_STAFF -StoreId 1 [-StoreRole MANAGER|STAFF|NONE] [-OrganizationAdmin]`：その店舗の担当者にします。`NONE` はロールなし、`-OrganizationAdmin` は組織の ORG_ADMIN です。
+  - `-Role SHOP_OWNER_APPLICANT`：購入者を申請中にします。
+- テスト用アカウント（`user01@example.com` など9つ）の一覧と、各 PC の DB に全員の種別を1回で付ける方法は [テスト用アカウントの作り直し](decisions/2026-11-15-test-accounts.md)（#156）で決めました。`DB-reset.bat` と `setup.bat` が最後に `scripts/set-test-accounts.ps1` を実行し、9つの会員と種別、テスト組織2を開発用 DB に入れます（#157）。会員はスクリプトに書いた User Pool の ID（`sub`）で作るので、AWS もパスワードも使いません。
 
 ## Alternatives
 

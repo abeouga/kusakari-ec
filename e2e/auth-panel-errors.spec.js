@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -19,7 +20,7 @@ function password() {
 
 /** @param {import('@playwright/test').Page} page @param {string} secret */
 async function submitLogin(page, secret) {
-  await page.getByLabel('メールアドレス', { exact: true }).fill('test.user@example.com');
+  await page.getByLabel('メールアドレス', { exact: true }).fill(USER_EMAIL);
   await page.getByLabel('パスワード', { exact: true }).fill(secret);
   await page.getByRole('button', { name: 'ログイン', exact: true }).click();
 }

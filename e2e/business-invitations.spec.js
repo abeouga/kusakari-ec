@@ -14,6 +14,7 @@ import {
   deletePasswordTestAccount,
 } from './business-helpers.js';
 import { sql } from './database.js';
+import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/invitations';
 
@@ -46,7 +47,7 @@ test('invitation keys register unassigned staff and a MANAGER assigns STAFF', as
   const contexts = await Promise.all([1, 2, 3, 4].map(() => browser.newContext()));
   const [seller, invitee, other, buyer] = await Promise.all(contexts.map((c) => c.newPage()));
   const registered = /** @type {string[]} */ ([]);
-  const manager = await login(seller, 'test.seller@example.com');
+  const manager = await login(seller, MANAGER_EMAIL);
   prepareMember(manager, 'SELLER');
   let product = null;
   try {
@@ -137,10 +138,10 @@ test('invitation keys register unassigned staff and a MANAGER assigns STAFF', as
     await other.screenshot({ path: `${evidence}/revoked-key.png`, fullPage: true });
 
     // An existing buyer cannot join with a key: the address is already registered, and a signed-in buyer is told so.
-    const existing = await signUpWithKey(other.request, 'test.user@example.com', password, multi.key);
+    const existing = await signUpWithKey(other.request, USER_EMAIL, password, multi.key);
     expect(existing.status()).toBe(409);
     expect((await existing.json()).code).toBe('EMAIL_IN_USE');
-    prepareMember(await login(buyer, 'test.user@example.com'), 'USER');
+    prepareMember(await login(buyer, USER_EMAIL), 'USER');
     await buyer.goto(`${ec}/account/login?invite=${multi.key}`);
     await expect(buyer.getByRole('alert')).toContainText('招待キーは新規登録のときだけ使えます');
 

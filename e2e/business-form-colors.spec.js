@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, call, login, prepareMember, productInput, add } from './business-helpers.js';
+import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 
 test.use({ trace: 'off' });
 
@@ -123,9 +124,9 @@ test('login, seller, operator and buyer forms separate page, card and field colo
       });
     }
 
-    prepareMember(await login(seller.page, 'test.seller@example.com'), 'SELLER');
-    prepareMember(await login(admin.page, 'test.admin@example.com'), 'ADMIN');
-    prepareMember(await login(buyer.page, 'test.user@example.com'), 'USER');
+    prepareMember(await login(seller.page, MANAGER_EMAIL), 'SELLER');
+    prepareMember(await login(admin.page, ADMIN_EMAIL), 'ADMIN');
+    prepareMember(await login(buyer.page, USER_EMAIL), 'USER');
     const created = await call(seller.page.request, '/products', 'POST', productInput());
     expect(created.status(), await created.text()).toBe(200);
     const product = await created.json();
