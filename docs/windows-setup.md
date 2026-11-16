@@ -50,6 +50,10 @@ Mavenはリポジトリ内のWrapperを使います。システムPATHの変更�
 専用MySQL自身が専用データディレクトリでポートを占有していれば停止・復旧します。別サーバーは停止しません。
 停止スクリプトはWeb/APIを停止し、専用MySQLは継続稼働します。
 
+### Java の一時フォルダー
+
+`start.bat` は EC の API を `-Djdk.net.unixdomain.tmpdir=<作業フォルダー>\.runtime\java-tmp` を付けて起動します（`scripts/start.ps1`）。JDK は HttpClient の内部で AF_UNIX ソケットを TEMP（`AppData\Local\Temp`）に作りますが、MSIX パッケージのデスクトップアプリ（エージェントアプリなど）の配下から起動すると `AppData` の中のソケットへ接続できず、API の起動に失敗するためです（[調査の記録](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/開発環境/2026-10-20_java-temp-investigation.md)）。
+
 ### カード決済（Stripe のテストモード）を使うとき
 
 `setup.bat` は Stripe の鍵を設定しません。鍵がなくても EC は起動し、お会計は店頭払いだけになります。カードで支払う流れを試す PC だけ、次を用意します（鍵の値はこの文書・Git・ログに書きません）。
