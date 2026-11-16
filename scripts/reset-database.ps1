@@ -3,58 +3,32 @@ param(
     # 対象を表示するだけで、何も変更しない。
     [switch]$DryRun,
     # 消す前のバックアップを取らない。
-    [switch]$NoBackup,
-    # 確認の文字を引数で渡す（検証用）。指定しないときは画面で入力を求める。
-    [ValidatePattern('^[^"\r\n]*$')]
-    [string]$ConfirmText,
-    # 管理者として起動し直したときに、起動した人のユーザー名を渡す（スクリプト自身が使う）。
-    [ValidatePattern('^[^"\r\n]*$')]
-    [string]$RequestedBy
+    [switch]$NoBackup
 )
 
 $ErrorActionPreference = 'Stop'
 
-function Test-Administrator {
-    $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-$currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-
-# DB の初期化は、Windows の管理者として実行する。管理者でないときは、確認を出して起動し直す。
-if (-not (Test-Administrator)) {
-    Write-Host 'DB の初期化は、Windows の管理者として実行します。'
-    Write-Host 'Windows の確認（ユーザー アカウント制御）が表示されます。別のウィンドウで続きを行います。'
-    $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $PSCommandPath),
-        '-RequestedBy', ('"{0}"' -f $currentUser))
-    if ($DryRun) { $arguments += '-DryRun' }
-    if ($NoBackup) { $arguments += '-NoBackup' }
-    if ($PSBoundParameters.ContainsKey('ConfirmText')) { $arguments += @('-ConfirmText', ('"{0}"' -f $ConfirmText)) }
+# 新しいコードを取得した後でも DB-reset.bat だけで済むように、このフォルダーの Web と API を止め、依存を入れ、
+# API を作り直す。作り直しの後の確認はこの JAR でテーブルを作るため、古い JAR だと失敗する。失敗したら DB には触れない。
+# 管理者の権限は使わない。DB の操作はアプリ用の DB ユーザーの権限で足りる（2026-11-16 の決定）。
+if (-not $DryRun) {
+    . (Join-Path $PSScriptRoot 'common.ps1')
     try {
-        $elevated = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -Verb RunAs -ArgumentList $arguments -Wait -PassThru
+        Set-Location $projectRoot
+        Write-Host 'このフォルダーの Web と API を止め、依存を入れて API を作り直します。'
+        Stop-OwnedServices
+        & npm.cmd install
+        if ($LASTEXITCODE -ne 0) { throw 'npm install に失敗しました。' }
+        & node (Join-Path $projectRoot 'scripts\api.mjs') build
+        if ($LASTEXITCODE -ne 0) { throw 'API のビルドに失敗しました。' }
     } catch {
-        Write-Host '管理者としての起動が取り消されたか、失敗しました。DB は変更していません。'
+        Write-Host "$($_.Exception.Message) 上の出力を確認してください。DB は変更していません。"
         exit 1
     }
-    exit $elevated.ExitCode
 }
 
-$exitCode = 1
-if ($RequestedBy -and $RequestedBy -ne $currentUser) {
-    # 別のユーザーの管理者として起動すると、専用 MySQL の記録の場所が変わり、対象を取り違える。
-    Write-Host "起動した人 ($RequestedBy) と違うユーザー ($currentUser) の管理者権限では実行できません。DB は変更していません。"
-} else {
-    $coreArguments = @{}
-    if ($DryRun) { $coreArguments.DryRun = $true }
-    if ($NoBackup) { $coreArguments.NoBackup = $true }
-    if ($PSBoundParameters.ContainsKey('ConfirmText')) { $coreArguments.ConfirmText = $ConfirmText }
-    & (Join-Path $PSScriptRoot 'reset-database-core.ps1') @coreArguments
-    $exitCode = $LASTEXITCODE
-}
-
-# 管理者として起動し直したウィンドウは、終わるとすぐ閉じる。結果を読めるように待つ。
-if ($RequestedBy -and $env:KUSAKARI_EC_NO_PAUSE -ne '1') {
-    Write-Host ''
-    $null = Read-Host '結果を確認したら Enter キーを押してください（このウィンドウを閉じます）'
-}
-exit $exitCode
+$coreArguments = @{}
+if ($DryRun) { $coreArguments.DryRun = $true }
+if ($NoBackup) { $coreArguments.NoBackup = $true }
+& (Join-Path $PSScriptRoot 'reset-database-core.ps1') @coreArguments
+exit $LASTEXITCODE
