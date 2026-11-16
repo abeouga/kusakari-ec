@@ -17,14 +17,14 @@ node scripts/import-product-sample.mjs --apply
 
 最初のコマンドは事前確認のみです。`--apply` は127.0.0.1の開発DB `kusakari` に限り、
 商品関連4テーブルのSQLバックアップを `artifacts/product-backup-日時/` に保存してから、
-既存カタログを非公開化し、この31商品を1トランザクションで登録します。
+店舗1の既存の商品を削除済み（在庫の公開状態 `DELETED`）にし、この31商品を店舗1の商品として1トランザクションで登録します。ほかの店舗の商品は変更しません。
 店舗1の在庫はスナップショットに置き換わるため、購入操作と同時には実行しないでください。
 注文・カート・庭データは変更しません。同じIDは更新し、異なるIDとのSKU重複は拒否します。
 
 ## Context / Decision / Alternatives / Consequences
 
 - Context: MySQLへの登録内容はGitに含まれず、開発PC間で商品サンプルが異なっていた。
-- Decision: JSONと画像、明示的な取り込みコマンドをGit管理対象にする。旧商品の削除は既存APIと同じ非公開化とする。
+- Decision: JSONと画像、明示的な取り込みコマンドをGit管理対象にする。旧商品の削除は既存APIと同じ削除済み（`DELETED`）とする。
 - Alternatives: DB全消去は注文・カートに影響するため採用しない。起動時のデータ入れ替えやFlywayによる全環境への自動反映もしない。
 - Consequences: メンバーはコード取得だけでなく取り込みコマンドを明示実行する。新商品は一覧に31件表示され、旧商品は履歴参照用に残る。
   スキーマ変更は不要で、既存Flywayマイグレーションは変更しない。
@@ -45,3 +45,75 @@ node scripts/import-product-sample.mjs --apply
 検証では元のJSONを変更せず、APIから廃止された `floweringDescription`、`seasonalCare`、`styleDescription` のみ比較対象から除外します。追加された `publicationStatus` は `PUBLISHED`、旧植物モデルの `botanicalForm` はAPIの既定値 `null` と比較します。それ以外の項目の欠落や値の相違は引き続きエラーです。
 
 旧検証スクリプトで `floweringDescription: undefined !== ''` が出る場合は、APIとの形式の不一致です。修正版を取得して検証を再実行してください。このエラーだけを理由に `--apply` を再実行する必要はありません（再取り込みは在庫も置き換えます）。
+
+## 既にセットアップ済みのPCで更新する手順
+
+**WindowsでEC・Canvasの初回セットアップが済んでいる方向け**です。
+
+**同じ31商品が既に登録されている方は、手順3の取り込みは不要です。**
+
+1. **ECとCanvasを最新にする**
+    
+    それぞれのリポジトリで実行します。フォルダ名は各自の環境に合わせてください。
+    
+    ```
+    git switch main
+    git pull --ff-only
+    npm install
+    ```
+    
+    未コミットの変更がある場合は、破棄せず整理してから進めてください。
+    
+2. **ECを再ビルド・起動する**
+    
+    ECフォルダで実行します。
+    
+    ```
+    .\stop.bat
+    npm run build:api
+    .\start.bat
+    ```
+    
+    **pullだけでは起動用JARは更新されません。** 古いJARのままだとCanvasからの商品取得が失敗する場合があります。
+    
+3. **商品データを取り込む**
+    
+    ECが起動したら、別のPowerShellをECフォルダで開きます。取り込み中は商品編集・購入操作を止めてください。
+    
+    まず事前確認します。このコマンドではDBは変更されません。
+    
+    ```
+    node scripts/import-product-sample.mjs
+    ```
+    
+    エラーがなければ取り込みます。
+    
+    ```
+    node scripts/import-product-sample.mjs --apply
+    ```
+    
+    この処理では、商品関連データを自動バックアップし、店舗1の旧商品を削除済みにして31商品を登録します。店舗1の在庫は共有時点の値になります。注文・カート・庭データは削除しません。
+    
+4. **取り込み結果を検証する**
+    
+    ECフォルダで実行します。
+    
+    ```
+    node scripts/verify-product-sample.mjs
+    ```
+    
+    次の表示が出れば成功です。
+    
+    ```
+    Verified 31 complete product records, 60 image hashes, and 31 Canvas material matches against the live API.
+    ```
+    
+5. **Canvasで確認する**
+    
+    Canvasフォルダの`start.bat`で起動・再起動し、[Canvas](http://127.0.0.1:5173/)を開きます。
+    
+    - 庭を開き、商品一覧に「マーガレット（白花）」「ブルーアイス」などが表示される
+    - 「庭に配置」を選んで地面をクリックすると配置できる
+    - 「保存済み」を確認して再読み込みしても配置が残る
+
+エラーが出た場合は、その段階で止めてエラー内容を共有してください。**`MySQL-reset.bat`を実行する必要はありません。**

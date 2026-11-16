@@ -2,7 +2,7 @@
 
 ## Context
 
-店舗側のアカウントは、組織のオーナー（`SHOP_OWNER`）と、店舗の担当者（`SHOP_STAFF`）に分かれている（[DB 構成 v3](2026-11-11-shop-organization-db-v3.md)）。担当者を作る手段は、開発用の `scripts/set-member-role.ps1` と E2E の準備しかなかった。#105 で、招待キーの扱い（有効期限30日、1回限りか何回でもかを発行時に選ぶ、取り消せる、発行済みの一覧と使った人を見られる、新規登録のときだけ使える）と、ロールの権限の大枠を決め、[残りの決定](2026-11-12-remaining-decisions.md)の 2-3〜2-5 でアカウント一覧の範囲・割り振りの範囲・ORG_ADMIN の店舗切り替えの候補を決めた。テーブル（`store_invitations`、`store_invitation_uses`、`organization_members.role`）は V1 にある。
+店舗側のアカウントは、組織のオーナー（`SHOP_OWNER`）と、店舗の担当者（`SHOP_STAFF`）に分かれている（[DB 構成 v3](2026-11-11-db-v3.md)）。担当者を作る手段は、開発用の `scripts/set-member-role.ps1` と E2E の準備しかなかった。#105 で、招待キーの扱い（有効期限30日、1回限りか何回でもかを発行時に選ぶ、取り消せる、発行済みの一覧と使った人を見られる、新規登録のときだけ使える）と、ロールの権限の大枠を決め、[残りの決定](2026-11-12-remaining-decisions.md)の 2-3〜2-5 でアカウント一覧の範囲・割り振りの範囲・ORG_ADMIN の店舗切り替えの候補を決めた。テーブル（`store_invitations`、`store_invitation_uses`、`organization_members.role`）は V1 にある。
 
 この記録は、それを実装したときに決めた細部（キーの形式と保存のしかた、登録の手順、画面の入口、権限表の置き場所）をまとめる。
 
