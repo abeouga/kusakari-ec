@@ -107,7 +107,7 @@ test('expelling a staff account stops its sign-in and reinstating restores its s
     // The expelled account is hidden by default and shown by the filter; ORG_ADMIN brings it back.
     await adminPage.goto(`${ec}/seller/accounts`);
     await expect(row(adminPage, targetEmail)).toHaveCount(0);
-    await adminPage.getByLabel('除名した人だけを表示する').check();
+    await adminPage.getByLabel('表示する人').selectOption('expelled');
     await row(adminPage, targetEmail).getByRole('button', { name: '復帰させる' }).click();
     await adminPage.getByRole('alertdialog').getByRole('button', { name: '復帰させる' }).click();
     await expect(adminPage.getByText(`${targetEmail}を組織に復帰させました。`)).toBeVisible();

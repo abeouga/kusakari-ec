@@ -21,7 +21,9 @@ export function StaffAccountsPage() {
   const resource = useResource('/seller/accounts');
   const view = /** @type {AccountsView|null} */ (resource.data);
   // Issue #175: expelled accounts are hidden until the filter asks for them (#173).
-  const [showExpelled, setShowExpelled] = useState(false);
+  // Issue #179: the filter also finds accounts of the organization without any store, to assign them again (#168).
+  const [filter, setFilter] = useState(/** @type {'active'|'unassigned'|'expelled'} */ ('active'));
+  const [removing, setRemoving] = useState(/** @type {{account:Account,store:{id:number,name:string}}|null} */ (null));
   const [expelling, setExpelling] = useState(/** @type {Account|null} */ (null));
   const [reinstating, setReinstating] = useState(/** @type {Account|null} */ (null));
   /** @param {Account} account */
@@ -64,10 +66,18 @@ export function StaffAccountsPage() {
   }
   /** @param {Account} account @param {{id:number,name:string}} store */
   function remove(account, store) {
-    void resource.run(
-      () => write(`/seller/accounts/${account.memberId}/stores/${store.id}`, 'DELETE'),
-      `${account.name}を${store.name}の担当から外しました。`,
-    );
+    void resource
+      .run(
+        () => write(`/seller/accounts/${account.memberId}/stores/${store.id}`, 'DELETE'),
+        `${account.name}を${store.name}の担当から外しました。`,
+      )
+      .then((done) => done && setRemoving(null));
+  }
+  /** @param {Account} account */
+  function shown(account) {
+    if (filter === 'expelled') return account.expelled;
+    if (account.expelled) return false;
+    return filter === 'active' || (!account.owner && account.assignments.every((a) => a.role === null));
   }
   /** @param {Account} account @param {boolean} organizationAdmin */
   function changeOrganizationRole(account, organizationAdmin) {
@@ -103,7 +113,7 @@ export function StaffAccountsPage() {
             type="button"
             disabled={resource.busy}
             aria-label={`${account.name}を${store.name}の担当から外す`}
-            onClick={() => remove(account, store)}
+            onClick={() => setRemoving({ account, store })}
           >
             担当から外す
           </button>
@@ -140,13 +150,16 @@ export function StaffAccountsPage() {
               : 'MANAGER の店舗の担当者だけを表示しています。STAFF とロールなしの割り振りができます。'}
           </p>
           {(view.owner || view.organizationAdmin) && (
-            <label className="auth-check">
-              <input
-                type="checkbox"
-                checked={showExpelled}
-                onChange={(event) => setShowExpelled(event.target.checked)}
-              />
-              除名した人だけを表示する
+            <label>
+              表示する人
+              <select
+                value={filter}
+                onChange={(event) => setFilter(/** @type {'active'|'unassigned'|'expelled'} */ (event.target.value))}
+              >
+                <option value="active">組織の全員（除名した人を除く）</option>
+                <option value="unassigned">どの店舗にも所属していない人</option>
+                <option value="expelled">除名した人</option>
+              </select>
             </label>
           )}
           <DataTable
@@ -157,21 +170,19 @@ export function StaffAccountsPage() {
               ...view.stores.map((store) => store.name),
               ...(view.owner || view.organizationAdmin ? ['組織からの除名'] : []),
             ]}
-            rows={view.accounts
-              .filter((account) => account.expelled === showExpelled)
-              .map((account) => [
-                account.name,
-                account.email,
-                organizationCell(account),
-                ...view.stores.map((store) =>
-                  storeCell(
-                    account,
-                    store,
-                    account.assignments.find((a) => a.storeId === store.id),
-                  ),
+            rows={view.accounts.filter(shown).map((account) => [
+              account.name,
+              account.email,
+              organizationCell(account),
+              ...view.stores.map((store) =>
+                storeCell(
+                  account,
+                  store,
+                  account.assignments.find((a) => a.storeId === store.id),
                 ),
-                ...(view.owner || view.organizationAdmin ? [expulsionCell(account)] : []),
-              ])}
+              ),
+              ...(view.owner || view.organizationAdmin ? [expulsionCell(account)] : []),
+            ])}
           />
         </>
       )}
@@ -187,7 +198,21 @@ export function StaffAccountsPage() {
           <p>
             除名した人はすぐにログインできなくなります。本人には通知しません。この人が発行した招待キーは取り消します。
           </p>
-          <p>担当していた店舗とロールは残り、「除名した人だけを表示する」から復帰させると元に戻ります。</p>
+          <p>担当していた店舗とロールは残り、表示する人を「除名した人」にして復帰させると元に戻ります。</p>
+        </ConfirmDialog>
+      )}
+      {removing && (
+        <ConfirmDialog
+          title="店舗の担当から外す確認"
+          confirmLabel="担当から外す"
+          busy={resource.busy}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => remove(removing.account, removing.store)}
+        >
+          <p>
+            {removing.account.name}を{removing.store.name}の担当から外しますか？
+          </p>
+          <p>組織には残るので、表示する人を「どの店舗にも所属していない人」にして、あとで店舗の担当にし直せます。</p>
         </ConfirmDialog>
       )}
       {reinstating && (
