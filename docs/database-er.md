@@ -5,7 +5,7 @@
 - [decisions/2026-11-11-db-v3.md](decisions/2026-11-11-db-v3.md)：構成（v3）、決済と返金、手数料、店舗の閉鎖、組織の停止、組織のロール、招待キー、警告の履歴
 - [decisions/2026-11-12-moderation-warnings.md](decisions/2026-11-12-moderation-warnings.md)：運営の警告と、商品・店舗の停止の履歴（`product_moderation_events`・`store_moderation_events`）の使い方
 - [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）と、連絡先の削除をアプリの定期処理にしたこと
-- 組織からの除名（`organization_members.expelled`）と担当者の操作の記録（`organization_member_events`、V4）：#170・#173 で決め、記録に店舗を持たせることは #177 で決めた。担当から外す場合と除名の場合の違いの記録は #174 で書き足す
+- 組織からの除名（`organization_members.expelled`）と担当者の操作の記録（`organization_member_events`、V4）：#170・#173 で決め、記録に店舗を持たせることは #177 で決めた。担当から外す場合と除名の場合の違い・除名の扱いは [decisions/2026-11-18-organization-expulsion.md](decisions/2026-11-18-organization-expulsion.md)
 
 この文書の前提は次のとおりです。
 
@@ -393,7 +393,7 @@ erDiagram
 | `organization_members.member_id` の一意キー | 1人が2つの組織に所属する |
 | `organization_members.role` の CHECK | `ORG_ADMIN` 以外の組織のロール（NULL は「ロールなし」として許す） |
 | `store_members(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗に担当を割り当てる |
-| `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から外すと、担当も消える |
+| `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から除名しても所属の行は消さない（論理削除）ので、担当も残る |
 | `store_members.role` の CHECK | `MANAGER`・`STAFF` 以外のロール（NULL は「未割り当て」として許す。`ORG_ADMIN` は付けられない） |
 | `organization_member_events` の種別の CHECK | 担当にする・外す・除名・復帰の4つ以外の記録 |
 | `ck_org_member_events_store`（担当の出入りなら店舗あり、除名・復帰なら店舗なし） | 店舗のない担当の出入りの記録。店舗の付いた除名・復帰の記録 |
