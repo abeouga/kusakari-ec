@@ -56,6 +56,7 @@ test('store assignment and removal leave member events', async ({ browser }) => 
 
     // Removing from the store records REMOVE_FROM_STORE; the organization membership stays.
     await page.getByLabel(`${staffAccount.email}を${store.name}の担当から外す`).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: '担当から外す' }).click();
     await expect(page.getByText(`${staffAccount.email}を${store.name}の担当から外しました。`)).toBeVisible();
     expect(events(staff.id)).toEqual([`ASSIGN_TO_STORE|${owner.id}|2|1`, `REMOVE_FROM_STORE|${owner.id}|2|1`]);
     expect(sql(`SELECT COUNT(*) FROM organization_members WHERE member_id='${staff.id}';`)).toBe('1');
