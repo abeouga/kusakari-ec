@@ -12,6 +12,9 @@ import org.springframework.data.repository.query.Param;
 public interface StoreInvitationRepository extends JpaRepository<StoreInvitationEntity, String> {
   List<StoreInvitationEntity> findByStoreIdOrderByCreatedAtDesc(long storeId);
 
+  /** 除名した人が発行した、まだ取り消していない招待キー（#153 の項目5）。 */
+  List<StoreInvitationEntity> findByIssuedByMemberIdAndRevokedAtIsNull(String issuedByMemberId);
+
   /** 上限回数を超えないよう、キーの行をロックして読む（SELECT ... FOR UPDATE）。 */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select i from StoreInvitationEntity i where i.keyHash = :keyHash")

@@ -15,11 +15,13 @@ import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEventEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberId;
+import jp.kusakari.ec.store.persistence.entity.StoreInvitationEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberId;
 import jp.kusakari.ec.store.persistence.repository.OrganizationMemberEventRepository;
 import jp.kusakari.ec.store.persistence.repository.OrganizationMemberRepository;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
+import jp.kusakari.ec.store.persistence.repository.StoreInvitationRepository;
 import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class StaffAccountService {
   private final StoreMemberRepository storeMembers;
   private final StoreRepository stores;
   private final OrganizationMemberEventRepository events;
+  private final StoreInvitationRepository invitations;
 
   public record StoreRef(long id, String name) {}
 
@@ -51,7 +54,11 @@ public class StaffAccountService {
     boolean owner,
     String organizationRole,
     boolean organizationRoleEditable,
-    List<Assignment> assignments
+    List<Assignment> assignments,
+    /** 組織から除名中（#175）。画面は既定で隠し、絞り込みで出す（#173 の決めること4）。 */
+    boolean expelled,
+    /** 操作する人が、この人を除名・復帰させられるか。 */
+    boolean expellable
   ) {}
 
   public record AccountsView(
@@ -85,7 +92,17 @@ public class StaffAccountService {
         .flatMap(members::findById)
         .ifPresent(owner ->
           accounts.add(
-            new Account(owner.getId(), owner.getDisplayName(), owner.getEmail(), true, null, false, List.of())
+            new Account(
+              owner.getId(),
+              owner.getDisplayName(),
+              owner.getEmail(),
+              true,
+              null,
+              false,
+              List.of(),
+              false,
+              false
+            )
           )
         );
     }
@@ -94,6 +111,9 @@ public class StaffAccountService {
       var assigned = byMember.getOrDefault(memberId, List.of());
       // MANAGER は、自分の店舗の担当者だけを見る（#111）。
       if (!viewer.personnel() && assigned.isEmpty()) continue;
+      // 除名中の人は、除名・復帰を扱うオーナーと ORG_ADMIN にだけ見せる（#175）。
+      boolean expelled = membership.isExpelled();
+      if (expelled && !viewer.personnel()) continue;
       var member = members.findById(memberId).orElse(null);
       if (member == null) continue;
       Map<Long, StoreMemberEntity> roles = assigned
@@ -104,6 +124,8 @@ public class StaffAccountService {
         .map(store -> {
           var assignment = roles.get(store.getId());
           String role = assignment == null ? null : roleOf(assignment);
+          // 除名中は担当とロールを残したまま変えさせない。復帰したら元の店舗に戻る（#173 の決めること3）。
+          if (expelled) return new Assignment(store.getId(), role, List.of(), false);
           boolean removable = assignment != null && viewer.canRemoveAssignment();
           return new Assignment(store.getId(), role, viewer.assignableRoles(memberId, store.getId(), role), removable);
         })
@@ -115,8 +137,10 @@ public class StaffAccountService {
           member.getEmail(),
           false,
           membership.getRole(),
-          viewer.canChangeOrganizationRole(),
-          rows
+          viewer.canChangeOrganizationRole() && !expelled,
+          rows,
+          expelled,
+          viewer.canExpel(memberId)
         )
       );
     }
@@ -137,7 +161,7 @@ public class StaffAccountService {
   public AccountsView assign(String memberId, long storeId, String role) {
     var viewer = policy.viewer();
     var store = storeOf(viewer, storeId);
-    membershipOf(viewer, memberId);
+    activeMembershipOf(viewer, memberId);
     var existing = storeMembers.findById(new StoreMemberId(storeId, memberId));
     String current = existing.map(StaffAccountService::roleOf).orElse(null);
     if (!viewer.assignableRoles(memberId, storeId, current).contains(role)) throw StaffPolicy.denied();
@@ -156,7 +180,7 @@ public class StaffAccountService {
   public AccountsView removeAssignment(String memberId, long storeId) {
     var viewer = policy.viewer();
     storeOf(viewer, storeId);
-    membershipOf(viewer, memberId);
+    activeMembershipOf(viewer, memberId);
     if (!viewer.canRemoveAssignment()) throw StaffPolicy.denied();
     var existing = storeMembers
       .findById(new StoreMemberId(storeId, memberId))
@@ -171,7 +195,38 @@ public class StaffAccountService {
   public AccountsView changeOrganizationRole(String memberId, boolean organizationAdmin) {
     var viewer = policy.viewer();
     if (!viewer.canChangeOrganizationRole()) throw StaffPolicy.denied();
-    membershipOf(viewer, memberId).changeRole(organizationAdmin ? OrganizationMemberEntity.ORG_ADMIN : null);
+    activeMembershipOf(viewer, memberId).changeRole(organizationAdmin ? OrganizationMemberEntity.ORG_ADMIN : null);
+    organizationMembers.flush();
+    return list();
+  }
+
+  /**
+   * 組織から除名する（#175）。データは消さず、所属の除名中の印だけを立てる（#173）。
+   * 除名された人は次の要求からログインできなくなり、本人には通知しない（#168 の決めること6）。
+   * その人が発行した招待キーは取り消し、キャンセル・返金の操作者や通知の記録は残す（#153 の項目5・6）。
+   */
+  public AccountsView expel(String memberId) {
+    var viewer = policy.viewer();
+    var membership = membershipOf(viewer, memberId);
+    if (!viewer.canExpel(memberId)) throw StaffPolicy.denied();
+    if (membership.isExpelled()) throw expelled();
+    membership.expel();
+    invitations.findByIssuedByMemberIdAndRevokedAtIsNull(memberId).forEach(StoreInvitationEntity::revoke);
+    recordOrganization(viewer, OrganizationMemberEventEntity.EXPEL_FROM_ORGANIZATION, memberId);
+    organizationMembers.flush();
+    return list();
+  }
+
+  /** 除名した人を組織に復帰させる。担当とロールは除名前のまま戻る（#173 の決めること3）。 */
+  public AccountsView reinstate(String memberId) {
+    var viewer = policy.viewer();
+    var membership = membershipOf(viewer, memberId);
+    if (!viewer.canExpel(memberId)) throw StaffPolicy.denied();
+    if (!membership.isExpelled()) {
+      throw new ApiException(409, "ACCOUNT_NOT_EXPELLED", "このアカウントは除名されていません。");
+    }
+    membership.reinstate();
+    recordOrganization(viewer, OrganizationMemberEventEntity.REINSTATE_TO_ORGANIZATION, memberId);
     organizationMembers.flush();
     return list();
   }
@@ -189,6 +244,23 @@ public class StaffAccountService {
       .findById(new OrganizationMemberId(viewer.organizationId(), memberId))
       .filter(membership -> members.findById(memberId).map(AuthMember::isEnabled).orElse(false))
       .orElseThrow(() -> new ApiException(404, "ACCOUNT_NOT_FOUND", "アカウントが見つかりません。"));
+  }
+
+  /** 除名中でない同じ組織の担当者。除名中の人の担当とロールは、復帰するまで変えさせない。 */
+  private OrganizationMemberEntity activeMembershipOf(StaffPolicy.Viewer viewer, String memberId) {
+    var membership = membershipOf(viewer, memberId);
+    if (membership.isExpelled()) throw expelled();
+    return membership;
+  }
+
+  private static ApiException expelled() {
+    return new ApiException(409, "ACCOUNT_EXPELLED", "このアカウントは組織から除名されています。");
+  }
+
+  private void recordOrganization(StaffPolicy.Viewer viewer, String eventType, String memberId) {
+    events.save(
+      OrganizationMemberEventEntity.ofOrganization(viewer.organizationId(), eventType, viewer.memberId(), memberId)
+    );
   }
 
   /** 担当の出入りを、操作と同じトランザクションで記録に足す（#178）。 */

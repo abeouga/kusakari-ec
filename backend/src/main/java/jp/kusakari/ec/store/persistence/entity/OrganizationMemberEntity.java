@@ -43,4 +43,13 @@ public class OrganizationMemberEntity {
   public void changeRole(String role) {
     this.role = role;
   }
+
+  /** 組織から除名する。所属・担当・ロールの行は残し、復帰したら元の店舗とロールに戻る（#173）。 */
+  public void expel() {
+    this.expelled = true;
+  }
+
+  public void reinstate() {
+    this.expelled = false;
+  }
 }
