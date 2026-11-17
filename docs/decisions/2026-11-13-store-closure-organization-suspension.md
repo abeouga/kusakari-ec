@@ -46,7 +46,7 @@
 
 ### 90日後の連絡先の削除
 
-- アプリ内の定期処理（`ClosureSettlement.clearClosedContacts`、`kusakari.ec.store-contact-purge-interval-ms`、既定で1日1回）で、`closed_at` から90日たった店舗の `contact_name`・`contact_email` を空にする。行は消さない。MySQL のイベント（`docs/database-v3-check/store-closure-event.sql`）は作らない（決定 3-1）。
+- アプリ内の定期処理（`ClosureSettlement.clearClosedContacts`、`kusakari.ec.store-contact-purge-interval-ms`、既定で1日1回）で、`closed_at` から90日たった店舗の `contact_name`・`contact_email` を空にする。行は消さない。MySQL のイベントは作らない（決定 3-1）。
 - 失敗はアプリのログに警告として出し、次の回にもう一度試す（イベントの失敗が MySQL のエラーログにしか出ない問題がなくなる）。
 
 ### 閉鎖中の店舗の商品と、公開ページ

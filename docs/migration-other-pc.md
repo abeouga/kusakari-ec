@@ -4,7 +4,7 @@
 
 店舗側アカウントの作り直し（#103）で、EC の DB は新しい構成（v3、Flyway の `V1__schema.sql` から）に置き換わった。旧構成（V1〜V15）の DB を持つ PC では、新しい main を取得しただけでは API が起動しない（Flyway の履歴が合わない）。既存のデータは移行しない（#102 決定事項2）ので、EC と Canvas の DB を初期化して作り直す。
 
-初期化のスクリプト（EC の `DB-reset.bat`、Canvas の `DB-reset.bat`）はそれぞれの文書（[EC](database-reset.md)、Canvas の `docs/database-reset.md`）にある。この文書は、他の PC が両方を正しい順番で行い、使える状態に戻すまでの手順をまとめる。
+ほかの PC で実行するスクリプトの一覧と実行順の図は [ほかの PC で実行するスクリプトと実行順](other-pc-scripts.md) にある。初期化のスクリプト（EC の `DB-reset.bat`、Canvas の `DB-reset.bat`）はそれぞれの文書（[EC](database-reset.md)、Canvas の `docs/database-reset.md`）にある。この文書は、他の PC が両方を正しい順番で行い、使える状態に戻すまでの手順をまとめる。
 
 ## Decision
 
@@ -19,15 +19,13 @@
 
 EC と Canvas のフォルダーで、それぞれ次の順に行う。PowerShell は EC・Canvas のフォルダーで開く。
 
-1. 両方の `stop.bat` で、Web と API を止める
-2. 両方で `git fetch origin` し、`main` を取得する（`git switch main` → `git pull`）。自分の変更があるときは、先にコミットするか退避する
-3. EC で依存を入れ直す：`npm install`。**`npm ci` は使わない**（Windows で `frontend` のソースを消したことがある）
-4. EC で API を作り直す：`npm run build:api`。初期化の後の確認は、このフォルダーの API の JAR でテーブルを作るため、古い JAR のままにしない
-5. EC で `DB-reset.bat -DryRun` を実行し、表示された MySQL・ポート・DB（`kusakari`、`kusakari_e2e`）が自分の PC のものかを確かめる。Windows の確認（ユーザー アカウント制御）では「はい」を選ぶ
-6. EC で `DB-reset.bat` を実行し、`RESET kusakari` と入力する。「EC の DB の初期化が完了しました」と出るまで待つ
-7. Canvas で `DB-reset.bat -DryRun` → `DB-reset.bat`（`RESET kusakari_canvas` と入力）。EC だけを初期化すると、庭の持ち主（EC の会員 ID）と買い物リストの庭 ID が食い違うので、必ず両方を行う
-8. 両方の `start.bat` で起動する
-9. ブラウザーで EC（http://127.0.0.1:5186）にログインし、商品一覧・カート・Canvas の庭の一覧が開けることを確かめる
+1. 両方で `git fetch origin` し、`main` を取得する（`git switch main` → `git pull`）。自分の変更があるときは、先にコミットするか退避する
+2. EC で `DB-reset.bat` を実行する。Web と API を止めること、`npm install`、API のビルドをしてから、確認なしで DB を作り直す。「EC の DB の初期化が完了しました」と出るまで待つ
+3. Canvas で `DB-reset.bat` を実行する。このフォルダーの Canvas を止めることと、Python の依存の準備をしてから、確認なしで DB を作り直す。EC だけを初期化すると、庭の持ち主（EC の会員 ID）と買い物リストの庭 ID が食い違うので、必ず両方を行う
+4. 両方の `start.bat` で起動する
+5. ブラウザーで EC（http://127.0.0.1:5186）にログインし、商品一覧・カート・Canvas の庭の一覧が開けることを確かめる
+
+作り直す DB を確かめるだけのときは、それぞれ `DB-reset.bat -DryRun` を実行する（何も止めず、何も変更しない）。確認の入力と Windows の管理者への切り替えはない。ほかの作業フォルダーの API や E2E が DB に接続していても、接続を切って作り直す。
 
 ### 権限の付け方（開発用）
 
@@ -48,7 +46,7 @@ EC と Canvas のフォルダーで、それぞれ次の順に行う。PowerShel
 ### うまくいかないとき
 
 - 初期化の確認が「Found more than one migration with version 1」で止まる：古いビルドの残りが `backend\target` にある。EC の `backend` で `.\mvnw.cmd clean package -DskipTests` を実行してから `setup.bat` を実行する（空の DB にテーブルが作られる）
-- `DB-reset.bat` が「対象を確かめられない」で止まる：何も消していない。表示された理由（ポート、ほかのプロセスの接続、マイグレーション履歴がない DB など）を直してからやり直す。ほかの作業フォルダーの API や E2E が DB に接続していると止まる
+- `DB-reset.bat` が MySQL に接続できずに止まる：何も消していない。MySQL が起動しているか、`.env` の接続先が合っているかを確かめる（`setup.bat` で設定し直せる）
 - 初期化の後に `start.bat` で API が起動しない：`setup.bat` を実行して、接続設定とマイグレーションを確かめ直す
 
 ## Alternatives
