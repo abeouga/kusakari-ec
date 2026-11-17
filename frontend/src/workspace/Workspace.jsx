@@ -5,6 +5,7 @@ import { useResource } from './useResource';
 import { useEffect, useState } from 'react';
 import {
   Bell,
+  History,
   Building2,
   Landmark,
   KeyRound,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { StaffAccountsPage } from './StaffAccounts';
 import { StoreInvitationsPage } from './StoreInvitations';
+import { MemberEventsPage } from './MemberEvents';
 import { SalesPage, SalesReport } from './SalesReport';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -55,6 +57,9 @@ const personnelMenu = [
   ['/seller/accounts', 'アカウント', UserCog],
   ['/seller/invitations', '招待キー', KeyRound],
 ];
+// Issue #180: the history of assignments, removals, expulsions and reinstatements, for the owner and ORG_ADMIN only.
+/** @type {MenuItem} */
+const historyItem = ['/seller/member-events', '履歴', History];
 /** @type {MenuItem[]} */
 const operatorMenu = [
   ['/operator/members', '会員管理', Users],
@@ -82,7 +87,13 @@ const pageTitles = {
   '/seller/products/new': '商品登録',
 };
 // Pages that work on one store: an account with several stores chooses which one above the page.
-const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile', '/seller/invitations']);
+const storePaths = new Set([
+  '/seller/orders',
+  '/seller/sales',
+  '/seller/profile',
+  '/seller/invitations',
+  '/seller/member-events',
+]);
 // Issue #112: pages that need a role at the chosen store. An ORG_ADMIN's store without a role offers personnel pages only.
 const rolePaths = new Set([
   '/seller/products',
@@ -151,10 +162,8 @@ export function Workspace({ shop, path, header }) {
     );
   const storeId = shop.sellerStoreId;
   const chosenStore = shop.sellerStores.find((store) => store.id === storeId);
-  const personnel =
-    session.accountType === 'SHOP_OWNER' ||
-    session.organizationRole === 'ORG_ADMIN' ||
-    shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  const organizationPersonnel = session.accountType === 'SHOP_OWNER' || session.organizationRole === 'ORG_ADMIN';
+  const personnel = organizationPersonnel || shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
   // Issue #169: a staff account of the organization without any store keeps the seller pages for its own notices only.
   const unassigned =
     seller &&
@@ -170,7 +179,11 @@ export function Workspace({ shop, path, header }) {
       ? [
           {
             label: '出店者メニュー',
-            items: unassigned ? [noticeItem] : personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu,
+            items: unassigned
+              ? [noticeItem]
+              : personnel
+                ? [...sellerMenu, ...personnelMenu, ...(organizationPersonnel ? [historyItem] : [])]
+                : sellerMenu,
           },
         ]
       : [
@@ -237,6 +250,12 @@ export function Workspace({ shop, path, header }) {
       </section>
     );
   else if (path === '/seller/profile') content = <ProfilePage key={storeId} storeId={storeId} />;
+  else if (path === '/seller/member-events')
+    content = organizationPersonnel ? (
+      <MemberEventsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />
+    ) : (
+      <p role="alert">この画面を利用する権限がありません。</p>
+    );
   else if (path === '/seller/invitations')
     content = <StoreInvitationsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage accountType={session.accountType} />;
