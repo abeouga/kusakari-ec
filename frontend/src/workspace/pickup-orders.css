@@ -55,7 +55,7 @@
   transform: translateY(-50%);
   color: #6b7b70;
 }
-.workspace-shell .pickup-search input[type='search'] {
+.workspace-shell .pickup-search input[type='search']:not([type='checkbox']):not([type='radio']) {
   margin: 0;
   padding-left: 36px;
 }
