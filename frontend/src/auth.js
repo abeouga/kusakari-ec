@@ -28,6 +28,11 @@ export const wasSignedIn = () => signedIn;
 /** @returns {Promise<AuthSession>} */
 export async function readSession() {
   const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
+  if (response.status === 403) {
+    // Issue #175: an expelled or disabled account is told so before any page is shown.
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message || 'このアカウントは利用できません。');
+  }
   if (!response.ok) throw new Error('ログイン状態を確認できません。');
   /** @type {AuthSession} */
   const session = await response.json();

@@ -58,6 +58,18 @@ public class StaffController {
     return accounts.changeOrganizationRole(memberId, in.organizationAdmin());
   }
 
+  /** 組織から除名する（#175）。 */
+  @PostMapping("/accounts/{memberId}/expulsion")
+  public StaffAccountService.AccountsView expel(@PathVariable @Pattern(regexp = MEMBER_ID) String memberId) {
+    return accounts.expel(memberId);
+  }
+
+  /** 除名した人を組織に復帰させる（#175）。 */
+  @DeleteMapping("/accounts/{memberId}/expulsion")
+  public StaffAccountService.AccountsView reinstate(@PathVariable @Pattern(regexp = MEMBER_ID) String memberId) {
+    return accounts.reinstate(memberId);
+  }
+
   @GetMapping("/stores/{storeId}/invitations")
   public List<StoreInvitationService.Invitation> invitations(@PathVariable long storeId) {
     return invitations.list(storeId);
