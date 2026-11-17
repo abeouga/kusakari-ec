@@ -25,7 +25,7 @@ cd ..\kusakari-ec
 
 各セットアップはNode/JavaまたはPython、MySQL、必要な依存を準備します。既存MySQLを利用する場合はそのPCの管理者情報を入力し、生成されたアプリ用DB資格情報を各リポジトリのGit対象外`.env`に保持します。秘密情報はGitHubへ追加しません。セットアップが失敗した状態では次へ進まず、各READMEのセットアップ診断を確認してください。
 
-既存DBを使う場合は先にバックアップしてください。ECの初回起動でFlyway V8が`auth_members`と所有者列を追加します。既存のカートや庭を新しい利用者へ自動で移管しません。
+既存DBを使う場合は先にバックアップしてください。ECの初回起動でFlywayがV1〜V3（会員の`members`を含むテーブル、サンプルデータ、組織の履歴）を適用します。v3より前の構成で作ったDBはそのままでは使えないので、`DB-reset.bat`で作り直します（[DBの作り直し](database-reset.md)）。既存のカートや庭を新しい利用者へ自動で移管しません。
 
 ## 3. 公開可能な接続設定だけを適用する
 
@@ -108,7 +108,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\set-member-role.ps
 - Cognito未設定表示: 設定適用と両APIの再起動を確認します。`/api/auth/status`はCanvasのmode、`/api/auth/me`はECのmodeと会員状態です。
 - redirect mismatch: Callbackのホスト・ポート・パスが上の表と一致するか確認します。
 - Canvasで認証確認エラー: EC API 8086への疎通、両画面の127.0.0.1統一、Cookie有効化を確認します。
-- 出店者画面に入れない・出店者操作が403: そのPCのDBで5.の権限付与を実行したか、`/api/auth/me`の`role`と`storeIds`を確認します。
+- 出店者画面に入れない・出店者操作が403: そのPCのDBで5.の権限付与を実行したか、`/api/auth/me`の`accountType`と`storeIds`を確認します。
 - セッション消失: EC再起動時や有効期限到達時は再ログインします。
 
 通常のログインにOpenAIキーは不要です。未設定ならAI画像生成などの有料AI機能は別途利用できません。AWS管理キー、DBパスワード、Cognitoのトークン/Cookie、Terraform state/planはGitへ含めないでください。既存プールに接続するPCではTerraform applyを実行しません。

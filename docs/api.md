@@ -70,7 +70,7 @@
 高さ（`heightCm`）は省略可能で、指定する場合は10〜1500cmです（庭オブジェクトの高さと同じ範囲）。
 登録で商品番号が重複した場合は409 `SKU_EXISTS`、入力不正・未知フィールドは400です。
 
-受け取りは店舗受け取りだけで、配送・送料はありません（[配送を作らない経緯](decisions/2026-11-05-remove-address-management.md)、将来の発送は #120）。
+受け取りは店舗受け取りだけで、配送・送料はありません（[店舗受け取りの決定](decisions/2026-10-23-store-pickup.md)。発送は行わないと #120 で決めた）。
 カート・注文の応答の `details` は `paymentMethod`, `recipientName`, `recipientPhone`, `contactEmail` だけを持ちます。カートの `paymentMethod` はお会計まで `NONE`、注文は `CARD` か `PAY_AT_STORE` です。
 金額は商品の合計だけです（カートの `subtotalYen` は `totalYen` と同じ値）。注文後の金額は固定です。他人の注文への編集・削除は404です。
 
@@ -108,7 +108,7 @@
 3. 選択した `productId / quantity` をECのカートへ追加します。
 4. EC側で最新価格・在庫を確認し、注文確認画面で利用者が確定します。
 
-Canvasは配置素材から本APIへ自動照合し、既存のカートAPIで追加・数量変更・削除を行います。Canvas許可Originは `KUSAKARI_EC_CANVAS_ORIGIN`（既定 `http://127.0.0.1:5173`）です。許可したOriginに限りCookie付きCORSとContent-Typeのプリフライトを許可します。既存のHttpOnly/SameSite=Strict Cookieを同一ホストのECとCanvasで共有します。EC ViteのCORSミドルウェアは無効とし、APIプロキシ先のLocalApiFilterで処理します。
+Canvasは配置素材から本APIへ自動照合し、既存のカートAPIで追加・数量変更・削除を行います。Canvas許可Originは `KUSAKARI_EC_CANVAS_ORIGIN`（既定 `http://127.0.0.1:5173`）です。許可したOriginに限りCookie付きCORSとContent-Typeのプリフライトを許可します。既存のHttpOnly/SameSite=Lax Cookieを同一ホストのECとCanvasで共有します。EC ViteのCORSミドルウェアは無効とし、APIプロキシ先のLocalApiFilterで処理します。
 クライアントからの価格やownerIdは採用しません。
 
 ## エラー

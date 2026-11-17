@@ -6,7 +6,8 @@
 画面と同梱商品画像・GLBはS3、庭写真・生成画像・サムネイルは非公開S3、業務データはRDS MySQLです。
 ECとCanvasのDBスキーマ・DB利用者は分けます。Windowsの既存/専用MySQL起動はDocker不要のままです。
 
-**一般公開可能な完成品ではありません。** 会員・出店者認証と権限分離は未実装です。
+**一般公開可能な完成品ではありません。** アプリの会員・出店者認証と権限分離は、実Cognito（`cognito` プロファイル、[認証の設計](../docs/cognito-auth.md)）で実装済みです。
+ただし、この雛形は `SPRING_PROFILES_ACTIVE=container` だけを指定し、`cognito` プロファイルも Cognito の接続設定（`KUSAKARI_COGNITO_*`）も渡していません。配備環境での Cognito の設定はまだ決めていません。
 コンテナ起動には `KUSAKARI_PRIVATE_PREVIEW=true` を必須とし、VPN・認証済み社内経路等でサイト全体へのアクセスを制限してください。
 このフラグ、Host/Origin確認、Cookieは利用者認証の代わりではありません。共有の検証所有者を使います。
 インターネット公開用のCloudFrontへそのまま関連付けないでください。

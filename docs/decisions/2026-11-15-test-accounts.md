@@ -5,7 +5,7 @@
 受け入れ試験（`e2e/configs/playwright.acceptance.config.js`）と手での動作確認には、開発用の User Pool（Cognito の `kusakari-development`、全 PC で共通）に登録した固定のテスト用アカウントを使っている。今あるのは `test.user`・`test.seller`・`test.admin`（いずれも `@example.com`）の3つで、次の問題があった。
 
 - 名前からロールが分からない。`test.seller` は店舗1の MANAGER になるなど、名前と付くロールが合っていない。
-- DB 構成 v3（[記録](2026-11-11-shop-organization-db-v3.md)）で店舗側のアカウントがオーナーと担当者（MANAGER・STAFF・ロールなし、組織の ORG_ADMIN）に分かれ、3つでは足りない。オーナー・STAFF・ロールなし・ORG_ADMIN・申請中と、別の組織との境界を確かめられない。
+- DB 構成 v3（[記録](2026-11-11-db-v3.md)）で店舗側のアカウントがオーナーと担当者（MANAGER・STAFF・ロールなし、組織の ORG_ADMIN）に分かれ、3つでは足りない。オーナー・STAFF・ロールなし・ORG_ADMIN・申請中と、別の組織との境界を確かめられない。
 - 開発用 DB は PC ごとにあり、`DB-reset.bat` で初期化すると会員が0件になる。Cognito のユーザーは残るので、初めてログインすると全員が購入者（`USER`）になる（#108）。PC ごとに種別を付け直す必要がある。
 - `scripts/set-member-role.ps1` は運営・オーナー・担当者（MANAGER か STAFF）しか付けられず、ログイン済みの会員1件ずつしか変えられない。
 - User Pool に登録するスクリプト（kusakari-terraform の `scripts/register-test-users.py`）は v3 の前のテーブル（`auth_members`）に書き込む作りで、今の DB では動かない（abeouga/kusakari-terraform#1）。
@@ -126,27 +126,9 @@ flowchart TB
 
 EC と Canvas のヘッダーは、メールアドレスを見ずに、種別が `ADMIN` かどうかだけで運営画面へのリンクを出す。種別の正本は EC の DB で（[会員の種別とロールの値](../member-roles.md)）、特定のメールアドレスに縛る理由がないため。運営画面の API は、今までどおりサーバー側で `ADMIN` を確かめる。
 
-### 6. E2E の切り替えの範囲と順番
+### 6. E2E の切り替え
 
-今のアカウントは次のように置き換える。E2E 用 DB で試験ごとに種別を付け替える作り（`e2e/business-helpers.js` の `prepareMember`）は残す。
-
-| 今のアカウント | 新しいアカウント |
-| --- | --- |
-| test.user@example.com | user01@example.com |
-| test.seller@example.com | manager01@example.com |
-| test.admin@example.com | admin01@example.com |
-
-```mermaid
-flowchart TB
-  T1["1. kusakari-terraform#1：新しい9つを User Pool に登録し、ID を出力<br/>（今の3つは残す）"]
-  T2["2. EC：ID の一覧を持つ set-test-accounts.ps1、DB-reset と setup から実行、<br/>set-member-role.ps1 の修正、ヘッダーの表示条件、E2E と文書の切り替え"]
-  T3["3. Canvas：E2E（e2e/auth-session.ts）、ヘッダーの表示条件、文書の切り替え"]
-  T4["4. EC と Canvas の全 E2E と受け入れ試験が通ることを確かめる"]
-  T5["5. kusakari-terraform#1：今の3つを User Pool から消す"]
-  T1 --> T2 --> T3 --> T4 --> T5
-```
-
-今の3つを消すのは、EC と Canvas の E2E を切り替えて通した後にする。先に消すと、EC の E2E（51ファイル）と Canvas の E2E が動かなくなる。今のアカウントを書いているのは、EC が57ファイル（E2E の51ファイル、文書4つ、`frontend/src/App.jsx`、`packages/site-header/README.md`）、Canvas が5ファイル（`e2e/auth-session.ts`、`frontend/src/components/SiteHeader.jsx`、`README.md`、文書2つ）。
+E2E は新しいアカウント（`test.user` → `user01`、`test.seller` → `manager01`、`test.admin` → `admin01`）へ切り替え、今までの3つは User Pool から消した（#157、abeouga/kusakari-canvas#76、abeouga/kusakari-terraform#1）。E2E 用 DB で試験ごとに種別を付け替える作り（`e2e/business-helpers.js` の `prepareMember`）は残す。
 
 ## Alternatives
 
@@ -171,5 +153,5 @@ flowchart TB
 - 組織2と店舗は、各 PC の開発用 DB にだけ作られる。E2E 用 DB とサンプルデータには入らない。
 - `applicant01` の申請は DB を初期化するまで1回だけ確かめられる。2回目以降は E2E か、DB の初期化が要る。
 - 運営画面へのリンクは、種別が `ADMIN` のアカウントならどのメールアドレスでも出るようになる。
-- 今の `test.user`・`test.seller`・`test.admin` は、切り替えの後に User Pool から消す。消した後に古いブランチの E2E を実行すると、ログインで失敗する。
+- 前の `test.user`・`test.seller`・`test.admin` は User Pool から消した。古いブランチの E2E を実行すると、ログインで失敗する。
 - 実装の issue：EC は #157（スクリプト・ヘッダー・E2E・文書）、Canvas は abeouga/kusakari-canvas#76（E2E・ヘッダー・文書）、User Pool は abeouga/kusakari-terraform#1（登録のスクリプトと、登録・削除）。
