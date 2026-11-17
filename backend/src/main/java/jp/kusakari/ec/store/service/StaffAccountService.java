@@ -13,9 +13,11 @@ import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
+import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEventEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberId;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreMemberId;
+import jp.kusakari.ec.store.persistence.repository.OrganizationMemberEventRepository;
 import jp.kusakari.ec.store.persistence.repository.OrganizationMemberRepository;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
@@ -35,6 +37,7 @@ public class StaffAccountService {
   private final OrganizationMemberRepository organizationMembers;
   private final StoreMemberRepository storeMembers;
   private final StoreRepository stores;
+  private final OrganizationMemberEventRepository events;
 
   public record StoreRef(long id, String name) {}
 
@@ -140,7 +143,11 @@ public class StaffAccountService {
     if (!viewer.assignableRoles(memberId, storeId, current).contains(role)) throw StaffPolicy.denied();
     String value = StaffPolicy.NONE.equals(role) ? null : role;
     if (existing.isPresent()) existing.get().changeRole(value);
-    else storeMembers.save(new StoreMemberEntity(store.getId(), memberId, viewer.organizationId(), value));
+    else {
+      storeMembers.save(new StoreMemberEntity(store.getId(), memberId, viewer.organizationId(), value));
+      // ロールの変更は担当の出入りではないので、担当に加えたときだけ記録する（#178）。
+      record(viewer, OrganizationMemberEventEntity.ASSIGN_TO_STORE, memberId, storeId);
+    }
     storeMembers.flush();
     return list();
   }
@@ -155,6 +162,7 @@ public class StaffAccountService {
       .findById(new StoreMemberId(storeId, memberId))
       .orElseThrow(() -> new ApiException(404, "ASSIGNMENT_NOT_FOUND", "この店舗の担当ではありません。"));
     storeMembers.delete(existing);
+    record(viewer, OrganizationMemberEventEntity.REMOVE_FROM_STORE, memberId, storeId);
     storeMembers.flush();
     return list();
   }
@@ -181,6 +189,13 @@ public class StaffAccountService {
       .findById(new OrganizationMemberId(viewer.organizationId(), memberId))
       .filter(membership -> members.findById(memberId).map(AuthMember::isEnabled).orElse(false))
       .orElseThrow(() -> new ApiException(404, "ACCOUNT_NOT_FOUND", "アカウントが見つかりません。"));
+  }
+
+  /** 担当の出入りを、操作と同じトランザクションで記録に足す（#178）。 */
+  private void record(StaffPolicy.Viewer viewer, String eventType, String memberId, long storeId) {
+    events.save(
+      OrganizationMemberEventEntity.ofStore(viewer.organizationId(), eventType, viewer.memberId(), memberId, storeId)
+    );
   }
 
   private static String roleOf(StoreMemberEntity assignment) {
