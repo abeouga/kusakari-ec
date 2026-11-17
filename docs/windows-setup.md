@@ -52,7 +52,7 @@ Mavenはリポジトリ内のWrapperを使います。システムPATHの変更�
 
 ### Java の一時フォルダー
 
-`start.bat` は EC の API を `-Djdk.net.unixdomain.tmpdir=<作業フォルダー>\.runtime\java-tmp` を付けて起動します（`scripts/start.ps1`）。JDK は HttpClient の内部で AF_UNIX ソケットを TEMP（`AppData\Local\Temp`）に作りますが、MSIX パッケージのデスクトップアプリ（エージェントアプリなど）の配下から起動すると `AppData` の中のソケットへ接続できず、API の起動に失敗するためです（[調査の記録](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/開発環境/2026-10-20_java-temp-investigation.md)）。
+`start.bat` は EC の API を `-Djdk.net.unixdomain.tmpdir=<作業フォルダー>\.runtime\java-tmp` を付けて起動します（`scripts/start.ps1`）。JDK は HttpClient の内部で AF_UNIX ソケットを TEMP（`AppData\Local\Temp`）に作りますが、MSIX パッケージのデスクトップアプリ（エージェントアプリなど）の配下から起動すると `AppData` の中のソケットへ接続できず、API の起動に失敗するためです（[調査の記録](https://github.com/abeouga/kusakari-document/blob/main/開発の記録/kusakari-ec/開発環境/2026-10-20_java-temp-investigation.md)）。
 
 ### カード決済（Stripe のテストモード）を使うとき
 
@@ -90,4 +90,4 @@ API/Webは従来の8086/5186に固定し、他プロジェクトのプロセス�
 ツール未導入状態はブラウザーE2Eでは確認できないため、独立した実セットアップ検証を行います。
 ログ、専用検証データ、資格情報はGit対象外に保持します。
 
-2026-10-05 の検証結果は [kusakari-document](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/開発環境/2026-10-05_windows-setup_検証.md) にあります。
+2026-10-05 の検証結果は [kusakari-document](https://github.com/abeouga/kusakari-document/blob/main/開発の記録/kusakari-ec/開発環境/2026-10-05_windows-setup_検証.md) にあります。

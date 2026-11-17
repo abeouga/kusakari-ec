@@ -81,4 +81,4 @@
 - 初期化の後の確認は、`backend/target` にある API の JAR でマイグレーションを適用する。古い JAR だと古いマイグレーションが空の DB に適用されるので、`DB-reset.bat` が初期化の前に API を作り直す。API のビルド（`scripts/api.mjs`）は `clean` を付けて、ソースから消したマイグレーションを `target` に残さない
 - 閉鎖した店舗の連絡先は MySQL のイベントではなくアプリの定期処理で消すので、セットアップはアプリ用のユーザーに EVENT 権限を付けない
 
-検証の記録と、確認の入力や管理者への切り替えをやめた経緯（2026-11-16）は、[kusakari-document の DB構成](https://github.com/abeouga/kusakari-document/tree/main/kusakari-ec/DB構成) にある。
+検証の記録と、確認の入力や管理者への切り替えをやめた経緯（2026-11-16）は、[kusakari-document の DB構成](https://github.com/abeouga/kusakari-document/tree/main/開発の記録/kusakari-ec/DB構成) にある。

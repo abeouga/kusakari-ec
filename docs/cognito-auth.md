@@ -1,6 +1,6 @@
 # Cognito認証
 
-他PCへの導入は[認証セットアップ手順](cognito-setup.md)、公開接続設定は`config/cognito.development.json`、インフラ定義は`infra/cognito`を参照してください。過去の検証記録は [kusakari-document](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/認証とアカウント/2026-10-19_cognito-auth_検証.md) にあります。
+他PCへの導入は[認証セットアップ手順](cognito-setup.md)、公開接続設定は`config/cognito.development.json`、インフラ定義は`infra/cognito`を参照してください。過去の検証記録は [kusakari-document](https://github.com/abeouga/kusakari-document/blob/main/開発の記録/kusakari-ec/認証とアカウント/2026-10-19_cognito-auth_検証.md) にあります。
 
 ## Context
 

@@ -31,7 +31,7 @@
 - スキーマはFlywayで管理し、起動時にデータを消去・補充しません。
 - 認証情報はgitignore対象の.envに置き、Git、APIエラー、テスト成果物に含めません。
 - 重要なデータ・永続化・認証境界の決定はdocsにContext / Decision / Alternatives / Consequencesを記録します。
-- 検証ログ・調査記録・日付ごとの経緯はdocs/に置かず、kusakari-document（https://github.com/abeouga/kusakari-document の kusakari-ec/ 以下）かPR本文に書きます。docs/には今の仕様とADRだけを置きます。
+- 検証ログ・調査記録・日付ごとの経緯はdocs/に置かず、kusakari-document（https://github.com/abeouga/kusakari-document の 開発の記録/kusakari-ec/ 以下）かPR本文に書きます。docs/には今の仕様とADRだけを置きます。
 - 3D試作との統合作業は、明示された作業範囲と合意済みAPI契約に限ります。ローカル試作のDB・プロセスは別々に維持し、依頼されていない他リポジトリのデータやプロセスを変更しません。
 - 開発ポートはWeb 5186、API 8086に固定します。再起動ではこの作業フォルダのJava/Nodeプロセスを照合して終了し、同じポートで立ち上げます。別プロジェクトのプロセスは終了せず、ポート競合を報告します。
 - Windows PowerShell 5.1で実行する日本語入りの`.ps1`はUTF-8 BOM付きで保存します。`start.bat`の検証は、HTTPだけでなくSysOverRayの可視ウィンドウと操作ボタンを確認します。

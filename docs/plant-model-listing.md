@@ -90,4 +90,4 @@ ECの `start.bat` とCanvasの `start.bat` で双方を起動する。
 
 `npm run test:product-input`（business 設定の `business-product-*` と `business-plant-ai`）と `business-plant-step` で、実API・専用MySQL・実Cognitoを使って確かめる。AIの正常系は `KUSAKARI_EC_E2E_OPENAI_API_KEY` を明示したときだけ実行し（有料の呼び出し）、開発用のキーには切り替えない。成功応答をモックしない。
 
-経緯と過去の検証結果は [kusakari-document の記録](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/商品とカート/2026-10-17_plant-model-listing_経緯.md) にある。
+経緯と過去の検証結果は [kusakari-document の記録](https://github.com/abeouga/kusakari-document/blob/main/開発の記録/kusakari-ec/商品とカート/2026-10-17_plant-model-listing_経緯.md) にある。

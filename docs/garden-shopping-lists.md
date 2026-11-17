@@ -59,4 +59,4 @@ Canvasの庭ごとの買い物リストと、ECの購入用カートを分けて
 - 既存の購入・出品の回帰：`npm run test:shopping-regression`。
 - Canvas側：`npm run test:shopping`。APIの契約はCanvasの `docs/garden-shopping-lists.md` にある。
 
-経緯と過去の検証結果は [kusakari-document の記録](https://github.com/abeouga/kusakari-document/blob/main/kusakari-ec/商品とカート/2026-10-16_garden-shopping-lists_経緯.md) にある。
+経緯と過去の検証結果は [kusakari-document の記録](https://github.com/abeouga/kusakari-document/blob/main/開発の記録/kusakari-ec/商品とカート/2026-10-16_garden-shopping-lists_経緯.md) にある。
