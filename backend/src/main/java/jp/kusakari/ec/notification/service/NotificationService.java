@@ -3,6 +3,8 @@ package jp.kusakari.ec.notification.service;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import jp.kusakari.ec.auth.AuthMember;
 import jp.kusakari.ec.auth.AuthMemberRepository;
 import jp.kusakari.ec.auth.AuthService;
@@ -42,23 +44,50 @@ public class NotificationService {
     Set<String> recipients = new LinkedHashSet<>();
     organizations.findById(store.getOrganizationId()).map(OrganizationEntity::getOwnerMemberId).ifPresent(recipients::add);
     storeMembers.findAssignedAtStore(storeId).forEach(assignment -> recipients.add(assignment.getId().getMemberId()));
-    members.findAllById(recipients).stream().filter(AuthMember::isEnabled).forEach(m -> send(m.getId(), title, body));
+    members
+      .findAllById(recipients)
+      .stream()
+      .filter(AuthMember::isEnabled)
+      .forEach(m -> notices.save(NotificationEntity.forStore(m.getId(), storeId, title, body)));
   }
 
   @Transactional(readOnly = true)
   public List<Notice> list() {
+    var member = auth.current();
+    var visible = visibility(member);
     return notices
-      .findByMemberIdOrderByCreatedAtDesc(auth.current().getId())
+      .findByMemberIdOrderByCreatedAtDesc(member.getId())
       .stream()
+      .filter(visible)
       .map(n -> new Notice(n.getId(), n.getTitle(), n.getBody(), n.getCreatedAt(), n.getReadAt()))
       .toList();
   }
 
   public void read(String id) {
+    var member = auth.current();
     var n = notices
       .findById(id)
-      .filter(x -> x.getMemberId().equals(auth.current().getId()))
+      .filter(x -> x.getMemberId().equals(member.getId()))
+      .filter(visibility(member))
       .orElseThrow(() -> new ApiException(404, "NOTICE_NOT_FOUND", "通知が見つかりません。"));
     n.markRead();
+  }
+
+  /**
+   * 担当者（SHOP_STAFF）が見られる通知（#169）。本人あての通知はいつでも見られる。
+   * 店舗あての通知は、その店舗に所属している間だけ見られる（外される前に見えていた通知も見えなくなる）。
+   * 店舗を持たない V5 より前の店舗あての通知は、どこかの店舗に所属している間だけ見られる。
+   * オーナー・購入者・運営は、自分あての通知をすべて見られる。
+   */
+  private Predicate<NotificationEntity> visibility(AuthMember member) {
+    if (!AuthMember.SHOP_STAFF.equals(member.getAccountType())) return notice -> true;
+    Set<Long> stores = storeMembers
+      .findAllForMember(member.getId())
+      .stream()
+      .map(assignment -> assignment.getId().getStoreId())
+      .collect(Collectors.toSet());
+    return notice ->
+      NotificationEntity.PERSONAL.equals(notice.getKind()) ||
+      (notice.getStoreId() == null ? !stores.isEmpty() : stores.contains(notice.getStoreId()));
   }
 }
