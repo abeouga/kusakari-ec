@@ -28,6 +28,10 @@ public class OrganizationMemberEntity {
   @Column(length = 16)
   private String role;
 
+  /** 組織から除名されているか（#173）。除名は論理削除なので、所属と担当の行は残す。 */
+  @Column(nullable = false)
+  private boolean expelled;
+
   public OrganizationMemberEntity(long organizationId, String memberId) {
     this.id = new OrganizationMemberId(organizationId, memberId);
   }
