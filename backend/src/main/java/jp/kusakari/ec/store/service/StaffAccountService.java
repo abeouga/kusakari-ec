@@ -11,6 +11,7 @@ import jp.kusakari.ec.auth.AuthMemberRepository;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEventEntity;
@@ -41,6 +42,7 @@ public class StaffAccountService {
   private final StoreRepository stores;
   private final OrganizationMemberEventRepository events;
   private final StoreInvitationRepository invitations;
+  private final NotificationService notices;
 
   public record StoreRef(long id, String name) {}
 
@@ -176,10 +178,10 @@ public class StaffAccountService {
     return list();
   }
 
-  /** 店舗の担当から外す。組織への所属は残る。 */
+  /** 店舗の担当から外す。組織への所属は残り、本人に通知する（#169）。 */
   public AccountsView removeAssignment(String memberId, long storeId) {
     var viewer = policy.viewer();
-    storeOf(viewer, storeId);
+    var store = storeOf(viewer, storeId);
     activeMembershipOf(viewer, memberId);
     if (!viewer.canRemoveAssignment()) throw StaffPolicy.denied();
     var existing = storeMembers
@@ -187,6 +189,12 @@ public class StaffAccountService {
       .orElseThrow(() -> new ApiException(404, "ASSIGNMENT_NOT_FOUND", "この店舗の担当ではありません。"));
     storeMembers.delete(existing);
     record(viewer, OrganizationMemberEventEntity.REMOVE_FROM_STORE, memberId, storeId);
+    // 本人あての通知なので、どの店舗にも所属していなくても見られる（#169）。除名では通知しない（#168）。
+    notices.send(
+      memberId,
+      "店舗の担当から外れました",
+      store.getName() + "の担当から外れました。組織には所属しています。"
+    );
     storeMembers.flush();
     return list();
   }

@@ -9,7 +9,7 @@
 
 この文書の前提は次のとおりです。
 
-- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V4）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
+- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V5）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
 - 旧構成（V1〜V15）のデータは移行しません。DB は `DB-reset.bat`（[手順](database-reset.md)）で作り直します
 - 決済は Stripe のテストモードだけを使います。実際のお金は動かしません
 
@@ -38,6 +38,8 @@ erDiagram
     notifications {
         char36 id PK
         char36 member_id FK
+        varchar kind "PERSONAL（本人あて）/ STORE（店舗あて）"
+        bigint store_id FK "店舗あての店舗。V5 より前は NULL"
         varchar title
         varchar body
         timestamp created_at
@@ -301,6 +303,7 @@ erDiagram
 
     members ||--o| member_pickup_contacts : "受取連絡先"
     members ||--o{ notifications : "宛先"
+    stores |o--o{ notifications : "店舗あての通知"
     members ||--o{ organization_applications : "申請（今と前回の2行まで）"
     organization_applications |o--o| organizations : "承認で作成"
     members |o--o| organizations : "オーナー"
@@ -346,7 +349,9 @@ erDiagram
     members ||--o{ organization_member_events : "操作した人・操作された人"
 ```
 
-テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4 のマイグレーションで足した）。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
+テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5 のマイグレーションで足した）。
+
+担当者（`SHOP_STAFF`）は、本人あての通知と、今所属している店舗あての通知だけを見られます。店舗の担当から外されると、外される前に見えていたその店舗の通知も見えなくなります（#169）。V5 より前の店舗あての通知は店舗が分からないので、どこかの店舗に所属している間だけ見られます。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
 
 閉鎖済みになってから90日たった店舗の連絡先は、アプリ内の定期処理（1日1回）で消します。MySQL のイベントは使いません（[残りの決定](decisions/2026-11-12-remaining-decisions.md) の 3-1）。
 
@@ -393,6 +398,7 @@ erDiagram
 | `organization_member_events` の種別の CHECK | 担当にする・外す・除名・復帰の4つ以外の記録 |
 | `ck_org_member_events_store`（担当の出入りなら店舗あり、除名・復帰なら店舗なし） | 店舗のない担当の出入りの記録。店舗の付いた除名・復帰の記録 |
 | `organization_member_events(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗の記録 |
+| `notifications.kind` の CHECK、`kind = 'STORE' OR store_id IS NULL` の CHECK | 知らない通知の種別。店舗の付いた本人あての通知 |
 | `stores(organization_id, name)` の一意キー | 同じ組織に同じ名前の店舗 |
 | `(latitude IS NULL) = (longitude IS NULL)` の CHECK | 緯度と経度の片方だけの入力 |
 | `(closing_started_at IS NULL) = (closing_started_by IS NULL)`、`closing_started_by` が `OWNER`・`ADMIN` の CHECK | 誰が始めたか分からない閉鎖。オーナー・運営以外が始めた閉鎖 |

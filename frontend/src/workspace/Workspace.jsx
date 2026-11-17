@@ -38,6 +38,8 @@ import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
 import { AuthPanel } from '../components/AuthPanel';
 /** @typedef {import('./WorkspaceSidebar').MenuItem} MenuItem */
+/** @type {MenuItem} */
+const noticeItem = ['/seller/notifications', '出店者通知', Bell];
 /** @type {MenuItem[]} */
 const sellerMenu = [
   ['/seller/products', '商品管理', Package],
@@ -45,7 +47,7 @@ const sellerMenu = [
   ['/seller/sales', '注文実績', ChartColumn],
   ['/seller/stores', '店舗一覧', Building2],
   ['/seller/profile', '店舗プロフィール', UserRound],
-  ['/seller/notifications', '出店者通知', Bell],
+  noticeItem,
 ];
 // Issue #111: personnel pages, shown to the owner, ORG_ADMIN and MANAGER only.
 /** @type {MenuItem[]} */
@@ -153,12 +155,24 @@ export function Workspace({ shop, path, header }) {
     session.accountType === 'SHOP_OWNER' ||
     session.organizationRole === 'ORG_ADMIN' ||
     shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  // Issue #169: a staff account of the organization without any store keeps the seller pages for its own notices only.
+  const unassigned =
+    seller &&
+    session.accountType === 'SHOP_STAFF' &&
+    session.organizationRole !== 'ORG_ADMIN' &&
+    !shop.sellerStoresLoading &&
+    shop.sellerStores.length === 0;
   const personnelOnly =
     seller && rolePaths.has(path) && session.accountType !== 'ADMIN' && !!chosenStore && chosenStore.memberRole == null;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
-      ? [{ label: '出店者メニュー', items: personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu }]
+      ? [
+          {
+            label: '出店者メニュー',
+            items: unassigned ? [noticeItem] : personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu,
+          },
+        ]
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
@@ -181,6 +195,13 @@ export function Workspace({ shop, path, header }) {
       <BuyerOrders />
     );
   else if (path.endsWith('/notifications')) content = <Notices />;
+  else if (unassigned)
+    content = (
+      <section className="workspace-card">
+        <p role="note">どの店舗にも所属していないため、この画面は使えません。自分あての通知だけを見られます。</p>
+        <PageLink href="/seller/notifications">通知の画面へ戻る</PageLink>
+      </section>
+    );
   // Issue #130: the sales page decides by the API which stores the account may read, including closed ones.
   else if (path === '/seller/sales' && !shop.sellerStoresLoading)
     content = <SalesPage key={storeId ?? 0} storeId={storeId ?? null} />;
@@ -235,6 +256,7 @@ export function Workspace({ shop, path, header }) {
     action?.[1] ||
     menu.find(([url]) => url === path)?.[1] ||
     pageTitles[path] ||
+    (unassigned ? '所属している店舗がありません' : '') ||
     (operatorSales ? '店舗の注文実績' : '') ||
     (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
@@ -251,7 +273,7 @@ export function Workspace({ shop, path, header }) {
           />
           <main className="workspace-main">
             {!cardTitlePaths.has(path) && <h1>{title}</h1>}
-            {(storePaths.has(path) || personnelOnly) && shop.sellerStores.length > 1 && (
+            {(storePaths.has(path) || personnelOnly) && !unassigned && shop.sellerStores.length > 1 && (
               <SellerStoreSelect shop={shop} disabled={false} />
             )}
             {content}

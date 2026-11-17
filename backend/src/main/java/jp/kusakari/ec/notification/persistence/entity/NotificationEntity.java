@@ -10,12 +10,23 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NotificationEntity {
 
+  public static final String PERSONAL = "PERSONAL";
+  public static final String STORE = "STORE";
+
   @Id
   @Column(columnDefinition = "CHAR(36)")
   private String id;
 
   @Column(columnDefinition = "CHAR(36)", nullable = false)
   private String memberId;
+
+  /** PERSONAL（本人あて）か STORE（店舗あて）。店舗に所属していない担当者は本人あてだけを見る（#169）。 */
+  @Column(length = 16, nullable = false, updatable = false)
+  private String kind = PERSONAL;
+
+  /** 店舗あての通知の店舗。V5 より前の店舗あての通知は空。 */
+  @Column(name = "store_id", updatable = false)
+  private Long storeId;
 
   @Column(length = 200, nullable = false)
   private String title;
@@ -34,6 +45,14 @@ public class NotificationEntity {
     this.title = title;
     this.body = body;
     this.createdAt = Instant.now();
+  }
+
+  /** 店舗あての通知。 */
+  public static NotificationEntity forStore(String memberId, long storeId, String title, String body) {
+    var notice = new NotificationEntity(memberId, title, body);
+    notice.kind = STORE;
+    notice.storeId = storeId;
+    return notice;
   }
 
   public void markRead() {
