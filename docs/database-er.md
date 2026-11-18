@@ -5,10 +5,11 @@
 - [decisions/2026-11-11-db-v3.md](decisions/2026-11-11-db-v3.md)：構成（v3）、決済と返金、手数料、店舗の閉鎖、組織の停止、組織のロール、招待キー、警告の履歴
 - [decisions/2026-11-12-moderation-warnings.md](decisions/2026-11-12-moderation-warnings.md)：運営の警告と、商品・店舗の停止の履歴（`product_moderation_events`・`store_moderation_events`）の使い方
 - [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）と、連絡先の削除をアプリの定期処理にしたこと
+- 組織からの除名（`organization_members.expelled`）と担当者の操作の記録（`organization_member_events`、V4）：#170・#173 で決め、記録に店舗を持たせることは #177 で決めた。担当から外す場合と除名の場合の違い・除名の扱いは [decisions/2026-11-18-organization-expulsion.md](decisions/2026-11-18-organization-expulsion.md)
 
 この文書の前提は次のとおりです。
 
-- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V3）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
+- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V5）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
 - 旧構成（V1〜V15）のデータは移行しません。DB は `DB-reset.bat`（[手順](database-reset.md)）で作り直します
 - 決済は Stripe のテストモードだけを使います。実際のお金は動かしません
 
@@ -37,6 +38,8 @@ erDiagram
     notifications {
         char36 id PK
         char36 member_id FK
+        varchar kind "PERSONAL（本人あて）/ STORE（店舗あて）"
+        bigint store_id FK "店舗あての店舗。V5 より前は NULL"
         varchar title
         varchar body
         timestamp created_at
@@ -75,6 +78,7 @@ erDiagram
         char36 member_id PK, FK, UK "1人1組織"
         varchar member_account_type "常に SHOP_STAFF"
         varchar role "ORG_ADMIN。NULL = ロールなし"
+        boolean expelled "組織から除名中。所属と担当の行は残す"
         timestamp created_at
     }
     stores {
@@ -287,9 +291,19 @@ erDiagram
         char36 actor_member_id FK "操作した運営者。NULL = 自動の停止"
         timestamp created_at
     }
+    organization_member_events {
+        bigint id PK
+        bigint organization_id FK
+        varchar event_type "ASSIGN_TO_STORE / REMOVE_FROM_STORE / EXPEL_FROM_ORGANIZATION / REINSTATE_TO_ORGANIZATION"
+        char36 actor_member_id FK "操作した人"
+        char36 target_member_id FK "操作された人"
+        bigint store_id FK "担当の出入りだけ。除名・復帰では NULL"
+        timestamp created_at
+    }
 
     members ||--o| member_pickup_contacts : "受取連絡先"
     members ||--o{ notifications : "宛先"
+    stores |o--o{ notifications : "店舗あての通知"
     members ||--o{ organization_applications : "申請（今と前回の2行まで）"
     organization_applications |o--o| organizations : "承認で作成"
     members |o--o| organizations : "オーナー"
@@ -330,9 +344,14 @@ erDiagram
     members ||--o{ store_moderation_events : "操作した運営者"
     organizations ||--o{ organization_moderation_events : "受付停止・停止の履歴"
     members |o--o{ organization_moderation_events : "操作した運営者"
+    organizations ||--o{ organization_member_events : "担当者の操作の記録"
+    stores |o--o{ organization_member_events : "担当の出入りの店舗"
+    members ||--o{ organization_member_events : "操作した人・操作された人"
 ```
 
-テーブルは28個です（`organization_moderation_events` は V3 のマイグレーションで足した）。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
+テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5 のマイグレーションで足した）。
+
+担当者（`SHOP_STAFF`）は、本人あての通知と、今所属している店舗あての通知だけを見られます。店舗の担当から外されると、外される前に見えていたその店舗の通知も見えなくなります（#169）。V5 より前の店舗あての通知は店舗が分からないので、どこかの店舗に所属している間だけ見られます。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
 
 閉鎖済みになってから90日たった店舗の連絡先は、アプリ内の定期処理（1日1回）で消します。MySQL のイベントは使いません（[残りの決定](decisions/2026-11-12-remaining-decisions.md) の 3-1）。
 
@@ -374,8 +393,12 @@ erDiagram
 | `organization_members.member_id` の一意キー | 1人が2つの組織に所属する |
 | `organization_members.role` の CHECK | `ORG_ADMIN` 以外の組織のロール（NULL は「ロールなし」として許す） |
 | `store_members(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗に担当を割り当てる |
-| `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から外すと、担当も消える |
+| `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から除名しても所属の行は消さない（論理削除）ので、担当も残る |
 | `store_members.role` の CHECK | `MANAGER`・`STAFF` 以外のロール（NULL は「未割り当て」として許す。`ORG_ADMIN` は付けられない） |
+| `organization_member_events` の種別の CHECK | 担当にする・外す・除名・復帰の4つ以外の記録 |
+| `ck_org_member_events_store`（担当の出入りなら店舗あり、除名・復帰なら店舗なし） | 店舗のない担当の出入りの記録。店舗の付いた除名・復帰の記録 |
+| `organization_member_events(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗の記録 |
+| `notifications.kind` の CHECK、`kind = 'STORE' OR store_id IS NULL` の CHECK | 知らない通知の種別。店舗の付いた本人あての通知 |
 | `stores(organization_id, name)` の一意キー | 同じ組織に同じ名前の店舗 |
 | `(latitude IS NULL) = (longitude IS NULL)` の CHECK | 緯度と経度の片方だけの入力 |
 | `(closing_started_at IS NULL) = (closing_started_by IS NULL)`、`closing_started_by` が `OWNER`・`ADMIN` の CHECK | 誰が始めたか分からない閉鎖。オーナー・運営以外が始めた閉鎖 |

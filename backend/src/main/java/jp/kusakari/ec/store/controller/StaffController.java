@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.Map;
+import jp.kusakari.ec.store.service.MemberEventService;
 import jp.kusakari.ec.store.service.StaffAccountService;
 import jp.kusakari.ec.store.service.StoreInvitationService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class StaffController {
 
   private final StaffAccountService accounts;
   private final StoreInvitationService invitations;
+  private final MemberEventService memberEvents;
 
   public record RoleRequest(@NotNull @Pattern(regexp = "MANAGER|STAFF|NONE") String role) {}
 
@@ -56,6 +58,24 @@ public class StaffController {
     @RequestBody OrganizationRoleRequest in
   ) {
     return accounts.changeOrganizationRole(memberId, in.organizationAdmin());
+  }
+
+  /** 組織から除名する（#175）。 */
+  @PostMapping("/accounts/{memberId}/expulsion")
+  public StaffAccountService.AccountsView expel(@PathVariable @Pattern(regexp = MEMBER_ID) String memberId) {
+    return accounts.expel(memberId);
+  }
+
+  /** 除名した人を組織に復帰させる（#175）。 */
+  @DeleteMapping("/accounts/{memberId}/expulsion")
+  public StaffAccountService.AccountsView reinstate(@PathVariable @Pattern(regexp = MEMBER_ID) String memberId) {
+    return accounts.reinstate(memberId);
+  }
+
+  /** 担当者の操作の履歴（#180）。除名・復帰は組織の全件、担当の出入りはこの店舗の分。 */
+  @GetMapping("/stores/{storeId}/member-events")
+  public List<MemberEventService.Event> memberEvents(@PathVariable long storeId) {
+    return memberEvents.list(storeId);
   }
 
   @GetMapping("/stores/{storeId}/invitations")

@@ -5,6 +5,7 @@ import { useResource } from './useResource';
 import { useEffect, useState } from 'react';
 import {
   Bell,
+  History,
   Building2,
   Landmark,
   KeyRound,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { StaffAccountsPage } from './StaffAccounts';
 import { StoreInvitationsPage } from './StoreInvitations';
+import { MemberEventsPage } from './MemberEvents';
 import { SalesPage, SalesReport } from './SalesReport';
 import { OrderPage } from './PickupOrders';
 import { BuyerOrders } from './BuyerOrders';
@@ -38,6 +40,8 @@ import { navigate } from './navigation';
 import { useAuth } from '../useAuth';
 import { AuthPanel } from '../components/AuthPanel';
 /** @typedef {import('./WorkspaceSidebar').MenuItem} MenuItem */
+/** @type {MenuItem} */
+const noticeItem = ['/seller/notifications', '出店者通知', Bell];
 /** @type {MenuItem[]} */
 const sellerMenu = [
   ['/seller/products', '商品管理', Package],
@@ -45,7 +49,7 @@ const sellerMenu = [
   ['/seller/sales', '注文実績', ChartColumn],
   ['/seller/stores', '店舗一覧', Building2],
   ['/seller/profile', '店舗プロフィール', UserRound],
-  ['/seller/notifications', '出店者通知', Bell],
+  noticeItem,
 ];
 // Issue #111: personnel pages, shown to the owner, ORG_ADMIN and MANAGER only.
 /** @type {MenuItem[]} */
@@ -53,6 +57,9 @@ const personnelMenu = [
   ['/seller/accounts', 'アカウント', UserCog],
   ['/seller/invitations', '招待キー', KeyRound],
 ];
+// Issue #180: the history of assignments, removals, expulsions and reinstatements, for the owner and ORG_ADMIN only.
+/** @type {MenuItem} */
+const historyItem = ['/seller/member-events', '履歴', History];
 /** @type {MenuItem[]} */
 const operatorMenu = [
   ['/operator/members', '会員管理', Users],
@@ -80,7 +87,13 @@ const pageTitles = {
   '/seller/products/new': '商品登録',
 };
 // Pages that work on one store: an account with several stores chooses which one above the page.
-const storePaths = new Set(['/seller/orders', '/seller/sales', '/seller/profile', '/seller/invitations']);
+const storePaths = new Set([
+  '/seller/orders',
+  '/seller/sales',
+  '/seller/profile',
+  '/seller/invitations',
+  '/seller/member-events',
+]);
 // Issue #112: pages that need a role at the chosen store. An ORG_ADMIN's store without a role offers personnel pages only.
 const rolePaths = new Set([
   '/seller/products',
@@ -149,16 +162,30 @@ export function Workspace({ shop, path, header }) {
     );
   const storeId = shop.sellerStoreId;
   const chosenStore = shop.sellerStores.find((store) => store.id === storeId);
-  const personnel =
-    session.accountType === 'SHOP_OWNER' ||
-    session.organizationRole === 'ORG_ADMIN' ||
-    shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  const organizationPersonnel = session.accountType === 'SHOP_OWNER' || session.organizationRole === 'ORG_ADMIN';
+  const personnel = organizationPersonnel || shop.sellerStores.some((store) => store.memberRole === 'MANAGER');
+  // Issue #169: a staff account of the organization without any store keeps the seller pages for its own notices only.
+  const unassigned =
+    seller &&
+    session.accountType === 'SHOP_STAFF' &&
+    session.organizationRole !== 'ORG_ADMIN' &&
+    !shop.sellerStoresLoading &&
+    shop.sellerStores.length === 0;
   const personnelOnly =
     seller && rolePaths.has(path) && session.accountType !== 'ADMIN' && !!chosenStore && chosenStore.memberRole == null;
   const groups = operator
     ? [{ label: '運営者メニュー', items: operatorMenu }]
     : seller
-      ? [{ label: '出店者メニュー', items: personnel ? [...sellerMenu, ...personnelMenu] : sellerMenu }]
+      ? [
+          {
+            label: '出店者メニュー',
+            items: unassigned
+              ? [noticeItem]
+              : personnel
+                ? [...sellerMenu, ...personnelMenu, ...(organizationPersonnel ? [historyItem] : [])]
+                : sellerMenu,
+          },
+        ]
       : [
           { label: 'マイページ', items: buyerMenu },
           { label: 'アカウント設定', items: accountSettings },
@@ -181,6 +208,13 @@ export function Workspace({ shop, path, header }) {
       <BuyerOrders />
     );
   else if (path.endsWith('/notifications')) content = <Notices />;
+  else if (unassigned)
+    content = (
+      <section className="workspace-card">
+        <p role="note">どの店舗にも所属していないため、この画面は使えません。自分あての通知だけを見られます。</p>
+        <PageLink href="/seller/notifications">通知の画面へ戻る</PageLink>
+      </section>
+    );
   // Issue #130: the sales page decides by the API which stores the account may read, including closed ones.
   else if (path === '/seller/sales' && !shop.sellerStoresLoading)
     content = <SalesPage key={storeId ?? 0} storeId={storeId ?? null} />;
@@ -216,6 +250,12 @@ export function Workspace({ shop, path, header }) {
       </section>
     );
   else if (path === '/seller/profile') content = <ProfilePage key={storeId} storeId={storeId} />;
+  else if (path === '/seller/member-events')
+    content = organizationPersonnel ? (
+      <MemberEventsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />
+    ) : (
+      <p role="alert">この画面を利用する権限がありません。</p>
+    );
   else if (path === '/seller/invitations')
     content = <StoreInvitationsPage key={storeId} storeId={storeId} storeName={chosenStore?.name ?? ''} />;
   else if (path === applicationPaths.status) content = <ApplicationStatusPage accountType={session.accountType} />;
@@ -235,6 +275,7 @@ export function Workspace({ shop, path, header }) {
     action?.[1] ||
     menu.find(([url]) => url === path)?.[1] ||
     pageTitles[path] ||
+    (unassigned ? '所属している店舗がありません' : '') ||
     (operatorSales ? '店舗の注文実績' : '') ||
     (publicStore ? '店舗紹介' : 'ページが見つかりません');
   return (
@@ -251,7 +292,7 @@ export function Workspace({ shop, path, header }) {
           />
           <main className="workspace-main">
             {!cardTitlePaths.has(path) && <h1>{title}</h1>}
-            {(storePaths.has(path) || personnelOnly) && shop.sellerStores.length > 1 && (
+            {(storePaths.has(path) || personnelOnly) && !unassigned && shop.sellerStores.length > 1 && (
               <SellerStoreSelect shop={shop} disabled={false} />
             )}
             {content}

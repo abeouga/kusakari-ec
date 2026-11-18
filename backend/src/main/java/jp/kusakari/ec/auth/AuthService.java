@@ -81,6 +81,18 @@ public class AuthService {
       .findByIssuerAndSubject(user.getIssuer().toString(), user.getSubject())
       .orElseThrow(() -> new ApiException(401, "LOGIN_REQUIRED", "再度ログインしてください。"));
     if (!member.isEnabled()) throw new ApiException(403, "ACCOUNT_DISABLED", "このアカウントは利用できません。");
+    // 組織から除名された担当者は、Cognito では認証できても Kusakari を使えない（#168 の決めること6、#173）。
+    // ログインのたびに所属を読むので、ログイン中の人も次の要求から止まる。本人への通知はしない。
+    if (
+      AuthMember.SHOP_STAFF.equals(member.getAccountType()) &&
+      organizationMembers.findForMember(member.getId()).map(OrganizationMemberEntity::isExpelled).orElse(false)
+    ) {
+      throw new ApiException(
+        403,
+        "ACCOUNT_EXPELLED",
+        "このアカウントは無効化されています。組織の管理者にお問い合わせください。"
+      );
+    }
     return member;
   }
 

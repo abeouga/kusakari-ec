@@ -26,7 +26,10 @@ import org.springframework.stereotype.Component;
  * 別の店舗の担当の追加・外す          全店舗    全店舗     不可           不可
  * ORG_ADMIN の付け外し                できる    不可       不可           不可
  * 招待キーの発行・一覧・取り消し      全店舗    全店舗     自分の店舗     不可
+ * 組織からの除名・復帰（#175）        できる    できる     不可           不可
  * </pre>
+ *
+ * 除名できないのは、オーナー本人（organization_members に行がない）と、操作している自分自身（#167）。
  *
  * オーナー自身は一覧に出るが、ロールを変えられない（オーナーは店舗のロールを持たず、組織の全店舗を扱う）。
  * 商品・在庫・注文は、ORG_ADMIN でも店舗のロール（{@link AuthService#requireSeller}）に従う。
@@ -84,6 +87,11 @@ public class StaffPolicy {
     /** ORG_ADMIN の付け外し。オーナーだけ。 */
     public boolean canChangeOrganizationRole() {
       return owner;
+    }
+
+    /** 組織からの除名と復帰。オーナーと ORG_ADMIN だけで、自分自身は除名できない（#167・#177）。 */
+    public boolean canExpel(String targetId) {
+      return personnel() && !targetId.equals(memberId);
     }
   }
 
