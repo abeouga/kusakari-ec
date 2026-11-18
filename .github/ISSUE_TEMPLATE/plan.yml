@@ -28,10 +28,12 @@ body:
     id: decisions
     attributes:
       label: 決めること
-      description: 決める項目をチェックリストで記載してください。決まったら [x] にして、どう決まったかと理由を1行添えてください。
+      description: 決める項目をチェックリストで記載してください。決まったら [x] にして、どう決まったかと理由を1行添えてください。すべて [x] になったらCloseします。docs/ への記録や実装のIssueの作成など、Closeする前にしておく作業もここに入れてください。
       value: |
         - [ ]
         - [ ]
+        - [ ] 決定を `docs/` に記録する
+        - [ ] 実装のIssueを作る
     validations:
       required: true
 
@@ -54,18 +56,6 @@ body:
         例）
         - 案A：商品の所有者を組織にする。1回の登録で複数店舗で売れるが、価格の変更がほかの店舗にも効く
         - 案B：商品の所有者を店舗にする。店舗ごとに登録し直す必要がある
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: 完了条件
-      description: このIssueをCloseできる条件を記載してください。
-      value: |
-        - 「決めること」がすべて決まっている
-        - 決定を `docs/` に記録している
-        - 実装のIssueを作成している
-    validations:
-      required: true
 
   - type: textarea
     id: related
