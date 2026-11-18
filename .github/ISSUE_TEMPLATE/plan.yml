@@ -6,15 +6,6 @@ labels:
 
 body:
   - type: textarea
-    id: purpose
-    attributes:
-      label: 決めることでできるようになること
-      description: このIssueで決めると、何ができるようになるのかを記載してください。何を決めるのかは「決めること」に書きます。
-      placeholder: 例）組織・店舗・メンバーのテーブル構成が決まり、マイグレーションと認可の実装に入れるようになる
-    validations:
-      required: true
-
-  - type: textarea
     id: background
     attributes:
       label: 現在の課題
@@ -23,17 +14,19 @@ body:
         例）
         - 1つのアカウントで1つの店舗しか扱えない
         - 組織やロールの階層を表す仕組みがない
+    validations:
+      required: true
 
   - type: textarea
     id: decisions
     attributes:
       label: 決めること
-      description: 決める項目をチェックリストで記載してください。決まったら [x] にして、どう決まったかと理由を1行添えてください。すべて [x] になったらCloseします。docs/ への記録や実装のIssueの作成など、Closeする前にしておく作業もここに入れてください。
+      description: 決める項目を、番号を振ったチェックリストで記載してください。番号は一度振ったら振り直さず、項目を足すときは続きの番号にしてください。決まったら [x] にして、どう決まったかと理由を1行添えてください。すべて [x] になったらCloseします。docs/ への記録や実装のIssueの作成など、Closeする前にしておく作業もここに入れてください。
       value: |
-        - [ ]
-        - [ ]
-        - [ ] 決定を `docs/` に記録する
-        - [ ] 実装のIssueを作る
+        - [ ] 1.
+        - [ ] 2.
+        - [ ] 3. 決定を `docs/` に記録する
+        - [ ] 4. 実装のIssueを作る
     validations:
       required: true
 
