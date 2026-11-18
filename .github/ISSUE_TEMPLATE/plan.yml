@@ -8,31 +8,21 @@ body:
   - type: textarea
     id: purpose
     attributes:
-      label: 決めたいこと
-      description: このIssueで何を決めるのか、決めると何ができるようになるのかを記載してください。
-      placeholder: 例）組織・店舗・メンバーのテーブル構成を決め、マイグレーションと認可の実装に入れるようにする
+      label: 決めることでできるようになること
+      description: このIssueで決めると、何ができるようになるのかを記載してください。何を決めるのかは「決めること」に書きます。
+      placeholder: 例）組織・店舗・メンバーのテーブル構成が決まり、マイグレーションと認可の実装に入れるようになる
     validations:
       required: true
 
   - type: textarea
     id: background
     attributes:
-      label: 背景・現在の問題
-      description: なぜ決める必要があるのか、今どのような問題があるのかを記載してください。
+      label: 現在の課題
+      description: 今どのような課題があり、なぜ決める必要があるのかを記載してください。前のIssueで決まったことは書き写さず、「前提のIssue」にリンクを置いてください。
       placeholder: |
         例）
         - 1つのアカウントで1つの店舗しか扱えない
         - 組織やロールの階層を表す仕組みがない
-
-  - type: textarea
-    id: premises
-    attributes:
-      label: 決まっている前提
-      description: すでに決まっていて、このIssueでは変えないことを記載してください。
-      placeholder: |
-        例）
-        - 購入用と店舗側のアカウントを分ける
-        - 既存のDBは移行せずに初期化する
 
   - type: textarea
     id: decisions
@@ -44,6 +34,16 @@ body:
         - [ ]
     validations:
       required: true
+
+  - type: textarea
+    id: premises
+    attributes:
+      label: 前提のIssue
+      description: すでに決まっていて、このIssueでは変えないことを決めたIssueへのリンクを記載してください。決まった内容は書き写さず、何を決めたIssueかだけを添えてください。親Issueと同じ前提でも、親Issueの本文を繰り返さず、リンクだけを置いてください。
+      placeholder: |
+        例）
+        - #181：オーナーの譲渡の基本の仕様
+        - #102：オーナーは1つの組織に1人
 
   - type: textarea
     id: options
@@ -71,5 +71,5 @@ body:
     id: related
     attributes:
       label: 関連するIssue・資料
-      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。
+      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。「前提のIssue」に書いたIssueは、ここに重ねて書かないでください。
       placeholder: 例）親issue：#103、実装：#107、#108
