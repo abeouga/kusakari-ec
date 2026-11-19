@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import {
   ec,
@@ -8,6 +7,7 @@ import {
   capture,
   prepareMember,
   prepareStaff,
+  createFixtureStaff,
   createPasswordTestAccount,
   deletePasswordTestAccount,
 } from './business-helpers.js';
@@ -15,21 +15,6 @@ import { sql } from './database.js';
 
 const evidence = 'artifacts/business/owner-succession';
 const REQUEST_BUTTON = 'オーナーの譲渡を申し出る';
-
-/**
- * A staff member of the sample organization that never signs in (no Cognito account), owned by this test.
- * @param {string} name
- */
-function createFixtureStaff(name) {
-  if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
-    throw new Error('Fixtures cannot change the development database.');
-  const id = randomUUID();
-  const member = { id, email: `succession-${id}@example.com` };
-  sql(`INSERT INTO members(id,issuer,subject,email,display_name,account_type,enabled)
-    VALUES('${id}','e2e-fixture','${id}','${member.email}','${name}','USER',TRUE);`);
-  prepareStaff(member, { 1: 'STAFF' });
-  return member;
-}
 
 /** The successor waiting for approval in the sample organization, or 'NULL'. */
 const pendingMember = () => sql(`SELECT IFNULL(pending_owner_member_id,'NULL') FROM organizations WHERE id=1;`);

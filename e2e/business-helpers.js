@@ -98,6 +98,22 @@ export function prepareStaff(member, stores, organizationAdmin = false) {
 }
 
 /**
+ * A staff member of the sample organization that never signs in (no Cognito account), owned by the calling test
+ * (#203, #205). The row is kept for audit; the test disables it when it ends.
+ * @param {string} name
+ */
+export function createFixtureStaff(name) {
+  if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
+    throw new Error('Fixtures cannot change the development database.');
+  const id = randomUUID();
+  const member = { id, email: `succession-${id}@example.com` };
+  sql(`INSERT INTO members(id,issuer,subject,email,display_name,account_type,enabled)
+    VALUES('${id}','e2e-fixture','${id}','${member.email}','${name}','USER',TRUE);`);
+  prepareStaff(member, { 1: 'STAFF' });
+  return member;
+}
+
+/**
  * An owner adds a store without an application; a new store is unpublished, so buyers see it only after this.
  * @param {import('@playwright/test').APIRequestContext} request the owner's session
  * @param {string} name

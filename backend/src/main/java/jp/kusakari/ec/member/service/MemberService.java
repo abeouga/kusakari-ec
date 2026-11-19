@@ -7,6 +7,8 @@ import jp.kusakari.ec.auth.*;
 import jp.kusakari.ec.common.web.ApiException;
 import jp.kusakari.ec.member.persistence.entity.PickupContactEntity;
 import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
+import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
+import jp.kusakari.ec.store.service.PendingOwnerSuccession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class MemberService {
   private final PickupContactRepository pickupContacts;
   private final WithdrawalGuard withdrawalGuard;
   private final jp.kusakari.ec.catalog.persistence.repository.StoreRepository stores;
+  private final PendingOwnerSuccession pendingOwnerSuccession;
 
   public record PickupContact(
     @NotNull @Size(max = 100) String recipientName,
@@ -57,8 +60,14 @@ public class MemberService {
     pickupContacts.deleteById(auth.current().getId());
   }
 
+  /**
+   * 退会する。承認待ちの譲渡先なら、同じトランザクションで申し出を「自動で無効」にする（#205）。
+   * 譲渡の申し出・承認と同じく、組織の行を会員の行より先にロックする。オーナーは所属がないので組織の行をロックせず、
+   * 注文の確定と同じ順番で店舗の行をロックする。
+   */
   public void withdraw() {
     var id = auth.current().getId();
+    var organization = pendingOwnerSuccession.lockOrganizationOf(id);
     var m = members.lockMember(id).orElseThrow();
     if (m.isAdmin()) throw new ApiException(
       409,
@@ -88,6 +97,7 @@ public class MemberService {
       );
     }
     m.withdraw();
+    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id));
   }
 
   @Transactional(readOnly = true)
@@ -110,8 +120,15 @@ public class MemberService {
       .toList();
   }
 
+  /**
+   * 運営が会員の利用を停止・再開する。承認待ちの譲渡先を停止したら、同じトランザクションで申し出を「自動で無効」にする（#205）。
+   * 停止するときは、譲渡の申し出・承認と同じく、組織の行を会員の行より先にロックする。
+   */
   public void enable(String id, boolean enabled) {
     auth.requireAdmin();
+    Optional<OrganizationEntity> organization = enabled
+      ? Optional.empty()
+      : pendingOwnerSuccession.lockOrganizationOf(id);
     var m = members
       .lockMember(id)
       .orElseThrow(() -> new ApiException(404, "MEMBER_NOT_FOUND", "会員が見つかりません。"));
@@ -121,5 +138,6 @@ public class MemberService {
       "管理者または退会済み会員の状態は変更できません。"
     );
     m.changeEnabled(enabled);
+    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id));
   }
 }
