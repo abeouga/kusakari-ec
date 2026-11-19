@@ -6,10 +6,11 @@
 - [decisions/2026-11-12-moderation-warnings.md](decisions/2026-11-12-moderation-warnings.md)：運営の警告と、商品・店舗の停止の履歴（`product_moderation_events`・`store_moderation_events`）の使い方
 - [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）と、連絡先の削除をアプリの定期処理にしたこと
 - 組織からの除名（`organization_members.expelled`）と担当者の操作の記録（`organization_member_events`、V4）：#170・#173 で決め、記録に店舗を持たせることは #177 で決めた。担当から外す場合と除名の場合の違い・除名の扱いは [decisions/2026-11-18-organization-expulsion.md](decisions/2026-11-18-organization-expulsion.md)
+- オーナーの譲渡（`organizations.pending_owner_member_id`・`pending_owner_expires_at`、譲渡の記録の種類、`notifications.category`、V6）：#181・#194・#196・#197 と #200 で決めた。流れ・通知・記録・ロックの順番は [decisions/2026-11-20-owner-succession.md](decisions/2026-11-20-owner-succession.md)
 
 この文書の前提は次のとおりです。
 
-- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V5）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
+- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V6）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
 - 旧構成（V1〜V15）のデータは移行しません。DB は `DB-reset.bat`（[手順](database-reset.md)）で作り直します
 - 決済は Stripe のテストモードだけを使います。実際のお金は動かしません
 
@@ -40,6 +41,7 @@ erDiagram
         char36 member_id FK
         varchar kind "PERSONAL（本人あて）/ STORE（店舗あて）"
         bigint store_id FK "店舗あての店舗。V5 より前は NULL"
+        varchar category "ORDER / CANCEL_REQUEST / MODERATION / STORE_CLOSURE / OWNER_SUCCESSION_REQUEST / OWNER_SUCCESSION_RESULT / GENERAL"
         varchar title
         varchar body
         timestamp created_at
@@ -69,6 +71,8 @@ erDiagram
         varchar name "事業者名の正本"
         char36 owner_member_id FK, UK "NULL はサンプルの組織だけ"
         varchar owner_account_type "常に SHOP_OWNER"
+        char36 pending_owner_member_id FK "承認待ちの譲渡先。NULL = 申し出なし"
+        timestamp pending_owner_expires_at "承認の期限（申し出た時刻＋30分）。譲渡先と一緒に NULL"
         timestamp suspension_started_at "NULL = 通常。日時あり = 受付停止中"
         boolean suspended "運営による停止"
         timestamp created_at
@@ -294,10 +298,10 @@ erDiagram
     organization_member_events {
         bigint id PK
         bigint organization_id FK
-        varchar event_type "ASSIGN_TO_STORE / REMOVE_FROM_STORE / EXPEL_FROM_ORGANIZATION / REINSTATE_TO_ORGANIZATION"
-        char36 actor_member_id FK "操作した人"
+        varchar event_type "ASSIGN_TO_STORE / REMOVE_FROM_STORE / EXPEL_FROM_ORGANIZATION / REINSTATE_TO_ORGANIZATION / OWNER_SUCCESSION_*（5つ）"
+        char36 actor_member_id FK "操作した人。自動で無効では申し出たオーナー"
         char36 target_member_id FK "操作された人"
-        bigint store_id FK "担当の出入りだけ。除名・復帰では NULL"
+        bigint store_id FK "担当の出入りだけ。除名・復帰・譲渡では NULL"
         timestamp created_at
     }
 
@@ -307,6 +311,7 @@ erDiagram
     members ||--o{ organization_applications : "申請（今と前回の2行まで）"
     organization_applications |o--o| organizations : "承認で作成"
     members |o--o| organizations : "オーナー"
+    members |o--o{ organizations : "承認待ちの譲渡先"
     members ||--o| organization_members : "所属"
     organizations ||--o{ organization_members : "子アカウント"
     organizations ||--o{ stores : "運営"
@@ -349,7 +354,11 @@ erDiagram
     members ||--o{ organization_member_events : "操作した人・操作された人"
 ```
 
-テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5 のマイグレーションで足した）。
+テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5、`organizations.pending_owner_member_id`・`pending_owner_expires_at` と `notifications.category` は V6 のマイグレーションで足した）。
+
+`organization_member_events.event_type` の譲渡の5つの種類は、`OWNER_SUCCESSION_REQUEST`（申し出）、`OWNER_SUCCESSION_CANCELLATION`（取り消し）、`OWNER_SUCCESSION_REFUSAL`（断り）、`OWNER_SUCCESSION_APPROVAL`（承認。交代の記録を兼ねる）、`OWNER_SUCCESSION_AUTO_INVALIDATED`（期限切れ、譲渡先の除名・停止・退会、申し出たオーナーの停止・退会による自動の無効）です（V6 で種類の列を40文字に広げた）。どれも店舗を持ちません。自動で無効は誰かの操作ではありませんが、操作した人の列には申し出たオーナーを入れます（#196 の 6）。
+
+`notifications.category` は通知の種類で、重要かどうかは DB に持たず、種類から決めます（重要の印を出すのは `OWNER_SUCCESSION_REQUEST` だけ）。本人あてか店舗あてかを表す `kind` とは別の列です。V6 より前の通知は `GENERAL` です。
 
 担当者（`SHOP_STAFF`）は、本人あての通知と、今所属している店舗あての通知だけを見られます。店舗の担当から外されると、外される前に見えていたその店舗の通知も見えなくなります（#169）。V5 より前の店舗あての通知は店舗が分からないので、どこかの店舗に所属している間だけ見られます。`product_media`（画像の本体）と `stripe_events`（処理済みの通知）は、ほかのテーブルから外部キーで参照されません。
 
@@ -388,6 +397,7 @@ erDiagram
 | --- | --- |
 | `organizations(owner_member_id, owner_account_type)` → `members(id, account_type)`、`owner_account_type = 'SHOP_OWNER'` の CHECK | 購入者・申請中・子アカウント・運営をオーナーにする。オーナーである間の種別の変更 |
 | `organizations.owner_member_id` の一意キー | 1人が2つの組織のオーナーになる |
+| `ck_organizations_pending_owner`（`pending_owner_member_id` と `pending_owner_expires_at` は両方空か両方あり）、`pending_owner_member_id` → `members(id)` | 期限のない承認待ち、譲渡先のない期限。存在しない会員への申し出 |
 | `suspended = FALSE OR suspension_started_at IS NOT NULL` の CHECK | 受付停止を経ずに組織を停止する |
 | `organization_members(member_id, member_account_type)` → `members(id, account_type)`、`member_account_type = 'SHOP_STAFF'` の CHECK | 子アカウント以外を組織に所属させる。所属している間の種別の変更 |
 | `organization_members.member_id` の一意キー | 1人が2つの組織に所属する |
@@ -395,10 +405,11 @@ erDiagram
 | `store_members(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗に担当を割り当てる |
 | `store_members(organization_id, member_id)` → `organization_members(organization_id, member_id)`（`ON DELETE CASCADE`） | 所属していない人・オーナーを店舗の担当にする。組織から除名しても所属の行は消さない（論理削除）ので、担当も残る |
 | `store_members.role` の CHECK | `MANAGER`・`STAFF` 以外のロール（NULL は「未割り当て」として許す。`ORG_ADMIN` は付けられない） |
-| `organization_member_events` の種別の CHECK | 担当にする・外す・除名・復帰の4つ以外の記録 |
-| `ck_org_member_events_store`（担当の出入りなら店舗あり、除名・復帰なら店舗なし） | 店舗のない担当の出入りの記録。店舗の付いた除名・復帰の記録 |
+| `organization_member_events` の種別の CHECK | 担当にする・外す・除名・復帰と、譲渡の5つ（申し出・承認・断り・取り消し・自動で無効）以外の記録 |
+| `ck_org_member_events_store`（担当の出入りなら店舗あり、除名・復帰・譲渡なら店舗なし） | 店舗のない担当の出入りの記録。店舗の付いた除名・復帰・譲渡の記録 |
 | `organization_member_events(store_id, organization_id)` → `stores(id, organization_id)` | 別の組織の店舗の記録 |
 | `notifications.kind` の CHECK、`kind = 'STORE' OR store_id IS NULL` の CHECK | 知らない通知の種別。店舗の付いた本人あての通知 |
+| `ck_notifications_category` | 7つ以外の通知の種類 |
 | `stores(organization_id, name)` の一意キー | 同じ組織に同じ名前の店舗 |
 | `(latitude IS NULL) = (longitude IS NULL)` の CHECK | 緯度と経度の片方だけの入力 |
 | `(closing_started_at IS NULL) = (closing_started_by IS NULL)`、`closing_started_by` が `OWNER`・`ADMIN` の CHECK | 誰が始めたか分からない閉鎖。オーナー・運営以外が始めた閉鎖 |
