@@ -15,6 +15,7 @@ import jp.kusakari.ec.notification.persistence.repository.NotificationRepository
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.repository.OrganizationRepository;
 import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
+import jp.kusakari.ec.store.service.PendingOwnerSuccession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class NotificationService {
   private final StoreRepository stores;
   private final OrganizationRepository organizations;
   private final StoreMemberRepository storeMembers;
+  private final PendingOwnerSuccession pendingOwnerSuccession;
 
   /** category は通知の種類（NotificationEntity の ORDER など）。重要かどうかは画面が種類から決める。 */
   public record Notice(
@@ -60,9 +62,10 @@ public class NotificationService {
       .forEach(m -> notices.save(NotificationEntity.forStore(m.getId(), storeId, category, title, body)));
   }
 
-  @Transactional(readOnly = true)
+  /** 通知一覧。読み込むときに、自分がオーナーか譲渡先の、期限が過ぎた譲渡の申し出を無効として記録する（#194 の 15）。 */
   public List<Notice> list() {
     var member = auth.current();
+    pendingOwnerSuccession.expireIfDueFor(member.getId());
     var visible = visibility(member);
     return notices
       .findByMemberIdOrderByCreatedAtDesc(member.getId())

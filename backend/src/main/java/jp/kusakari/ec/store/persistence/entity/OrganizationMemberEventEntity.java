@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -92,6 +93,30 @@ public class OrganizationMemberEventEntity {
   ) {
     if (!EXPEL_FROM_ORGANIZATION.equals(eventType) && !REINSTATE_TO_ORGANIZATION.equals(eventType)) {
       throw new IllegalArgumentException("Not an organization event: " + eventType);
+    }
+    return new OrganizationMemberEventEntity(organizationId, eventType, actorMemberId, targetMemberId, null);
+  }
+
+  /**
+   * オーナーの譲渡の記録（#196）。target は譲渡先。
+   * 自動で無効（OWNER_SUCCESSION_AUTO_INVALIDATED）の actor は、申し出たオーナー（#196 の 6）。
+   */
+  public static OrganizationMemberEventEntity ofOwnerSuccession(
+    long organizationId,
+    String eventType,
+    String actorMemberId,
+    String targetMemberId
+  ) {
+    if (
+      !List.of(
+        OWNER_SUCCESSION_REQUEST,
+        OWNER_SUCCESSION_APPROVAL,
+        OWNER_SUCCESSION_REFUSAL,
+        OWNER_SUCCESSION_CANCELLATION,
+        OWNER_SUCCESSION_AUTO_INVALIDATED
+      ).contains(eventType)
+    ) {
+      throw new IllegalArgumentException("Not an owner succession event: " + eventType);
     }
     return new OrganizationMemberEventEntity(organizationId, eventType, actorMemberId, targetMemberId, null);
   }

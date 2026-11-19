@@ -53,6 +53,28 @@ public class OrganizationEntity {
   public static final String NOT_ACCEPTING = "NOT_ACCEPTING";
   public static final String SUSPENDED = "SUSPENDED";
 
+  /** 承認待ちの譲渡の申し出があり、期限が過ぎていない。期限が過ぎた申し出は残っていないものとして扱う（#194 の 16）。 */
+  public boolean hasPendingOwnerSuccession(Instant now) {
+    return pendingOwnerMemberId != null && pendingOwnerExpiresAt.isAfter(now);
+  }
+
+  /** 承認待ちの列に、期限が過ぎた申し出が残っている（#194 の 15）。 */
+  public boolean hasExpiredOwnerSuccession(Instant now) {
+    return pendingOwnerMemberId != null && !pendingOwnerExpiresAt.isAfter(now);
+  }
+
+  /** 譲渡を申し出る。期限は申し出た時刻＋30 分（#194 の 12）。 */
+  public void requestOwnerSuccession(String memberId, Instant expiresAt) {
+    this.pendingOwnerMemberId = memberId;
+    this.pendingOwnerExpiresAt = expiresAt;
+  }
+
+  /** 承認待ちを空に戻す（取り消し・自動で無効）。 */
+  public void clearOwnerSuccession() {
+    this.pendingOwnerMemberId = null;
+    this.pendingOwnerExpiresAt = null;
+  }
+
   /** 新しい注文を受け付けられるか。受付停止中と停止のどちらでも受け付けない。 */
   public boolean acceptsOrders() {
     return suspensionStartedAt == null;
