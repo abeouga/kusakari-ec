@@ -7,6 +7,7 @@ import jp.kusakari.ec.commerce.dto.CommerceDtos.CheckoutResult;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.commerce.service.StockReturn;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.payment.persistence.entity.PaymentEntity;
 import jp.kusakari.ec.payment.persistence.repository.PaymentRepository;
@@ -92,11 +93,17 @@ public class PaymentService {
         continue;
       }
       order.acceptPayment();
-      notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
-      notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
+      notices.send(
+        order.getBuyerMemberId(),
+        NotificationEntity.ORDER,
+        "ご注文を受け付けました",
+        order.getId() + " / " + order.getStoreName()
+      );
+      notices.toStore(order.getStoreId(), NotificationEntity.ORDER, "新しい注文が届きました", order.getId());
     }
     if (late) notices.send(
       payment.getBuyerMemberId(),
+      NotificationEntity.ORDER,
       "お支払いを返金します",
       "取り消し済みの注文へのお支払いを確認したため、全額を返金します。"
     );
@@ -122,6 +129,7 @@ public class PaymentService {
     unpaid.forEach(OrderEntity::cancelUnpaid);
     notices.send(
       payment.getBuyerMemberId(),
+      NotificationEntity.ORDER,
       "ご注文を取り消しました",
       (PaymentEntity.EXPIRED.equals(status) ? "お支払いの期限が過ぎたため" : "お支払いができなかったため") +
         "、注文を取り消しました。"

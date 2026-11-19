@@ -14,6 +14,7 @@ import jp.kusakari.ec.moderation.persistence.entity.ModerationAction;
 import jp.kusakari.ec.moderation.persistence.entity.StoreModerationEventEntity;
 import jp.kusakari.ec.moderation.persistence.repository.StoreModerationEventRepository;
 import jp.kusakari.ec.moderation.service.ModerationHistory;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,12 @@ public class StoreModerationService {
 
   private void record(StoreEntity store, ModerationAction action, String reason, String title) {
     events.save(new StoreModerationEventEntity(store.getId(), action, reason, auth.current().getId()));
-    notices.toStore(store.getId(), title, ModerationHistory.noticeBody(store.getName(), reason));
+    notices.toStore(
+      store.getId(),
+      NotificationEntity.MODERATION,
+      title,
+      ModerationHistory.noticeBody(store.getName(), reason)
+    );
   }
 
   private Warning currentWarning(long id) {

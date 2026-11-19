@@ -11,6 +11,7 @@ import jp.kusakari.ec.auth.AuthMemberRepository;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
@@ -192,6 +193,7 @@ public class StaffAccountService {
     // 本人あての通知なので、どの店舗にも所属していなくても見られる（#169）。除名では通知しない（#168）。
     notices.send(
       memberId,
+      NotificationEntity.GENERAL,
       "店舗の担当から外れました",
       store.getName() + "の担当から外れました。組織には所属しています。"
     );

@@ -6,6 +6,7 @@ import jp.kusakari.ec.auth.AuthService;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.repository.StoreMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +36,15 @@ public class StoreClosureService {
     if (store.getClosedAt() != null) throw closed();
     if (store.getClosingStartedAt() != null) throw new ApiException(409, "STORE_CLOSING", "この店舗はすでに閉鎖中です。");
     store.startClosing(by);
-    notices.toStore(storeId, "店舗の閉鎖を始めました", store.getName() + "：新しい注文の受付を止めました。");
+    notices.toStore(
+      storeId,
+      NotificationEntity.STORE_CLOSURE,
+      "店舗の閉鎖を始めました",
+      store.getName() + "：新しい注文の受付を止めました。"
+    );
     openOrders.notifyBuyers(
       List.of(storeId),
+      NotificationEntity.STORE_CLOSURE,
       "ご注文の店舗は閉鎖予定です",
       store.getName() + "は閉鎖予定です。ご注文の商品はお早めにお受け取りください。"
     );
@@ -54,7 +61,12 @@ public class StoreClosureService {
       throw new ApiException(403, "CLOSED_BY_OPERATOR", "運営が始めた閉鎖は、運営だけが取り消せます。");
     }
     store.cancelClosing();
-    notices.toStore(storeId, "店舗の閉鎖を取り消しました", store.getName() + "：新しい注文の受付を再開しました。");
+    notices.toStore(
+      storeId,
+      NotificationEntity.STORE_CLOSURE,
+      "店舗の閉鎖を取り消しました",
+      store.getName() + "：新しい注文の受付を再開しました。"
+    );
   }
 
   /** 運営が、閉鎖中の店舗の未完了の注文をまとめてキャンセルする。そのあと注文が残っていなければ閉鎖済みになる。 */
@@ -79,7 +91,12 @@ public class StoreClosureService {
   private void settle(StoreEntity store) {
     if (!store.isClosing() || openOrders.count(List.of(store.getId())) > 0) return;
     store.completeClosing();
-    notices.toStore(store.getId(), "店舗の閉鎖が完了しました", store.getName() + "：閉鎖済みになりました。");
+    notices.toStore(
+      store.getId(),
+      NotificationEntity.STORE_CLOSURE,
+      "店舗の閉鎖が完了しました",
+      store.getName() + "：閉鎖済みになりました。"
+    );
     // 担当（店長・スタッフ）は組織に残し、この店舗の割り当てだけ外す（#79 決定事項8）。
     storeMembers.deleteAllAtStore(store.getId());
   }
