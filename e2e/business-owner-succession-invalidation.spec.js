@@ -10,12 +10,18 @@ import {
   createFixtureStaff,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  successionResults,
+  pendingDeadline,
+  endingNotices,
+  rename,
 } from './business-helpers.js';
 import { sql, sqlInBackground } from './database.js';
 import { ADMIN_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/owner-succession-invalidation';
 const NOT_PENDING = 'あなたあての、承認を待っているオーナーの譲渡の申し出はありません。';
+const OWNER_NAME = '譲渡するオーナー';
+const SUCCESSOR_NAME = '譲渡先の担当者';
 
 /** @param {string} query */
 const rows = (query) => {
@@ -74,7 +80,7 @@ const read = (page, path) => call(page.request, path).then((r) => r.json());
 
 // Issue #205: when the successor waiting for approval is expelled, stopped by the operator or withdraws, the request
 // becomes invalid in the same transaction and is recorded as invalidated by the owner (#194 の 7・8・13・14、#196 の 5・6).
-// Nobody is notified, because who should be is not decided yet (#200 の決めること 1).
+// The owner and the successor both receive a result notice that says why (#203, #200 の決めること 1).
 test('expelling, stopping or withdrawing the successor invalidates the owner succession request', async ({
   browser,
 }) => {
@@ -102,6 +108,7 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     prepareMember(owner, 'SHOP_OWNER');
     prepareStaff(successor, { 1: 'STAFF', 2: 'MANAGER' });
     prepareStaff(admin, { 1: 'STAFF' }, true);
+    rename({ [OWNER_NAME]: owner, [SUCCESSOR_NAME]: successor });
     const bystander = createFixtureStaff('承認待ちでない担当者');
     fixtures.push(bystander);
 
@@ -120,8 +127,18 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
       expect(response.status()).toBe(200);
       listed.push(`OWNER_SUCCESSION_REQUEST|${owner.id}|${successor.id}|NULL`);
     };
-    // The owner who made the request is the actor of the invalidation, whoever expelled or stopped (#196 の 6).
-    const invalidated = () => listed.push(`OWNER_SUCCESSION_AUTO_INVALIDATED|${owner.id}|${successor.id}|NULL`);
+    /** @type {string[]} */ const ownerResults = [];
+    /** @type {string[]} */ const successorResults = [];
+    const results = () => [successionResults(owner), successionResults(successor)];
+    // The owner who made the request is the actor of the invalidation, whoever expelled or stopped (#196 の 6). Both
+    // the owner and the successor are told why the request ended; an expired request ended by its deadline.
+    /** @param {'expired'|'expelled'|'disabled'|'withdrawn'} ending @param {string} [deadline] */
+    const invalidated = (ending, deadline) => {
+      listed.push(`OWNER_SUCCESSION_AUTO_INVALIDATED|${owner.id}|${successor.id}|NULL`);
+      const [toOwner, toSuccessor] = endingNotices(ending, { owner: OWNER_NAME, successor: SUCCESSOR_NAME, deadline });
+      ownerResults.push(toOwner);
+      successorResults.push(toSuccessor);
+    };
     /** @param {import('@playwright/test').Page} page @param {{id:string}} member @param {'POST'|'DELETE'} method */
     const expulsion = (page, member, method) =>
       call(page.request, `/seller/accounts/${member.id}/expulsion`, method).then((r) => r.status());
@@ -136,6 +153,7 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     expect(await setEnabled(bystander, false)).toBe(200);
     expect(organization()).toBe(`${owner.id}|${successor.id}`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([[], []]);
     expect(await setEnabled(bystander, true)).toBe(200);
     expect(await expulsion(ownerPage, bystander, 'DELETE')).toBe(200);
 
@@ -147,11 +165,12 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     await expect(successorRow).toContainText('承認待ち');
     await successorRow.getByRole('button', { name: '組織から除名' }).click();
     await ownerPage.getByRole('alertdialog').getByRole('button', { name: '除名する' }).click();
-    await expect(ownerPage.getByText(`${successorEmail}を組織から除名しました。`)).toBeVisible();
+    await expect(ownerPage.getByText(`${SUCCESSOR_NAME}を組織から除名しました。`)).toBeVisible();
     await expect(pendingNote).toHaveCount(0);
-    invalidated();
+    invalidated('expelled');
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     await ownerPage.reload();
     await expect(ownerPage.getByRole('columnheader', { name: 'オーナーの譲渡' })).toBeVisible();
     await expect(pendingNote).toHaveCount(0);
@@ -179,9 +198,10 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     // ORG_ADMIN may expel the successor too. The expulsion is ORG_ADMIN's; the invalidation is still the owner's.
     await request();
     expect(await expulsion(adminPage, successor, 'POST')).toBe(200);
-    invalidated();
+    invalidated('expelled');
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     expect(expulsions()).toEqual([
       `EXPEL_FROM_ORGANIZATION|${owner.id}`,
       `REINSTATE_TO_ORGANIZATION|${owner.id}`,
@@ -190,15 +210,17 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     expect(await expulsion(adminPage, successor, 'DELETE')).toBe(200);
 
     // An expired request is recorded as invalidated once, whether the expulsion or a read that looks for expired
-    // requests (the account list, #194 の 15) reaches it first.
+    // requests (the account list, #194 の 15) reaches it first. Either way it ended by its deadline, and says so.
     for (const listFirst of [false, true]) {
       await request();
       expire(successor);
+      const deadline = pendingDeadline();
       if (listFirst) await read(ownerPage, '/seller/accounts');
       expect(await expulsion(ownerPage, successor, 'POST')).toBe(200);
-      invalidated();
+      invalidated('expired', deadline);
       expect((await read(ownerPage, '/seller/accounts')).ownerSuccession).toBeNull();
       expect(events()).toEqual(listed);
+      expect(results()).toEqual([ownerResults, successorResults]);
       expect(await expulsion(ownerPage, successor, 'DELETE')).toBe(200);
     }
 
@@ -217,9 +239,10 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
       .getByRole('button', { name: '利用停止を確定', exact: true })
       .click();
     await expect(operatorPage.getByText('利用を停止しました。')).toBeVisible();
-    invalidated();
+    invalidated('disabled');
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     await operatorPage.reload();
     await search.fill(searchKey);
     await expect(memberCard).toContainText('利用停止');
@@ -234,14 +257,15 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     // request and the approval do, so they wait for an approval in progress instead of deadlocking with it.
     await request();
     expect(await besideApproval(successor, () => expulsion(ownerPage, successor, 'POST'))).toBe(200);
-    invalidated();
+    invalidated('expelled');
     expect(await expulsion(ownerPage, successor, 'DELETE')).toBe(200);
     await request();
     expect(await besideApproval(successor, () => setEnabled(successor, false))).toBe(200);
-    invalidated();
+    invalidated('disabled');
     expect(await setEnabled(successor, true)).toBe(200);
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
 
     // ORG_ADMIN, who is not the successor, withdraws and the request stays. Then the successor withdraws from the
     // account page beside an approval in progress, and the request is invalidated.
@@ -250,6 +274,7 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     expect((await call(adminPage.request, '/account', 'DELETE')).status()).toBe(200);
     expect(organization()).toBe(`${owner.id}|${successor.id}`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     await successorPage.goto(`${ec}/account/delete`);
     await successorPage.getByLabel('注意事項を確認し、退会することに同意します', { exact: true }).check();
     const withdrawal = await besideApproval(successor, async () => {
@@ -263,9 +288,10 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     });
     expect(withdrawal).toBe(200);
     await expect(successorPage.getByText('退会が完了しました。ご利用ありがとうございました。')).toBeVisible();
-    invalidated();
+    invalidated('withdrawn');
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     expect(
       sql(`SELECT CONCAT_WS('|', enabled, withdrawn_at IS NOT NULL) FROM members WHERE id='${successor.id}';`),
     ).toBe('0|1');
@@ -275,6 +301,12 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     await expect(ownerPage.getByRole('columnheader', { name: 'オーナーの譲渡' })).toBeVisible();
     await expect(pendingNote).toHaveCount(0);
     await capture(ownerPage, `${evidence}/owner-accounts-after-withdrawal-reloaded.png`);
+    // The owner's notices, newest first: the withdrawal, then the stop beside the approval.
+    await ownerPage.goto(`${ec}/seller/notifications`);
+    const ownerCards = ownerPage.locator('.workspace-card');
+    await expect(ownerCards.first()).toContainText(ownerResults.at(-1).split('|')[1]);
+    await expect(ownerCards.nth(1)).toContainText(ownerResults.at(-2).split('|')[1]);
+    await capture(ownerPage, `${evidence}/owner-notices-after-withdrawal-reloaded.png`);
     const watched = [successor.id, admin.id, bystander.id];
     await writeFile(
       `${evidence}/owner-succession-invalidation.json`,
@@ -288,6 +320,8 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
           organization: organization(),
           events: events(),
           expulsions: expulsions(),
+          ownerNotices: await read(ownerPage, '/notifications'),
+          resultNotices: { owner: successionResults(owner), successor: successionResults(successor) },
         },
         null,
         2,

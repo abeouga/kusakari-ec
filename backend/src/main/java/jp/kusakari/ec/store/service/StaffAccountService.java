@@ -262,7 +262,7 @@ public class StaffAccountService {
     membership.expel();
     invitations.findByIssuedByMemberIdAndRevokedAtIsNull(memberId).forEach(StoreInvitationEntity::revoke);
     recordOrganization(viewer, OrganizationMemberEventEntity.EXPEL_FROM_ORGANIZATION, memberId);
-    pendingOwnerSuccession.invalidateFor(organization, memberId);
+    pendingOwnerSuccession.invalidateFor(organization, memberId, PendingOwnerSuccession.Reason.SUCCESSOR_EXPELLED);
     organizationMembers.flush();
     return list();
   }

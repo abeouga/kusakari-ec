@@ -62,7 +62,10 @@ public class NotificationService {
       .forEach(m -> notices.save(NotificationEntity.forStore(m.getId(), storeId, category, title, body)));
   }
 
-  /** 通知一覧。読み込むときに、自分がオーナーか譲渡先の、期限が過ぎた譲渡の申し出を無効として記録する（#194 の 15）。 */
+  /**
+   * 通知一覧。読み込むときに、自分がオーナーか譲渡先の、期限が過ぎた譲渡の申し出を無効として記録する（#194 の 15）。
+   * そのとき送る「譲渡の結果」の通知は同じトランザクションで保存してから一覧を読むので、この一覧にもう含まれている。
+   */
   public List<Notice> list() {
     var member = auth.current();
     pendingOwnerSuccession.expireIfDueFor(member.getId());

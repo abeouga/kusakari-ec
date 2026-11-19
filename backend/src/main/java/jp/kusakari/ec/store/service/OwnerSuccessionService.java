@@ -4,13 +4,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import jp.kusakari.ec.auth.AuthMember;
 import jp.kusakari.ec.auth.AuthMemberRepository;
 import jp.kusakari.ec.common.web.ApiException;
-import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
-import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationMemberEventEntity;
@@ -25,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
  * オーナーの譲渡（決定は #181・#194・#195・#196・#197）。オーナーが申し出て取り消し（#203）、譲渡先が承認するか断る（#204）。
  * 譲渡先は同じ組織の担当者のうち、除名中・停止中・退会済みでない人で、ロールの制限はない。
  * 同時に申し出られるのは 1 人だけで、期限は申し出た時刻＋30 分。期限が過ぎた申し出は残っていないものとして扱う。
- * 承認した時点でオーナーが入れ替わり、移行期間も元に戻す操作もない（#197）。知らせるのは店舗専用ページの通知だけ。
+ * 承認した時点でオーナーが入れ替わり、移行期間も元に戻す操作もない（#197）。知らせるのは店舗専用ページの通知だけ（{@link OwnerSuccessionNotices}）。
  * 組織の行を先にロックし、所属（organization_members）、会員（members）の順にロックする（逆にするとデッドロックしうる）。
  */
 @Service
@@ -34,9 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class OwnerSuccessionService {
 
   private static final Duration APPROVAL_PERIOD = Duration.ofMinutes(30);
-  private static final DateTimeFormatter DEADLINE = DateTimeFormatter.ofPattern("uuuu/MM/dd HH:mm").withZone(
-    ZoneId.of("Asia/Tokyo")
-  );
   private static final String NOT_PENDING = "あなたあての、承認を待っているオーナーの譲渡の申し出はありません。";
 
   private final StaffPolicy policy;
@@ -44,7 +37,7 @@ public class OwnerSuccessionService {
   private final OrganizationMemberRepository organizationMembers;
   private final AuthMemberRepository members;
   private final OrganizationMemberEventRepository events;
-  private final NotificationService notices;
+  private final OwnerSuccessionNotices notices;
   private final StaffAccountService accounts;
   private final EntityManager entityManager;
 
@@ -82,22 +75,15 @@ public class OwnerSuccessionService {
     Instant expiresAt = Instant.now().plus(APPROVAL_PERIOD);
     organization.requestOwnerSuccession(successor.getId(), expiresAt);
     record(organization, OrganizationMemberEventEntity.OWNER_SUCCESSION_REQUEST, viewer.memberId(), successor.getId());
-    String owner = members.findById(viewer.memberId()).map(AuthMember::getDisplayName).orElse("オーナー");
-    notices.send(
-      successor.getId(),
-      NotificationEntity.OWNER_SUCCESSION_REQUEST,
-      "オーナーの譲渡の申し出",
-      "%sさんが、あなたに%sのオーナーを譲渡したいと申し出ています。承認すると、あなたが組織のオーナーになります。承認の期限は %s です。".formatted(
-        owner,
-        organization.getName(),
-        DEADLINE.format(expiresAt)
-      )
-    );
+    notices.requested(organization, successor.getId(), expiresAt);
     events.flush();
     return accounts.list();
   }
 
-  /** 承認される前の申し出を取り消す（#194 の 5）。期限が過ぎた申し出は、取り消せるものとして扱わない。 */
+  /**
+   * 承認される前の申し出を取り消し（#194 の 5）、オーナーと譲渡先の両方に知らせる（#200 の決めること 1）。
+   * 期限が過ぎた申し出は、取り消せるものとして扱わない。
+   */
   public StaffAccountService.AccountsView cancel() {
     var viewer = ownerOnly();
     OrganizationEntity organization = pending.lock(viewer.organizationId());
@@ -107,6 +93,7 @@ public class OwnerSuccessionService {
     String successor = organization.getPendingOwnerMemberId();
     organization.clearOwnerSuccession();
     record(organization, OrganizationMemberEventEntity.OWNER_SUCCESSION_CANCELLATION, viewer.memberId(), successor);
+    notices.cancelled(organization, successor);
     events.flush();
     return accounts.list();
   }
@@ -150,7 +137,7 @@ public class OwnerSuccessionService {
     // 6〜7. 承認待ちを空に戻し、承認を記録する。操作した人も操作された人も新しいオーナー。
     organization.clearOwnerSuccession();
     record(organization, OrganizationMemberEventEntity.OWNER_SUCCESSION_APPROVAL, successor.getId(), successor.getId());
-    notifyResult(organization, successor, previousOwner);
+    notices.approved(organization, successor, previousOwner);
     entityManager.flush();
     return new Decision(organization.getId(), organization.getName(), true);
   }
@@ -172,7 +159,7 @@ public class OwnerSuccessionService {
   /**
    * 操作する人が今の譲渡先である組織を、ロックして返す。組織は所属から決まる（担当者は 1 人 1 組織）。
    * 期限が過ぎていれば「自動で無効」として記録してから断る（#194 の 15・16）。
-   * 組織の受付停止中・停止中でも止めない（#200 の決めること 2 が決まっていないため）。
+   * 組織の受付停止中・停止中でも止めない（#200 の決めること 2。停止は注文を止めるためのもので、組織の中の人の管理は止めないため）。
    */
   private OrganizationEntity addressedTo(StaffPolicy.Viewer viewer) {
     OrganizationEntity organization = pending.lock(viewer.organizationId());
@@ -186,28 +173,6 @@ public class OwnerSuccessionService {
     }
     if (!addressed) throw new ApiException(409, "OWNER_SUCCESSION_NOT_PENDING", NOT_PENDING);
     return organization;
-  }
-
-  /** 交代したことを、新しいオーナーと元のオーナーの両方に、本人あての通知で知らせる（#194 の 9）。 */
-  private void notifyResult(OrganizationEntity organization, AuthMember successor, AuthMember previousOwner) {
-    notices.send(
-      successor.getId(),
-      NotificationEntity.OWNER_SUCCESSION_RESULT,
-      "オーナーが交代しました",
-      "オーナーの譲渡を承認し、あなたが%sのオーナーになりました。店舗の担当からは外れ、組織のすべての店舗を扱えます。%sさんは組織の ORG_ADMIN になりました。".formatted(
-        organization.getName(),
-        previousOwner.getDisplayName()
-      )
-    );
-    notices.send(
-      previousOwner.getId(),
-      NotificationEntity.OWNER_SUCCESSION_RESULT,
-      "オーナーが交代しました",
-      "%sさんがオーナーの譲渡を承認し、%sのオーナーになりました。あなたは組織の ORG_ADMIN になり、オーナーの操作はできなくなりました。".formatted(
-        successor.getDisplayName(),
-        organization.getName()
-      )
-    );
   }
 
   private StaffPolicy.Viewer ownerOnly() {

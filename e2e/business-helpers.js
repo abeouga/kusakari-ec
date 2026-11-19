@@ -114,6 +114,69 @@ export function createFixtureStaff(name) {
 }
 
 /**
+ * A member's owner-succession result notices, oldest first, as `title|body` (#203). All of them are personal.
+ * @param {{id:string}} member
+ */
+export function successionResults(member) {
+  const rows = sql(`SELECT CONCAT_WS('|', kind, IFNULL(store_id,'NULL'), title, body) FROM notifications
+                     WHERE member_id='${member.id}' AND category='OWNER_SUCCESSION_RESULT' ORDER BY created_at, id;`);
+  const notices = rows ? rows.split(/\r?\n/) : [];
+  for (const notice of notices) expect(notice.startsWith('PERSONAL|NULL|')).toBe(true);
+  return notices.map((notice) => notice.slice('PERSONAL|NULL|'.length));
+}
+
+/** The deadline of the sample organization's pending request, in Japan time to the minute as the notices write it. */
+export const pendingDeadline = () =>
+  sql(`SET time_zone='+09:00';
+       SELECT DATE_FORMAT(pending_owner_expires_at,'%Y/%m/%d %H:%i') FROM organizations WHERE id=1;`);
+
+/**
+ * The result notices that the owner and the successor receive when a request of the sample organization ends without
+ * approval (#203, #200 の決めること 1), as `[the owner's, the successor's]` in the form of successionResults. Each
+ * says why the request ended; the expired one gives its deadline (pendingDeadline, read before it was invalidated).
+ * @param {'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'} ending
+ * @param {{owner:string, successor:string, deadline?:string}} names the display names of the owner and the successor
+ */
+export function endingNotices(ending, { owner, successor, deadline }) {
+  const request = `${sql('SELECT name FROM organizations WHERE id=1;')}のオーナーの譲渡の申し出`;
+  const unchanged = 'オーナーは交代していません。';
+  if (ending === 'cancelled') {
+    const title = 'オーナーの譲渡の申し出が取り消されました';
+    return [
+      `${title}|${successor}さんへの${request}を取り消しました。${unchanged}`,
+      `${title}|${owner}さんが、あなたへの${request}を取り消しました。${unchanged}`,
+    ];
+  }
+  /** @param {string} subject the successor, as the reader calls it */
+  const why = (subject) =>
+    ({
+      expired: `承認の期限（${deadline}）が過ぎたため`,
+      expelled: `${subject}が組織から除名されたため`,
+      disabled: `${subject}の利用が運営に停止されたため`,
+      withdrawn: `${subject}が退会したため`,
+    })[ending];
+  const title = 'オーナーの譲渡の申し出が無効になりました';
+  return [
+    `${title}|${why('譲渡先')}、${successor}さんへの${request}は無効になりました。${unchanged}`,
+    `${title}|${why('あなた')}、${owner}さんからの${request}は無効になりました。${unchanged}`,
+  ];
+}
+
+/**
+ * Gives test accounts display names without an e-mail address, so the names in notices stay readable in the masked
+ * screenshots (a new Cognito account is named after its address).
+ * @param {Record<string,{id:string}>} named the accounts by their new names
+ */
+export function rename(named) {
+  if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
+    throw new Error('Fixtures cannot change the development database.');
+  for (const [name, member] of Object.entries(named)) {
+    if (!/^[a-f0-9-]{36}$/.test(member.id) || /['\\]/.test(name)) throw new Error('Invalid fixture.');
+    sql(`UPDATE members SET display_name='${name}' WHERE id='${member.id}';`);
+  }
+}
+
+/**
  * An owner adds a store without an application; a new store is unpublished, so buyers see it only after this.
  * @param {import('@playwright/test').APIRequestContext} request the owner's session
  * @param {string} name
