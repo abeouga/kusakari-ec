@@ -18,6 +18,7 @@ import jp.kusakari.ec.moderation.persistence.entity.ModerationAction;
 import jp.kusakari.ec.moderation.persistence.entity.ProductModerationEventEntity;
 import jp.kusakari.ec.moderation.persistence.repository.ProductModerationEventRepository;
 import jp.kusakari.ec.moderation.service.ModerationHistory;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -140,7 +141,12 @@ public class ProductModerationService {
 
   private void record(ProductEntity product, ModerationAction action, String reason, String title) {
     events.save(new ProductModerationEventEntity(product.getId(), action, reason, auth.current().getId()));
-    notices.toStore(product.getStoreId(), title, ModerationHistory.noticeBody(product.getName(), reason));
+    notices.toStore(
+      product.getStoreId(),
+      NotificationEntity.MODERATION,
+      title,
+      ModerationHistory.noticeBody(product.getName(), reason)
+    );
   }
 
   private Warning currentWarning(String id) {

@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.*;
 import jp.kusakari.ec.auth.*;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.StoreApplicationEntity;
@@ -103,7 +104,7 @@ public class StoreApplicationService {
       applications.flush();
     }
     applications.save(a);
-    notices.send(member.getId(), "出店申請を受け付けました", a.getCompany());
+    notices.send(member.getId(), NotificationEntity.GENERAL, "出店申請を受け付けました", a.getCompany());
     return view(a);
   }
 
@@ -145,6 +146,7 @@ public class StoreApplicationService {
     }
     notices.send(
       m.getId(),
+      NotificationEntity.GENERAL,
       approved ? "出店申請が承認されました" : "出店申請が却下されました",
       a.getCompany() + " / " + reason
     );

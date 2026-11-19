@@ -31,6 +31,7 @@ import jp.kusakari.ec.commerce.persistence.repository.CartRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderItemRepository;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.payment.persistence.entity.PaymentEntity;
 import jp.kusakari.ec.payment.persistence.repository.PaymentRepository;
 import jp.kusakari.ec.payment.service.StripeGateway;
@@ -207,8 +208,13 @@ public class CheckoutService {
     if (payment == null) {
       // 店頭払い：決済を作らず、この時点で注文受付。
       orders.save(order);
-      notices.send(order.getBuyerMemberId(), "ご注文を受け付けました", order.getId() + " / " + order.getStoreName());
-      notices.toStore(order.getStoreId(), "新しい注文が届きました", order.getId());
+      notices.send(
+        order.getBuyerMemberId(),
+        NotificationEntity.ORDER,
+        "ご注文を受け付けました",
+        order.getId() + " / " + order.getStoreName()
+      );
+      notices.toStore(order.getStoreId(), NotificationEntity.ORDER, "新しい注文が届きました", order.getId());
     } else {
       // カード：支払いが成功する（Webhook）まで支払い待ち。通知は支払いの成功で送る（PaymentService）。
       order.awaitPayment(payment.getId());

@@ -45,6 +45,11 @@ test('cancellation can be requested only until the order is ready for pickup', a
     await expect(buyer.getByRole('status')).toContainText('キャンセル申請を送信しました。');
     const notices = await call(seller.request, '/notifications').then((r) => r.json());
     expect(JSON.stringify(notices)).toContain(accepted.id);
+    // #202: the new order and the request reach the store with their categories.
+    const categoryOf = (/** @type {string} */ title) =>
+      notices.find((/** @type {any} */ n) => n.title === title && n.body === accepted.id)?.category;
+    expect(categoryOf('新しい注文が届きました')).toBe('ORDER');
+    expect(categoryOf('キャンセル申請が届きました')).toBe('CANCEL_REQUEST');
     const rejected = await call(seller.request, `/seller/orders/${accepted.id}/cancellation`, 'PUT', {
       approved: false,
       reason: '準備を始めています',

@@ -61,6 +61,8 @@ test('a staff account without a store sees only its own notices on the seller pa
     const notices = await call(staffPage.request, '/notifications').then((r) => r.json());
     const removal = notices.find((n) => n.title === '店舗の担当から外れました');
     expect(removal.body).toBe(`${store.name}の担当から外れました。組織には所属しています。`);
+    // #202: no category fits, so it is GENERAL.
+    expect(removal.category).toBe('GENERAL');
     expect(notices.map((n) => n.title)).not.toContain(storeNotice);
     expect(notices.map((n) => n.title)).not.toContain(legacyNotice);
     const hiddenId = sql(`SELECT id FROM notifications WHERE title='${storeNotice}';`);

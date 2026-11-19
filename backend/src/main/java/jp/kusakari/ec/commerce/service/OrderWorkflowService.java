@@ -7,6 +7,7 @@ import jp.kusakari.ec.commerce.mapper.OrderResponseMapper;
 import jp.kusakari.ec.commerce.persistence.entity.*;
 import jp.kusakari.ec.commerce.persistence.repository.*;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.payment.service.RefundService;
 import jp.kusakari.ec.store.service.ClosureSettlement;
@@ -70,6 +71,7 @@ public class OrderWorkflowService {
     }
     notices.send(
       order.getBuyerMemberId(),
+      NotificationEntity.ORDER,
       ready ? "受取準備が完了しました" : "商品をお渡ししました",
       order.getId() + " / " + order.getStoreName()
     );
@@ -82,7 +84,7 @@ public class OrderWorkflowService {
     requireBuyer(order);
     if (!order.getStatus().equals("ACCEPTED") || order.getCancellationStatus().equals("PENDING")) conflict();
     order.requestCancellation(reason);
-    notices.toStore(order.getStoreId(), "キャンセル申請が届きました", id);
+    notices.toStore(order.getStoreId(), NotificationEntity.CANCEL_REQUEST, "キャンセル申請が届きました", id);
     return view(order);
   }
 
@@ -101,8 +103,10 @@ public class OrderWorkflowService {
       refunds.refundCancelledOrder(order, auth.current().getId());
       closures.afterOrderChanged(order.getStoreId());
     }
+    // 申請の結果は購入者の注文の知らせなので ORDER。CANCEL_REQUEST は店舗に届く申請だけ。
     notices.send(
       order.getBuyerMemberId(),
+      NotificationEntity.ORDER,
       approved ? "注文をキャンセルしました" : "キャンセル申請の結果",
       id + " " + reason
     );

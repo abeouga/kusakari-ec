@@ -31,14 +31,23 @@ public class NotificationService {
   private final OrganizationRepository organizations;
   private final StoreMemberRepository storeMembers;
 
-  public record Notice(String id, String title, String body, java.time.Instant createdAt, java.time.Instant readAt) {}
+  /** category は通知の種類（NotificationEntity の ORDER など）。重要かどうかは画面が種類から決める。 */
+  public record Notice(
+    String id,
+    String category,
+    String title,
+    String body,
+    java.time.Instant createdAt,
+    java.time.Instant readAt
+  ) {}
 
-  public void send(String memberId, String title, String body) {
-    if (memberId != null) notices.save(new NotificationEntity(memberId, title, body));
+  /** category は NotificationEntity の ORDER などの種類。どれにも当てはまらなければ GENERAL。 */
+  public void send(String memberId, String category, String title, String body) {
+    if (memberId != null) notices.save(new NotificationEntity(memberId, category, title, body));
   }
 
   /** 店舗の組織のオーナーと、ロールが割り振られた担当者のうち、有効な会員に送る。 */
-  public void toStore(Long storeId, String title, String body) {
+  public void toStore(Long storeId, String category, String title, String body) {
     var store = storeId == null ? null : stores.findById(storeId).orElse(null);
     if (store == null) return;
     Set<String> recipients = new LinkedHashSet<>();
@@ -48,7 +57,7 @@ public class NotificationService {
       .findAllById(recipients)
       .stream()
       .filter(AuthMember::isEnabled)
-      .forEach(m -> notices.save(NotificationEntity.forStore(m.getId(), storeId, title, body)));
+      .forEach(m -> notices.save(NotificationEntity.forStore(m.getId(), storeId, category, title, body)));
   }
 
   @Transactional(readOnly = true)
@@ -59,7 +68,7 @@ public class NotificationService {
       .findByMemberIdOrderByCreatedAtDesc(member.getId())
       .stream()
       .filter(visible)
-      .map(n -> new Notice(n.getId(), n.getTitle(), n.getBody(), n.getCreatedAt(), n.getReadAt()))
+      .map(n -> new Notice(n.getId(), n.getCategory(), n.getTitle(), n.getBody(), n.getCreatedAt(), n.getReadAt()))
       .toList();
   }
 

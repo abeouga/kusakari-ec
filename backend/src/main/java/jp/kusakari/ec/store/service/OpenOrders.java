@@ -5,6 +5,7 @@ import java.util.List;
 import jp.kusakari.ec.commerce.persistence.entity.OrderEntity;
 import jp.kusakari.ec.commerce.persistence.repository.OrderRepository;
 import jp.kusakari.ec.commerce.service.StockReturn;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.payment.service.RefundService;
 import lombok.RequiredArgsConstructor;
@@ -37,10 +38,13 @@ public class OpenOrders {
     return storeIds.isEmpty() ? 0 : orders.countByStatus(storeIds, BLOCKING);
   }
 
-  /** 未完了の注文がある購入者に知らせる（閉鎖予定・受付停止）。受け取りに来てもらうため。 */
-  public void notifyBuyers(Collection<Long> storeIds, String title, String body) {
+  /**
+   * 未完了の注文がある購入者に知らせる（閉鎖予定・受付停止）。受け取りに来てもらうため。
+   * category は呼ぶ側が決める（閉鎖予定は STORE_CLOSURE、受付停止は MODERATION）。
+   */
+  public void notifyBuyers(Collection<Long> storeIds, String category, String title, String body) {
     if (storeIds.isEmpty()) return;
-    orders.findBuyersByStatus(storeIds, BLOCKING).forEach(buyer -> notices.send(buyer, title, body));
+    orders.findBuyersByStatus(storeIds, BLOCKING).forEach(buyer -> notices.send(buyer, category, title, body));
   }
 
   /**
@@ -59,8 +63,8 @@ public class OpenOrders {
       // カードで支払い済みの注文だけ返金する（店頭払いは何もしない）。結果は Webhook で反映する。
       refunds.refundCancelledOrder(order, operatorMemberId);
       String body = order.getId() + " / " + order.getStoreName() + " " + reason.trim();
-      notices.send(order.getBuyerMemberId(), CANCELLED_TITLE, body);
-      notices.toStore(order.getStoreId(), "運営が注文をキャンセルしました", body);
+      notices.send(order.getBuyerMemberId(), NotificationEntity.ORDER, CANCELLED_TITLE, body);
+      notices.toStore(order.getStoreId(), NotificationEntity.ORDER, "運営が注文をキャンセルしました", body);
     }
     return targets.size();
   }

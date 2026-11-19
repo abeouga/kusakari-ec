@@ -1,0 +1,19 @@
+/* #202：重要な種類の通知は、件名の前に「重要」の印を出す。 */
+.notice-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.workspace-card .notice-heading h2 {
+  margin: 0;
+}
+.notice-important {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #9b3a24;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
