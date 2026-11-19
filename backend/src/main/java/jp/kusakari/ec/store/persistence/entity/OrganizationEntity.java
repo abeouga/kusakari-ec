@@ -69,7 +69,12 @@ public class OrganizationEntity {
     this.pendingOwnerExpiresAt = expiresAt;
   }
 
-  /** 承認待ちを空に戻す（取り消し・自動で無効）。 */
+  /** 譲渡の承認で、オーナーを付け替える（#197 の 8）。新しいオーナーの種別を先に SHOP_OWNER にしておく（複合外部キー）。 */
+  public void changeOwner(String memberId) {
+    this.ownerMemberId = memberId;
+  }
+
+  /** 承認待ちを空に戻す（承認・断り・取り消し・自動で無効）。 */
   public void clearOwnerSuccession() {
     this.pendingOwnerMemberId = null;
     this.pendingOwnerExpiresAt = null;
