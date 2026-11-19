@@ -19,7 +19,6 @@ import { sql, sqlInBackground } from './database.js';
 import { ADMIN_EMAIL } from './test-accounts.js';
 
 const evidence = 'artifacts/business/owner-succession-invalidation';
-const NOT_PENDING = 'あなたあての、承認を待っているオーナーの譲渡の申し出はありません。';
 const OWNER_NAME = '譲渡するオーナー';
 const SUCCESSOR_NAME = '譲渡先の担当者';
 
@@ -178,8 +177,8 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
     const afterExpulsion = await read(ownerPage, '/seller/accounts');
     expect(afterExpulsion.ownerSuccession).toBeNull();
 
-    // The successor's open session ends. Brought back, it signs in again, and 承認する on the old notice only shows
-    // that no request is waiting.
+    // The successor's open session ends. Brought back, it signs in again: the old notice has no 承認する or 断る and
+    // says the request ended (#204, #200 の決めること 6), and an approval sent anyway finds no request.
     expect(await code(await call(successorPage.request, '/auth/me'))).toEqual([403, 'ACCOUNT_EXPELLED']);
     expect(await expulsion(ownerPage, successor, 'DELETE')).toBe(200);
     await login(successorPage, successorEmail, accounts[1].secret);
@@ -188,10 +187,12 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
       .locator('.workspace-card')
       .filter({ has: successorPage.getByRole('heading', { name: 'オーナーの譲渡の申し出', exact: true }) })
       .first();
-    await requestCard.getByRole('button', { name: '承認する', exact: true }).click();
-    await successorPage.getByRole('alertdialog').getByRole('button', { name: '承認する', exact: true }).click();
-    await expect(successorPage.getByRole('alert').filter({ hasText: NOT_PENDING })).toBeVisible();
-    await capture(successorPage, `${evidence}/successor-approval-refused.png`);
+    await expect(requestCard).toContainText('この申し出は終わったため、承認も断りもできません。');
+    await expect(
+      successorPage.locator('.workspace-main').getByRole('button', { name: /^(承認する|断る)$/ }),
+    ).toHaveCount(0);
+    await capture(successorPage, `${evidence}/successor-request-ended-reloaded.png`);
+    expect(await code(await approve())).toEqual([409, 'OWNER_SUCCESSION_NOT_PENDING']);
     expect(organization()).toBe(`${owner.id}|NULL`);
     expect(events()).toEqual(listed);
 

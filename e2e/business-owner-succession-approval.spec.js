@@ -17,9 +17,10 @@ import {
 import { sql, sqlInBackground } from './database.js';
 
 const evidence = 'artifacts/business/owner-succession-approval';
-const NOT_PENDING = 'あなたあての、承認を待っているオーナーの譲渡の申し出はありません。';
 const OWNER_NAME = '譲渡するオーナー';
 const SUCCESSOR_NAME = '譲渡先の担当者';
+const ADMIN_NAME = '別の ORG_ADMIN';
+const ENDED = 'この申し出は終わったため、承認も断りもできません。';
 
 /** @param {string} query */
 const rows = (query) => {
@@ -40,9 +41,6 @@ const standing = (member) =>
   sql(`SELECT CONCAT_WS('|', m.account_type, IFNULL(om.role,'-'), IFNULL(om.expelled,'-'),
           (SELECT COUNT(*) FROM store_members s WHERE s.member_id=m.id))
          FROM members m LEFT JOIN organization_members om ON om.member_id=m.id WHERE m.id='${member.id}';`);
-
-/** @param {{id:string}} member */
-const noticeCount = (member) => Number(sql(`SELECT COUNT(*) FROM notifications WHERE member_id='${member.id}';`));
 
 /**
  * Moves the request to 31 minutes ago, so its 30-minute deadline passed a minute ago (#194 の 12).
@@ -99,6 +97,18 @@ const requestCard = (page) =>
     .filter({ has: page.getByRole('heading', { name: 'オーナーの譲渡の申し出', exact: true }) })
     .first();
 
+/** The 承認する and 断る buttons on the notices page. @param {import('@playwright/test').Page} page */
+const answerButtons = (page) => page.locator('.workspace-main').getByRole('button', { name: /^(承認する|断る)$/ });
+
+/**
+ * Whether each request notice of the account can still be answered, newest first, as the API lists them (#204).
+ * @param {import('@playwright/test').Page} page
+ */
+const answerable = async (page) =>
+  (await read(page, '/notifications'))
+    .filter((/** @type {any} */ n) => n.category === 'OWNER_SUCCESSION_REQUEST')
+    .map((/** @type {any} */ n) => n.answerable);
+
 /**
  * Answers the newest request notice through its button and the confirmation dialog.
  * @param {import('@playwright/test').Page} page @param {'承認する'|'断る'} label @param {string} question
@@ -132,7 +142,7 @@ test('the successor approves or refuses an owner succession from the notice', as
     prepareMember(owner, 'SHOP_OWNER');
     prepareStaff(successor, { 1: 'STAFF', 2: 'MANAGER' });
     prepareStaff(admin, { 1: 'STAFF' }, true);
-    rename({ [OWNER_NAME]: owner, [SUCCESSOR_NAME]: successor });
+    rename({ [OWNER_NAME]: owner, [SUCCESSOR_NAME]: successor, [ADMIN_NAME]: admin });
     let baseline = sql('SELECT IFNULL(MAX(id),0) FROM organization_member_events;');
     const events = () =>
       rows(`SELECT CONCAT_WS('|', event_type, actor_member_id, target_member_id, IFNULL(store_id,'NULL'))
@@ -144,7 +154,7 @@ test('the successor approves or refuses an owner succession from the notice', as
     // The result notices the owner and the successor should have received so far (#203, #200 の決めること 1).
     /** @type {unknown[]} */ const ownerResults = [];
     /** @type {unknown[]} */ const successorResults = [];
-    /** @param {'expired'|'expelled'} ending @param {string} [deadline] */
+    /** @param {'refused'|'cancelled'|'expired'|'expelled'} ending @param {string} [deadline] */
     const ended = (ending, deadline) => {
       const [toOwner, toSuccessor] = endingNotices(ending, { owner: OWNER_NAME, successor: SUCCESSOR_NAME, deadline });
       ownerResults.push(toOwner);
@@ -164,26 +174,54 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(organization()).toBe(`${owner.id}|${successor.id}`);
     expect(events()).toEqual(listed);
 
-    // The request notice has 承認する and 断る (#194 の 17). Refusing clears the request and records it; nobody is
-    // notified, because who should be is not decided yet (#200 の決めること 1).
+    // The request notice has 承認する and 断る (#194 の 17) while the request waits for this account.
     await successorPage.goto(`${ec}/seller/notifications`);
     await expect(requestCard(successorPage).getByText('重要', { exact: true })).toBeVisible();
     await expect(requestCard(successorPage).getByRole('button', { name: '承認する', exact: true })).toBeVisible();
     await expect(requestCard(successorPage).getByRole('button', { name: '断る', exact: true })).toBeVisible();
+    expect(await answerable(successorPage)).toEqual([true]);
     await capture(successorPage, `${evidence}/successor-request-reloaded.png`);
-    const ownerNotices = noticeCount(owner);
+
+    // Refusing clears the request, records it, and tells both the owner and the successor (#200 の決めること 1).
+    // The answered notice loses its buttons and says the request ended, also after reloading (#200 の決めること 6).
     await answerOnPage(successorPage, '断る', 'オーナーの譲渡の申し出を断りますか？');
-    await expect(successorPage.getByText('オーナーの譲渡の申し出を断りました。')).toBeVisible();
+    await expect(successorPage.getByText('オーナーの譲渡の申し出を断りました。', { exact: true })).toBeVisible();
     expect(organization()).toBe(`${owner.id}|NULL`);
     listed.push(event('REFUSAL', successor, successor));
     expect(events()).toEqual(listed);
-    expect(noticeCount(owner)).toBe(ownerNotices);
+    ended('refused');
+    expect(results()).toEqual([ownerResults, successorResults]);
+    await successorPage.reload();
+    await expect(requestCard(successorPage)).toContainText(ENDED);
+    await expect(answerButtons(successorPage)).toHaveCount(0);
+    expect(await answerable(successorPage)).toEqual([false]);
+    await capture(successorPage, `${evidence}/successor-refused-reloaded.png`);
 
-    // The buttons stay on the old notice; pressing them now shows the server's refusal and changes nothing.
-    await answerOnPage(successorPage, '承認する', 'オーナーの譲渡を承認しますか？');
-    await expect(successorPage.getByRole('alert').filter({ hasText: NOT_PENDING })).toBeVisible();
-    expect(organization()).toBe(`${owner.id}|NULL`);
+    // A request the owner cancels, and one the owner then makes to someone else, leave no buttons on this successor's
+    // notices; only the other account's notice has them while its request waits.
+    expect((await requestTo(ownerPage, successor)).status()).toBe(200);
+    expect(await answerable(successorPage)).toEqual([true, false]);
+    expect((await call(ownerPage.request, '/seller/owner-succession', 'DELETE')).status()).toBe(200);
+    ended('cancelled');
+    expect(await answerable(successorPage)).toEqual([false, false]);
+    expect((await requestTo(ownerPage, admin)).status()).toBe(200);
+    expect(await answerable(successorPage)).toEqual([false, false]);
+    expect(await answerable(adminPage)).toEqual([true]);
+    await successorPage.reload();
+    await expect(successorPage.locator('.workspace-main').getByText(ENDED, { exact: true })).toHaveCount(2);
+    await expect(answerButtons(successorPage)).toHaveCount(0);
+    await adminPage.goto(`${ec}/seller/notifications`);
+    await expect(answerButtons(adminPage)).toHaveCount(2);
+    expect((await call(ownerPage.request, '/seller/owner-succession', 'DELETE')).status()).toBe(200);
+    listed.push(
+      event('REQUEST', owner, successor),
+      event('CANCELLATION', owner, successor),
+      event('REQUEST', owner, admin),
+      event('CANCELLATION', owner, admin),
+    );
     expect(events()).toEqual(listed);
+    ownerResults.push(endingNotices('cancelled', { owner: OWNER_NAME, successor: ADMIN_NAME })[0]);
+    expect(results()).toEqual([ownerResults, successorResults]);
 
     // An expired request cannot be answered. The answer is an error, yet the request is recorded as invalidated by
     // that very call (no other request ran in between), so the error rolls back neither the record nor the result
@@ -211,6 +249,9 @@ test('the successor approves or refuses an owner succession from the notice', as
         .getByRole('alert')
         .filter({ hasText: '承認の期限が過ぎたため、このオーナーの譲渡の申し出は無効になりました。' }),
     ).toBeVisible();
+    // The refusal reloads the notices, so the buttons of the ended request are gone at once.
+    await expect(requestCard(successorPage)).toContainText(ENDED);
+    await expect(answerButtons(successorPage)).toHaveCount(0);
     expect(organization()).toBe(`${owner.id}|NULL`);
     listed.push(event('REQUEST', owner, successor), event('AUTO_INVALIDATED', owner, successor));
     expect(events()).toEqual(listed);
@@ -257,9 +298,16 @@ test('the successor approves or refuses an owner succession from the notice', as
 
     // Approval from the notice: the successor becomes the owner and leaves its stores; the previous owner becomes a
     // staff account with ORG_ADMIN (#195 の 1・2・4・5). The menu follows at once (履歴 is for the owner and ORG_ADMIN).
+    // Of the successor's many request notices, only the newest, for the request waiting now, has the buttons.
     await successorPage.goto(`${ec}/seller/notifications`);
+    await expect(answerButtons(successorPage)).toHaveCount(2);
+    await expect(requestCard(successorPage).getByRole('button', { name: '承認する', exact: true })).toBeVisible();
+    const waiting = await answerable(successorPage);
+    expect(waiting).toEqual([true, ...Array(waiting.length - 1).fill(false)]);
     await answerOnPage(successorPage, '承認する', 'オーナーの譲渡を承認しますか？');
     await expect(successorPage.getByText('オーナーの譲渡を承認しました。あなたが組織のオーナーです。')).toBeVisible();
+    await expect(requestCard(successorPage)).toContainText(ENDED);
+    await expect(answerButtons(successorPage)).toHaveCount(0);
     await expect(
       successorPage.getByRole('navigation', { name: '出店者メニュー' }).getByRole('link', { name: '履歴' }),
     ).toBeVisible();

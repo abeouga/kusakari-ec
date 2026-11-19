@@ -24,3 +24,8 @@
   gap: 10px;
   margin: 0 0 14px;
 }
+/* #204：終わった譲渡の申し出の通知は、ボタンの代わりに終わったことを出す。 */
+.notice-ended {
+  color: var(--muted);
+  font-weight: 700;
+}

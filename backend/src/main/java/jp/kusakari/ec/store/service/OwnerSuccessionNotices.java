@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * オーナーの譲渡の通知の宛て先と文面（店舗専用ページの本人あての通知だけで、メールは送らない。#194 の 2）。
- * 申し出は譲渡先に送り、譲渡の結果（交代・取り消し・自動で無効）はオーナーと譲渡先の両方に送る（#194 の 9、#200 の決めること 1）。
+ * 申し出は譲渡先に送り、譲渡の結果（交代・断り・取り消し・自動で無効）はオーナーと譲渡先の両方に送る（#194 の 9、#200 の決めること 1）。
  * NotificationService は、通知一覧の読み込みで {@link PendingOwnerSuccession} を使って期限切れを見つける。
  * 期限切れを無効にするときに送るこの部品から NotificationService を使うと依存が循環するので、NotificationRepository に直接保存する。
  * 呼ぶ側のトランザクションの中で保存するので、呼ぶ側が巻き戻せば通知も残らない。
@@ -83,6 +83,29 @@ public class OwnerSuccessionNotices {
       NotificationEntity.OWNER_SUCCESSION_RESULT,
       title,
       "%sさんが、あなたへの%sのオーナーの譲渡の申し出を取り消しました。%s".formatted(nameOf(ownerId), place, UNCHANGED)
+    );
+  }
+
+  /** 譲渡先が申し出を断ったことを、オーナーと譲渡先に知らせる（#200 の決めること 1）。 */
+  public void refused(OrganizationEntity organization, String successorId) {
+    String title = "オーナーの譲渡の申し出が断られました";
+    String ownerId = organization.getOwnerMemberId();
+    String place = organization.getName();
+    send(
+      ownerId,
+      NotificationEntity.OWNER_SUCCESSION_RESULT,
+      title,
+      "%sさんが、あなたからの%sのオーナーの譲渡の申し出を断りました。%s".formatted(
+        nameOf(successorId),
+        place,
+        UNCHANGED
+      )
+    );
+    send(
+      successorId,
+      NotificationEntity.OWNER_SUCCESSION_RESULT,
+      title,
+      "%sさんからの%sのオーナーの譲渡の申し出を断りました。%s".formatted(nameOf(ownerId), place, UNCHANGED)
     );
   }
 

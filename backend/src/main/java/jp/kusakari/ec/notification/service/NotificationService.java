@@ -1,5 +1,6 @@
 package jp.kusakari.ec.notification.service;
 
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,14 +34,18 @@ public class NotificationService {
   private final StoreMemberRepository storeMembers;
   private final PendingOwnerSuccession pendingOwnerSuccession;
 
-  /** category は通知の種類（NotificationEntity の ORDER など）。重要かどうかは画面が種類から決める。 */
+  /**
+   * category は通知の種類（NotificationEntity の ORDER など）。重要かどうかは画面が種類から決める。
+   * answerable は、今も承認・断りができるオーナーの譲渡の申し出の通知か（#204、#200 の決めること 6）。
+   */
   public record Notice(
     String id,
     String category,
     String title,
     String body,
     java.time.Instant createdAt,
-    java.time.Instant readAt
+    java.time.Instant readAt,
+    boolean answerable
   ) {}
 
   /** category は NotificationEntity の ORDER などの種類。どれにも当てはまらなければ GENERAL。 */
@@ -65,17 +70,44 @@ public class NotificationService {
   /**
    * 通知一覧。読み込むときに、自分がオーナーか譲渡先の、期限が過ぎた譲渡の申し出を無効として記録する（#194 の 15）。
    * そのとき送る「譲渡の結果」の通知は同じトランザクションで保存してから一覧を読むので、この一覧にもう含まれている。
+   * 譲渡の申し出の通知のうち、承認・断りができるのは、自分あての期限内の申し出があるときの、いちばん新しい申し出の通知だけ。
    */
   public List<Notice> list() {
     var member = auth.current();
     pendingOwnerSuccession.expireIfDueFor(member.getId());
     var visible = visibility(member);
-    return notices
-      .findByMemberIdOrderByCreatedAtDesc(member.getId())
+    var listed = notices.findByMemberIdOrderByCreatedAtDesc(member.getId()).stream().filter(visible).toList();
+    String answerable = answerableRequest(member, listed);
+    return listed
       .stream()
-      .filter(visible)
-      .map(n -> new Notice(n.getId(), n.getCategory(), n.getTitle(), n.getBody(), n.getCreatedAt(), n.getReadAt()))
+      .map(n ->
+        new Notice(
+          n.getId(),
+          n.getCategory(),
+          n.getTitle(),
+          n.getBody(),
+          n.getCreatedAt(),
+          n.getReadAt(),
+          n.getId().equals(answerable)
+        )
+      )
       .toList();
+  }
+
+  /**
+   * 今の承認待ちの申し出の通知の ID。自分あての期限内の申し出がなければ null。
+   * 通知は申し出の ID を持たないが、担当者は 1 つの組織にだけ所属し、組織の承認待ちは 1 件だけで、申し出のたびに通知を 1 件送るので、
+   * 自分あての申し出が承認を待っているなら、いちばん新しい申し出の通知がその申し出のもの。古い通知は、取り消し・期限切れなどで終わった申し出のもの。
+   */
+  private String answerableRequest(AuthMember member, List<NotificationEntity> newestFirst) {
+    Instant now = Instant.now();
+    if (!organizations.existsByPendingOwnerMemberIdAndPendingOwnerExpiresAtAfter(member.getId(), now)) return null;
+    return newestFirst
+      .stream()
+      .filter(n -> NotificationEntity.OWNER_SUCCESSION_REQUEST.equals(n.getCategory()))
+      .findFirst()
+      .map(NotificationEntity::getId)
+      .orElse(null);
   }
 
   public void read(String id) {

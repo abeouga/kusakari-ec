@@ -19,6 +19,9 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
   /** 期限が過ぎた譲渡の申し出が残っているか（#194 の 15）。ロックせずに読み、残っていたときだけロックして確かめ直す。 */
   boolean existsByIdAndPendingOwnerExpiresAtLessThanEqual(Long id, Instant now);
 
+  /** その人あての、期限内の譲渡の申し出があるか（通知一覧で、申し出の通知に承認・断りのボタンを出すかを決める。#204）。 */
+  boolean existsByPendingOwnerMemberIdAndPendingOwnerExpiresAtAfter(String memberId, Instant now);
+
   /** その人がオーナーか譲渡先で、期限が過ぎた申し出が残っている組織（通知一覧の読み込みで使う）。 */
   @Query(
     "select o.id from OrganizationEntity o where (o.ownerMemberId = :memberId or o.pendingOwnerMemberId = :memberId)" +
