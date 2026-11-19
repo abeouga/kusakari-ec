@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 担当者の操作の履歴（#170 の決めること5、#180）。見られるのはオーナーと ORG_ADMIN だけ。
- * 組織からの除名と復帰は組織の全件、店舗の担当にする・外すは選んでいる店舗の分だけを返す。
- * 操作された人が除名された後も記録は返す（#170 の決めること4）。
+ * 組織からの除名と復帰、オーナーの譲渡（#213、#200 の決めること 3）は組織の全件、店舗の担当にする・外すは選んでいる店舗の分だけを返す。
+ * 操作された人が除名された後も記録は返す（#170 の決めること4）。譲渡で交代した後の新しいオーナーも、前の譲渡の記録を見られる。
  */
 @Service
 @RequiredArgsConstructor
@@ -30,7 +30,12 @@ public class MemberEventService {
 
   private static final List<String> ORGANIZATION_EVENTS = List.of(
     OrganizationMemberEventEntity.EXPEL_FROM_ORGANIZATION,
-    OrganizationMemberEventEntity.REINSTATE_TO_ORGANIZATION
+    OrganizationMemberEventEntity.REINSTATE_TO_ORGANIZATION,
+    OrganizationMemberEventEntity.OWNER_SUCCESSION_REQUEST,
+    OrganizationMemberEventEntity.OWNER_SUCCESSION_APPROVAL,
+    OrganizationMemberEventEntity.OWNER_SUCCESSION_REFUSAL,
+    OrganizationMemberEventEntity.OWNER_SUCCESSION_CANCELLATION,
+    OrganizationMemberEventEntity.OWNER_SUCCESSION_AUTO_INVALIDATED
   );
 
   private final StaffPolicy policy;
