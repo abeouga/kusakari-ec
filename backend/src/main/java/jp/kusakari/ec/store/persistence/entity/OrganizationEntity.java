@@ -29,6 +29,14 @@ public class OrganizationEntity {
   @Column(name = "owner_member_id", length = 36, columnDefinition = "CHAR(36)")
   private String ownerMemberId;
 
+  /** オーナーの譲渡で、承認を待っている譲渡先（#194 の 10）。申し出がなければ空。 */
+  @Column(name = "pending_owner_member_id", length = 36, columnDefinition = "CHAR(36)")
+  private String pendingOwnerMemberId;
+
+  /** 承認の期限（申し出た時刻＋30 分、#194 の 12）。譲渡先と一緒に空になる（DB の CHECK）。 */
+  @Column(name = "pending_owner_expires_at")
+  private Instant pendingOwnerExpiresAt;
+
   /** 運営が受付を止めた日時。空なら通常、日時があれば受付停止中か停止。 */
   @Column(name = "suspension_started_at")
   private Instant suspensionStartedAt;

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 担当者の操作の記録（#170・#178）。行は書き換えず、足していく。
- * 店舗の担当にする・外す記録には店舗を入れ、除名と復帰の記録では空にする（#177）。
+ * 店舗の担当にする・外す記録には店舗を入れ、除名と復帰とオーナーの譲渡の記録では空にする（#177・#196）。
  */
 @Entity
 @Table(name = "organization_member_events")
@@ -25,6 +25,13 @@ public class OrganizationMemberEventEntity {
   public static final String REMOVE_FROM_STORE = "REMOVE_FROM_STORE";
   public static final String EXPEL_FROM_ORGANIZATION = "EXPEL_FROM_ORGANIZATION";
   public static final String REINSTATE_TO_ORGANIZATION = "REINSTATE_TO_ORGANIZATION";
+  // オーナーの譲渡（#196）。承認の記録が、そのままオーナーの交代の記録になる（移行期間はない、#190）。
+  public static final String OWNER_SUCCESSION_REQUEST = "OWNER_SUCCESSION_REQUEST";
+  public static final String OWNER_SUCCESSION_APPROVAL = "OWNER_SUCCESSION_APPROVAL";
+  public static final String OWNER_SUCCESSION_REFUSAL = "OWNER_SUCCESSION_REFUSAL";
+  public static final String OWNER_SUCCESSION_CANCELLATION = "OWNER_SUCCESSION_CANCELLATION";
+  /** 期限切れ、または譲渡先の除名・停止・退会で無効になった（#196 の 5）。 */
+  public static final String OWNER_SUCCESSION_AUTO_INVALIDATED = "OWNER_SUCCESSION_AUTO_INVALIDATED";
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +40,7 @@ public class OrganizationMemberEventEntity {
   @Column(name = "organization_id", nullable = false, updatable = false)
   private Long organizationId;
 
-  @Column(name = "event_type", nullable = false, length = 32, updatable = false)
+  @Column(name = "event_type", nullable = false, length = 40, updatable = false)
   private String eventType;
 
   @Column(name = "actor_member_id", nullable = false, length = 36, columnDefinition = "CHAR(36)", updatable = false)
