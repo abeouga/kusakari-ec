@@ -6,44 +6,39 @@ labels:
 
 body:
   - type: textarea
-    id: purpose
-    attributes:
-      label: 決めたいこと
-      description: このIssueで何を決めるのか、決めると何ができるようになるのかを記載してください。
-      placeholder: 例）組織・店舗・メンバーのテーブル構成を決め、マイグレーションと認可の実装に入れるようにする
-    validations:
-      required: true
-
-  - type: textarea
     id: background
     attributes:
-      label: 背景・現在の問題
-      description: なぜ決める必要があるのか、今どのような問題があるのかを記載してください。
+      label: 現在の課題
+      description: 今どのような課題があり、なぜ決める必要があるのかを記載してください。前のIssueで決まったことは書き写さず、「前提のIssue」にリンクを置いてください。
       placeholder: |
         例）
         - 1つのアカウントで1つの店舗しか扱えない
         - 組織やロールの階層を表す仕組みがない
-
-  - type: textarea
-    id: premises
-    attributes:
-      label: 決まっている前提
-      description: すでに決まっていて、このIssueでは変えないことを記載してください。
-      placeholder: |
-        例）
-        - 購入用と店舗側のアカウントを分ける
-        - 既存のDBは移行せずに初期化する
+    validations:
+      required: true
 
   - type: textarea
     id: decisions
     attributes:
       label: 決めること
-      description: 決める項目をチェックリストで記載してください。決まったら [x] にして、どう決まったかと理由を1行添えてください。
+      description: 決める項目を、番号を振ったチェックリストで記載してください。番号は一度振ったら振り直さず、項目を足すときは続きの番号にしてください。決まったら [x] にして、どう決まったかと理由を1行添えてください。すべて [x] になったらCloseします。docs/ への記録や実装のIssueの作成など、Closeする前にしておく作業もここに入れてください。
       value: |
-        - [ ]
-        - [ ]
+        - [ ] 1.
+        - [ ] 2.
+        - [ ] 3. 決定を `docs/` に記録する
+        - [ ] 4. 実装のIssueを作る
     validations:
       required: true
+
+  - type: textarea
+    id: premises
+    attributes:
+      label: 前提のIssue
+      description: すでに決まっていて、このIssueでは変えないことを決めたIssueへのリンクを記載してください。決まった内容は書き写さず、何を決めたIssueかだけを添えてください。親Issueと同じ前提でも、親Issueの本文を繰り返さず、リンクだけを置いてください。
+      placeholder: |
+        例）
+        - #181：オーナーの譲渡の基本の仕様
+        - #102：オーナーは1つの組織に1人
 
   - type: textarea
     id: options
@@ -56,20 +51,8 @@ body:
         - 案B：商品の所有者を店舗にする。店舗ごとに登録し直す必要がある
 
   - type: textarea
-    id: acceptance
-    attributes:
-      label: 完了条件
-      description: このIssueをCloseできる条件を記載してください。
-      value: |
-        - 「決めること」がすべて決まっている
-        - 決定を `docs/` に記録している
-        - 実装のIssueを作成している
-    validations:
-      required: true
-
-  - type: textarea
     id: related
     attributes:
       label: 関連するIssue・資料
-      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。
+      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。「前提のIssue」に書いたIssueは、ここに重ねて書かないでください。
       placeholder: 例）親issue：#103、実装：#107、#108
