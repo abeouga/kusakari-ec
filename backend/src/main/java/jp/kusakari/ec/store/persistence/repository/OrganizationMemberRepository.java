@@ -27,4 +27,17 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
     @Param("organizationId") long organizationId,
     @Param("memberId") String memberId
   );
+
+  /**
+   * 所属を排他ロックで読む。組織の行をロックした後で、DB の今の値で除名する（#205）。
+   * 待っている間に確定した承認（譲渡先がオーナーになり所属が消える）も、見つからないものとして読める。
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+    "select m from OrganizationMemberEntity m where m.id.organizationId = :organizationId and m.id.memberId = :memberId"
+  )
+  Optional<OrganizationMemberEntity> lock(
+    @Param("organizationId") long organizationId,
+    @Param("memberId") String memberId
+  );
 }
