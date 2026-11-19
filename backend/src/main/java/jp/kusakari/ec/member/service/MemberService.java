@@ -9,6 +9,7 @@ import jp.kusakari.ec.member.persistence.entity.PickupContactEntity;
 import jp.kusakari.ec.member.persistence.repository.PickupContactRepository;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.service.PendingOwnerSuccession;
+import jp.kusakari.ec.store.service.PendingOwnerSuccession.Reason;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,7 +98,7 @@ public class MemberService {
       );
     }
     m.withdraw();
-    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id));
+    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id, Reason.SUCCESSOR_WITHDRAWN));
   }
 
   @Transactional(readOnly = true)
@@ -138,6 +139,6 @@ public class MemberService {
       "管理者または退会済み会員の状態は変更できません。"
     );
     m.changeEnabled(enabled);
-    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id));
+    organization.ifPresent(locked -> pendingOwnerSuccession.invalidateFor(locked, id, Reason.SUCCESSOR_DISABLED));
   }
 }

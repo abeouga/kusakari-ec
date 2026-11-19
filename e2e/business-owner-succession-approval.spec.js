@@ -9,11 +9,17 @@ import {
   prepareStaff,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  successionResults,
+  pendingDeadline,
+  endingNotices,
+  rename,
 } from './business-helpers.js';
 import { sql, sqlInBackground } from './database.js';
 
 const evidence = 'artifacts/business/owner-succession-approval';
 const NOT_PENDING = 'あなたあての、承認を待っているオーナーの譲渡の申し出はありません。';
+const OWNER_NAME = '譲渡するオーナー';
+const SUCCESSOR_NAME = '譲渡先の担当者';
 
 /** @param {string} query */
 const rows = (query) => {
@@ -34,11 +40,6 @@ const standing = (member) =>
   sql(`SELECT CONCAT_WS('|', m.account_type, IFNULL(om.role,'-'), IFNULL(om.expelled,'-'),
           (SELECT COUNT(*) FROM store_members s WHERE s.member_id=m.id))
          FROM members m LEFT JOIN organization_members om ON om.member_id=m.id WHERE m.id='${member.id}';`);
-
-/** @param {{id:string}} member */
-const resultNotices = (member) =>
-  rows(`SELECT CONCAT_WS('|', kind, IFNULL(store_id,'NULL'), category, title) FROM notifications
-         WHERE member_id='${member.id}' AND category='OWNER_SUCCESSION_RESULT' ORDER BY created_at;`);
 
 /** @param {{id:string}} member */
 const noticeCount = (member) => Number(sql(`SELECT COUNT(*) FROM notifications WHERE member_id='${member.id}';`));
@@ -131,6 +132,7 @@ test('the successor approves or refuses an owner succession from the notice', as
     prepareMember(owner, 'SHOP_OWNER');
     prepareStaff(successor, { 1: 'STAFF', 2: 'MANAGER' });
     prepareStaff(admin, { 1: 'STAFF' }, true);
+    rename({ [OWNER_NAME]: owner, [SUCCESSOR_NAME]: successor });
     let baseline = sql('SELECT IFNULL(MAX(id),0) FROM organization_member_events;');
     const events = () =>
       rows(`SELECT CONCAT_WS('|', event_type, actor_member_id, target_member_id, IFNULL(store_id,'NULL'))
@@ -139,6 +141,16 @@ test('the successor approves or refuses an owner succession from the notice', as
     /** @param {string} type @param {{id:string}} actor @param {{id:string}} target */
     const event = (type, actor, target) => `OWNER_SUCCESSION_${type}|${actor.id}|${target.id}|NULL`;
     const listed = [];
+    // The result notices the owner and the successor should have received so far (#203, #200 の決めること 1).
+    /** @type {unknown[]} */ const ownerResults = [];
+    /** @type {unknown[]} */ const successorResults = [];
+    /** @param {'expired'|'expelled'} ending @param {string} [deadline] */
+    const ended = (ending, deadline) => {
+      const [toOwner, toSuccessor] = endingNotices(ending, { owner: OWNER_NAME, successor: SUCCESSOR_NAME, deadline });
+      ownerResults.push(toOwner);
+      successorResults.push(toSuccessor);
+    };
+    const results = () => [successionResults(owner), successionResults(successor)];
 
     // Without a request addressed to them, nobody can answer, and nothing is written.
     expect(await code(await reply(successorPage, 'approval'))).toEqual([409, 'OWNER_SUCCESSION_NOT_PENDING']);
@@ -174,20 +186,25 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(events()).toEqual(listed);
 
     // An expired request cannot be answered. The answer is an error, yet the request is recorded as invalidated by
-    // that very call (no other request ran in between), so the error does not roll the record back.
+    // that very call (no other request ran in between), so the error rolls back neither the record nor the result
+    // notices it sent to the owner and the successor (#203).
     for (const answer of /** @type {const} */ (['approval', 'refusal'])) {
       expect((await requestTo(ownerPage, successor)).status()).toBe(200);
       expire(successor);
+      const deadline = pendingDeadline();
       expect(await code(await reply(successorPage, answer))).toEqual([409, 'OWNER_SUCCESSION_EXPIRED']);
       expect(organization()).toBe(`${owner.id}|NULL`);
       listed.push(event('REQUEST', owner, successor), event('AUTO_INVALIDATED', owner, successor));
       expect(events()).toEqual(listed);
+      ended('expired', deadline);
+      expect(results()).toEqual([ownerResults, successorResults]);
     }
     // On the page, the notice was loaded before the deadline passed. Loading the notices also finds expired requests,
     // so the deadline moves only after that load has answered.
     expect((await requestTo(ownerPage, successor)).status()).toBe(200);
     await Promise.all([successorPage.waitForResponse(noticesLoaded), successorPage.reload()]);
     expire(successor);
+    const deadline = pendingDeadline();
     await answerOnPage(successorPage, '承認する', 'オーナーの譲渡を承認しますか？');
     await expect(
       successorPage
@@ -197,13 +214,17 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(organization()).toBe(`${owner.id}|NULL`);
     listed.push(event('REQUEST', owner, successor), event('AUTO_INVALIDATED', owner, successor));
     expect(events()).toEqual(listed);
+    ended('expired', deadline);
+    expect(results()).toEqual([ownerResults, successorResults]);
 
     // A successor who is expelled, or stopped by the operator, cannot approve. The sign-in check refuses the approval
     // sent with a CSRF token taken before, and ends that session, so the successor signs in again afterwards.
-    // (Invalidating the request on expulsion, stop or withdrawal is #205; this test clears it itself afterwards.)
+    // The expulsion invalidates the request and tells both why (#205, #203); the stop is made in the database here.
     expect((await requestTo(ownerPage, successor)).status()).toBe(200);
     let csrf = await read(successorPage, '/auth/csrf');
     expect((await call(ownerPage.request, `/seller/accounts/${successor.id}/expulsion`, 'POST')).status()).toBe(200);
+    ended('expelled');
+    expect(results()).toEqual([ownerResults, successorResults]);
     expect(await code(await approveWith(successorPage, csrf))).toEqual([403, 'ACCOUNT_EXPELLED']);
     expect((await call(ownerPage.request, `/seller/accounts/${successor.id}/expulsion`, 'DELETE')).status()).toBe(200);
     await login(successorPage, accounts[1].email, accounts[1].secret);
@@ -212,8 +233,7 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(await code(await approveWith(successorPage, csrf))).toEqual([403, 'ACCOUNT_DISABLED']);
     sql(`UPDATE members SET enabled=TRUE WHERE id='${successor.id}';`);
     await login(successorPage, accounts[1].email, accounts[1].secret);
-    expect(organization().split('|')[0]).toBe(owner.id);
-    expect([200, 409]).toContain((await call(ownerPage.request, '/seller/owner-succession', 'DELETE')).status());
+    expect(organization()).toBe(`${owner.id}|NULL`);
 
     // An expulsion that commits while the approval waits for the membership row (another administrator expelling at
     // the same moment): the approval reads the row again under its lock and refuses, so the owner stays.
@@ -232,6 +252,7 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(organization()).toBe(`${owner.id}|${successor.id}`);
     expect(standing(successor)).toBe('SHOP_STAFF|-|1|2');
     expect(events()).toEqual(listed);
+    expect(results()).toEqual([ownerResults, successorResults]);
     expect((await call(ownerPage.request, `/seller/accounts/${successor.id}/expulsion`, 'DELETE')).status()).toBe(200);
 
     // Approval from the notice: the successor becomes the owner and leaves its stores; the previous owner becomes a
@@ -247,9 +268,10 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(standing(owner)).toBe('SHOP_STAFF|ORG_ADMIN|0|0');
     listed.push(event('APPROVAL', successor, successor));
     expect(events()).toEqual(listed);
-    const changed = 'PERSONAL|NULL|OWNER_SUCCESSION_RESULT|オーナーが交代しました';
-    expect(resultNotices(successor)).toEqual([changed]);
-    expect(resultNotices(owner)).toEqual([changed]);
+    const changed = expect.stringMatching(/^オーナーが交代しました\|/);
+    ownerResults.push(changed);
+    successorResults.push(changed);
+    expect(results()).toEqual([ownerResults, successorResults]);
 
     // After reloading, each account works with its new type: AuthService reads it from the database every time.
     await successorPage.goto(`${ec}/seller/accounts`);
@@ -306,8 +328,9 @@ test('the successor approves or refuses an owner succession from the notice', as
     expect(standing(successor)).toBe('SHOP_STAFF|ORG_ADMIN|0|0');
     listed.push(event('REQUEST', successor, owner), event('APPROVAL', owner, owner));
     expect(events()).toEqual(listed);
-    expect(resultNotices(successor)).toEqual([changed, changed]);
-    expect(resultNotices(owner)).toEqual([changed, changed]);
+    ownerResults.push(changed);
+    successorResults.push(changed);
+    expect(results()).toEqual([ownerResults, successorResults]);
 
     await writeFile(
       `${evidence}/owner-succession-approval.json`,

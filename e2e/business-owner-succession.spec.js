@@ -10,11 +10,18 @@ import {
   createFixtureStaff,
   createPasswordTestAccount,
   deletePasswordTestAccount,
+  successionResults,
+  pendingDeadline,
+  endingNotices,
+  rename,
 } from './business-helpers.js';
 import { sql } from './database.js';
 
 const evidence = 'artifacts/business/owner-succession';
 const REQUEST_BUTTON = 'オーナーの譲渡を申し出る';
+const OWNER_NAME = '譲渡するオーナー';
+const TARGET_NAME = '譲渡先の担当者';
+const SECOND_NAME = '譲渡先の候補';
 
 /** The successor waiting for approval in the sample organization, or 'NULL'. */
 const pendingMember = () => sql(`SELECT IFNULL(pending_owner_member_id,'NULL') FROM organizations WHERE id=1;`);
@@ -49,8 +56,13 @@ const cancel = (page) => call(page.request, '/seller/owner-succession', 'DELETE'
 /** @param {import('@playwright/test').APIResponse} response */
 const code = async (response) => [response.status(), (await response.json()).code];
 
+/** @param {import('@playwright/test').Response} response */
+const noticesLoaded = (response) =>
+  new URL(response.url()).pathname === '/api/notifications' && response.request().method() === 'GET';
+
 // Issue #203: the owner requests an owner succession from the account list, cancels it, and an expired request is
-// recorded as OWNER_SUCCESSION_AUTO_INVALIDATED at the next operation (#194 の 15・16, #196 の 6).
+// recorded as OWNER_SUCCESSION_AUTO_INVALIDATED at the next operation (#194 の 15・16, #196 の 6). A cancelled or an
+// invalidated request sends a result notice saying why to both the owner and the successor (#200 の決めること 1).
 test('the owner requests and cancels an owner succession, and an expired request is invalidated', async ({
   browser,
 }) => {
@@ -74,8 +86,9 @@ test('the owner requests and cancels an owner succession, and an expired request
     prepareMember(owner, 'SHOP_OWNER');
     prepareStaff(staff, { 1: 'STAFF' }, true);
     prepareStaff(target, { 1: 'STAFF' });
+    rename({ [OWNER_NAME]: owner, [TARGET_NAME]: target });
     // Any role can be chosen (#181 の 2), but not someone expelled, stopped by the operator or withdrawn.
-    const second = createFixtureStaff('譲渡先の候補');
+    const second = createFixtureStaff(SECOND_NAME);
     const expelled = createFixtureStaff('除名中の担当者');
     const disabled = createFixtureStaff('停止中の担当者');
     const withdrawn = createFixtureStaff('退会済みの担当者');
@@ -94,6 +107,16 @@ test('the owner requests and cancels an owner succession, and an expired request
     };
     /** @param {string} type @param {{id:string}} successor */
     const event = (type, successor) => `OWNER_SUCCESSION_${type}|${owner.id}|${successor.id}|NULL`;
+    // The result notices the owner and the target should have received so far (#200 の決めること 1).
+    /** @type {string[]} */ const ownerResults = [];
+    /** @type {string[]} */ const targetResults = [];
+    /** @param {'cancelled'|'expired'} ending @param {string} [deadline] */
+    const ended = (ending, deadline) => {
+      const [toOwner, toTarget] = endingNotices(ending, { owner: OWNER_NAME, successor: TARGET_NAME, deadline });
+      ownerResults.push(toOwner);
+      targetResults.push(toTarget);
+    };
+    const results = () => [successionResults(owner), successionResults(target)];
 
     // Only the owner sees and uses the succession (#195 の 7): ORG_ADMIN and MANAGER see no column, and the API says 403.
     for (const stores of [null, { 1: 'MANAGER' }]) {
@@ -195,13 +218,18 @@ test('the owner requests and cancels an owner succession, and an expired request
     expect(pendingMember()).toBe('NULL');
     expect(await code(await cancel(ownerPage))).toEqual([409, 'OWNER_SUCCESSION_NOT_PENDING']);
     expect(events()).toEqual([event('REQUEST', target), event('CANCELLATION', target)]);
+    // Both the owner and the successor are told that the request was cancelled.
+    ended('cancelled');
+    expect(results()).toEqual([ownerResults, targetResults]);
 
     // An expired request counts as gone: it cannot be cancelled (nothing is written), and opening the account list
     // finds it and records it as invalidated, with the requesting owner as the actor (#196 の 6).
     expect((await request(ownerPage, target.id)).status()).toBe(200);
     expire(target.id);
+    let deadline = pendingDeadline();
     expect(await code(await cancel(ownerPage))).toEqual([409, 'OWNER_SUCCESSION_NOT_PENDING']);
     expect(pendingMember()).toBe(target.id);
+    expect(results()).toEqual([ownerResults, targetResults]);
     await ownerPage.reload();
     await expect(requestButton(targetEmail)).toBeVisible();
     await expect(ownerPage.getByText('にオーナーの譲渡を申し出ています。')).toHaveCount(0);
@@ -209,19 +237,33 @@ test('the owner requests and cancels an owner succession, and an expired request
     const listed = [event('REQUEST', target), event('CANCELLATION', target)];
     listed.push(event('REQUEST', target), event('AUTO_INVALIDATED', target));
     expect(events()).toEqual(listed);
+    // Both are told that it ended because the deadline passed, with that deadline.
+    ended('expired', deadline);
+    expect(results()).toEqual([ownerResults, targetResults]);
 
-    // Loading the notices finds an expired request too (here the successor's).
+    // Loading the notices finds an expired request too (here the successor's). The list that found it already holds
+    // the result notice it sent, as its newest notice.
     expect((await request(ownerPage, target.id)).status()).toBe(200);
     expire(target.id);
-    await targetPage.reload();
+    deadline = pendingDeadline();
+    const [loaded] = await Promise.all([targetPage.waitForResponse(noticesLoaded), targetPage.reload()]);
     await expect(requestCards).toHaveCount(3);
     expect(pendingMember()).toBe('NULL');
     listed.push(event('REQUEST', target), event('AUTO_INVALIDATED', target));
     expect(events()).toEqual(listed);
+    ended('expired', deadline);
+    expect(results()).toEqual([ownerResults, targetResults]);
+    const newest = (await loaded.json())[0];
+    expect([newest.category, `${newest.title}|${newest.body}`]).toEqual([
+      'OWNER_SUCCESSION_RESULT',
+      targetResults.at(-1),
+    ]);
+    await expect(targetPage.locator('.workspace-card').first()).toContainText(newest.body);
 
     // A new request after the deadline is accepted; the expired one is recorded first (#194 の 16).
     expect((await request(ownerPage, target.id)).status()).toBe(200);
     expire(target.id);
+    deadline = pendingDeadline();
     const accepted = await request(ownerPage, second.id);
     expect(accepted.status()).toBe(200);
     expect((await accepted.json()).ownerSuccession.memberId).toBe(second.id);
@@ -229,10 +271,17 @@ test('the owner requests and cancels an owner succession, and an expired request
     listed.push(event('REQUEST', target), event('AUTO_INVALIDATED', target), event('REQUEST', second));
     expect(events()).toEqual(listed);
     expect(requestNotices(second.id)).toEqual(['PERSONAL|NULL|OWNER_SUCCESSION_REQUEST|オーナーの譲渡の申し出']);
+    ended('expired', deadline);
+    expect(results()).toEqual([ownerResults, targetResults]);
 
-    // Two requests at the same moment: the organization row lock lets exactly one through.
+    // Two requests at the same moment: the organization row lock lets exactly one through. The cancellation before
+    // them tells the owner and the other candidate.
     expect((await cancel(ownerPage)).status()).toBe(200);
     listed.push(event('CANCELLATION', second));
+    const [toOwner, toSecond] = endingNotices('cancelled', { owner: OWNER_NAME, successor: SECOND_NAME });
+    ownerResults.push(toOwner);
+    expect(results()).toEqual([ownerResults, targetResults]);
+    expect(successionResults(second)).toEqual([toSecond]);
     const raced = await Promise.all([request(ownerPage, target.id), request(ownerPage, second.id)]);
     expect(raced.map((r) => r.status()).sort()).toEqual([200, 409]);
     const [winner, loser] = raced[0].status() === 200 ? [target, raced[1]] : [second, raced[0]];
@@ -254,12 +303,19 @@ test('the owner requests and cancels an owner succession, and an expired request
     await targetPage.reload();
     await expect(requestCards.first()).toBeVisible();
     await capture(targetPage, `${evidence}/successor-notices-reloaded.png`);
+    // The owner's notices, newest first: the cancellation to the other candidate, then the request that expired then.
+    await ownerPage.goto(`${ec}/seller/notifications`);
+    const ownerCards = ownerPage.locator('.workspace-card');
+    await expect(ownerCards.first()).toContainText(toOwner.split('|')[1]);
+    await expect(ownerCards.nth(1)).toContainText(ownerResults[3].split('|')[1]);
+    await capture(ownerPage, `${evidence}/owner-notices-reloaded.png`);
     await writeFile(
       `${evidence}/owner-succession.json`,
       JSON.stringify(
         {
           ownerAccounts: await call(ownerPage.request, '/seller/accounts').then((r) => r.json()),
           successorNotices: await call(targetPage.request, '/notifications').then((r) => r.json()),
+          ownerNotices: await call(ownerPage.request, '/notifications').then((r) => r.json()),
           events: events(),
           pendingOwnerMemberId: pendingMember(),
         },
