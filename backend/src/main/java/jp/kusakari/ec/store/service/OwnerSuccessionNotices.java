@@ -127,7 +127,7 @@ public class OwnerSuccessionNotices {
       NotificationEntity.OWNER_SUCCESSION_RESULT,
       title,
       "%s、%sさんへの%sのオーナーの譲渡の申し出は無効になりました。%s".formatted(
-        why(reason, "譲渡先", expiresAt),
+        why(reason, "譲渡先", "あなた", expiresAt),
         nameOf(successorId),
         place,
         UNCHANGED
@@ -138,7 +138,7 @@ public class OwnerSuccessionNotices {
       NotificationEntity.OWNER_SUCCESSION_RESULT,
       title,
       "%s、%sさんからの%sのオーナーの譲渡の申し出は無効になりました。%s".formatted(
-        why(reason, "あなた", expiresAt),
+        why(reason, "あなた", "オーナー", expiresAt),
         nameOf(ownerId),
         place,
         UNCHANGED
@@ -146,13 +146,18 @@ public class OwnerSuccessionNotices {
     );
   }
 
-  /** 無効になった理由の文。subject は、譲渡先のことを受け取る人から見て何と呼ぶか（オーナーには「譲渡先」、譲渡先には「あなた」）。 */
-  private static String why(PendingOwnerSuccession.Reason reason, String subject, Instant expiresAt) {
+  /**
+   * 無効になった理由の文。successor・owner は、受け取る人から見た譲渡先と申し出たオーナーの呼び方
+   * （オーナーには「譲渡先」「あなた」、譲渡先には「あなた」「オーナー」）。
+   */
+  private static String why(PendingOwnerSuccession.Reason reason, String successor, String owner, Instant expiresAt) {
     return switch (reason) {
       case EXPIRED -> "承認の期限（%s）が過ぎたため".formatted(DEADLINE.format(expiresAt));
-      case SUCCESSOR_EXPELLED -> subject + "が組織から除名されたため";
-      case SUCCESSOR_DISABLED -> subject + "の利用が運営に停止されたため";
-      case SUCCESSOR_WITHDRAWN -> subject + "が退会したため";
+      case SUCCESSOR_EXPELLED -> successor + "が組織から除名されたため";
+      case SUCCESSOR_DISABLED -> successor + "の利用が運営に停止されたため";
+      case SUCCESSOR_WITHDRAWN -> successor + "が退会したため";
+      case OWNER_DISABLED -> owner + "の利用が運営に停止されたため";
+      case OWNER_WITHDRAWN -> owner + "が退会したため";
     };
   }
 

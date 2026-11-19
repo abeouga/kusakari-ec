@@ -125,20 +125,27 @@ export function successionResults(member) {
   return notices.map((notice) => notice.slice('PERSONAL|NULL|'.length));
 }
 
-/** The deadline of the sample organization's pending request, in Japan time to the minute as the notices write it. */
-export const pendingDeadline = () =>
+/**
+ * The deadline of an organization's pending request (the sample organization by default), in Japan time to the minute
+ * as the notices write it.
+ * @param {number} [organizationId]
+ */
+export const pendingDeadline = (organizationId = 1) =>
   sql(`SET time_zone='+09:00';
-       SELECT DATE_FORMAT(pending_owner_expires_at,'%Y/%m/%d %H:%i') FROM organizations WHERE id=1;`);
+       SELECT DATE_FORMAT(pending_owner_expires_at,'%Y/%m/%d %H:%i') FROM organizations WHERE id=${Number(organizationId)};`);
 
 /**
- * The result notices that the owner and the successor receive when a request of the sample organization ends without
- * approval (#203, #200 の決めること 1), as `[the owner's, the successor's]` in the form of successionResults. Each
- * says why the request ended; the expired one gives its deadline (pendingDeadline, read before it was invalidated).
- * @param {'refused'|'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'} ending
+ * The result notices that the owner and the successor receive when a request of an organization (the sample
+ * organization by default) ends without approval (#203, #200 の決めること 1), as `[the owner's, the successor's]` in
+ * the form of successionResults. Each says why the request ended; the expired one gives its deadline (pendingDeadline,
+ * read before it was invalidated). 'expelled', 'disabled' and 'withdrawn' are the successor's; 'owner-disabled' and
+ * 'owner-withdrawn' are the owner's who made the request (#205).
+ * @param {'refused'|'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'|'owner-disabled'|'owner-withdrawn'} ending
  * @param {{owner:string, successor:string, deadline?:string}} names the display names of the owner and the successor
+ * @param {number} [organizationId]
  */
-export function endingNotices(ending, { owner, successor, deadline }) {
-  const request = `${sql('SELECT name FROM organizations WHERE id=1;')}のオーナーの譲渡の申し出`;
+export function endingNotices(ending, { owner, successor, deadline }, organizationId = 1) {
+  const request = `${sql(`SELECT name FROM organizations WHERE id=${Number(organizationId)};`)}のオーナーの譲渡の申し出`;
   const unchanged = 'オーナーは交代していません。';
   if (ending === 'refused') {
     const title = 'オーナーの譲渡の申し出が断られました';
@@ -154,18 +161,20 @@ export function endingNotices(ending, { owner, successor, deadline }) {
       `${title}|${owner}さんが、あなたへの${request}を取り消しました。${unchanged}`,
     ];
   }
-  /** @param {string} subject the successor, as the reader calls it */
-  const why = (subject) =>
+  /** @param {string} successorCalled @param {string} ownerCalled the successor and the owner, as the reader calls them */
+  const why = (successorCalled, ownerCalled) =>
     ({
       expired: `承認の期限（${deadline}）が過ぎたため`,
-      expelled: `${subject}が組織から除名されたため`,
-      disabled: `${subject}の利用が運営に停止されたため`,
-      withdrawn: `${subject}が退会したため`,
+      expelled: `${successorCalled}が組織から除名されたため`,
+      disabled: `${successorCalled}の利用が運営に停止されたため`,
+      withdrawn: `${successorCalled}が退会したため`,
+      'owner-disabled': `${ownerCalled}の利用が運営に停止されたため`,
+      'owner-withdrawn': `${ownerCalled}が退会したため`,
     })[ending];
   const title = 'オーナーの譲渡の申し出が無効になりました';
   return [
-    `${title}|${why('譲渡先')}、${successor}さんへの${request}は無効になりました。${unchanged}`,
-    `${title}|${why('あなた')}、${owner}さんからの${request}は無効になりました。${unchanged}`,
+    `${title}|${why('譲渡先', 'あなた')}、${successor}さんへの${request}は無効になりました。${unchanged}`,
+    `${title}|${why('あなた', 'オーナー')}、${owner}さんからの${request}は無効になりました。${unchanged}`,
   ];
 }
 

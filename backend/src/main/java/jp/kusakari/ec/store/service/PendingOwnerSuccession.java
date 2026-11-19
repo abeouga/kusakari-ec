@@ -19,8 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
  * オーナーの譲渡の承認待ち（organizations.pending_owner_*）を、自動で無効にする処理の置き場所（#194 の 15・16、#196 の 5・6）。
  * 期限切れは定期処理で調べず、次の操作のときにここを呼んで見つける。
  * 呼ぶところ：申し出の API・アカウント一覧の GET・通知一覧の読み込み（#203）、承認・断りの前（#204）。
- * 譲渡先の除名・停止・退会（#205）は、所属・会員の行を書き換える前に組織の行を {@link #lock} し、最後に {@link #invalidateFor} を呼ぶ。
- * ロックの順番は、申し出・承認と同じ「組織 → 所属 → 会員」にそろえる（逆にするとデッドロックしうる）。
+ * 譲渡先の除名・停止・退会と、申し出たオーナー本人の停止・退会（#205）は、所属・会員の行を書き換える前に組織の行を {@link #lock} し、
+ * 最後に {@link #invalidateFor}・{@link #invalidateForOwner} を呼ぶ。
+ * ロックの順番は「店舗 → 組織 → 所属 → 会員」にそろえる（申し出・承認・注文の確定と同じ向き。逆にするとデッドロックしうる）。
  * 無効にしたら、なぜ無効になったか（{@link Reason}）を、オーナーと譲渡先の両方に「譲渡の結果」の通知で知らせる（#200 の決めること 1）。
  * 呼ぶ側のトランザクションの中で動く。
  */
@@ -45,6 +46,10 @@ public class PendingOwnerSuccession {
     SUCCESSOR_DISABLED,
     /** 譲渡先が退会した。 */
     SUCCESSOR_WITHDRAWN,
+    /** 申し出たオーナーの利用が運営に停止された。 */
+    OWNER_DISABLED,
+    /** 申し出たオーナーが退会した。 */
+    OWNER_WITHDRAWN,
   }
 
   /**
@@ -60,12 +65,17 @@ public class PendingOwnerSuccession {
   }
 
   /**
-   * 会員が担当者として所属する組織の行をロックする。所属がなければ空（オーナー・購入者・運営は、どの組織の譲渡先にもなれない）。
-   * 組織の ID はロックせずに所属から読む。所属する組織は変わらず、所属が消えるのは譲渡の承認で本人がオーナーになったときだけで、
-   * そのときは承認待ちも空になっている。譲渡先かどうかは、ロックして読み直した組織の行で {@link #invalidateFor} が確かめる。
+   * 会員がオーナーか担当者として属する組織の行をロックする。どちらでもなければ空（購入者・運営）。
+   * 組織の ID はロックせずに読む。属する組織は変わらない（譲渡の承認でオーナーと担当者が入れ替わっても、同じ組織のまま）。
+   * 承認待ちの当事者かどうかは、ロックして読み直した組織の行で {@link #invalidateFor}・{@link #invalidateForOwner} が確かめる。
+   * オーナーの退会では、呼ぶ前に組織の店舗の行をロックしておく（店舗 → 組織の順。注文の確定と同じ向き）。
    */
   public Optional<OrganizationEntity> lockOrganizationOf(String memberId) {
-    return organizationMembers.findForMember(memberId).map(membership -> lock(membership.getId().getOrganizationId()));
+    return organizations
+      .findByOwnerMemberId(memberId)
+      .map(OrganizationEntity::getId)
+      .or(() -> organizationMembers.findForMember(memberId).map(membership -> membership.getId().getOrganizationId()))
+      .map(this::lock);
   }
 
   /**
@@ -75,6 +85,15 @@ public class PendingOwnerSuccession {
    */
   public void invalidateFor(OrganizationEntity locked, String memberId, Reason reason) {
     if (!memberId.equals(locked.getPendingOwnerMemberId())) return;
+    invalidate(locked, locked.hasExpiredOwnerSuccession(Instant.now()) ? Reason.EXPIRED : reason);
+  }
+
+  /**
+   * 申し出たオーナーがその会員で、承認待ちがあれば、申し出を無効にする（#205 の追加分。オーナー本人の停止・退会、#200 の決めること 5）。
+   * ロック済みの組織に使う。期限が過ぎていた申し出は、{@link #invalidateFor} と同じく理由を期限切れにする。
+   */
+  public void invalidateForOwner(OrganizationEntity locked, String memberId, Reason reason) {
+    if (!memberId.equals(locked.getOwnerMemberId())) return;
     invalidate(locked, locked.hasExpiredOwnerSuccession(Instant.now()) ? Reason.EXPIRED : reason);
   }
 
@@ -100,7 +119,7 @@ public class PendingOwnerSuccession {
   /**
    * 承認待ちを空に戻し、OWNER_SUCCESSION_AUTO_INVALIDATED を記録して、オーナーと譲渡先に理由と一緒に知らせる。ロック済みの組織に使う。
    * 操作した人は申し出たオーナー、操作された人は譲渡先（#196 の 6）。除名した人が ORG_ADMIN でも、操作した人はオーナーにする。
-   * 期限切れのほか、譲渡先の除名・停止・退会でも使う（#196 の 5。{@link #invalidateFor}）。
+   * 期限切れのほか、譲渡先の除名・停止・退会（#196 の 5。{@link #invalidateFor}）と、オーナー本人の停止・退会（{@link #invalidateForOwner}）でも使う。
    */
   public void invalidate(OrganizationEntity locked, Reason reason) {
     String successor = locked.getPendingOwnerMemberId();
