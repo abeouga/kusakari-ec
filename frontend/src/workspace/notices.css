@@ -17,3 +17,10 @@
   font-size: 13px;
   font-weight: 700;
 }
+/* #204：譲渡の申し出の通知に、承認する・断るボタンを並べる。 */
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 14px;
+}

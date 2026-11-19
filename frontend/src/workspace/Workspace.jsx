@@ -207,7 +207,16 @@ export function Workspace({ shop, path, header }) {
     ) : (
       <BuyerOrders />
     );
-  else if (path.endsWith('/notifications')) content = <Notices />;
+  else if (path.endsWith('/notifications'))
+    content = (
+      <Notices
+        onOwnerChanged={() => {
+          // Issue #204: approving an owner succession makes this account the owner; the menu and stores follow it.
+          window.dispatchEvent(new Event('kusakari-auth-changed'));
+          void shop.reloadSellerStores();
+        }}
+      />
+    );
   else if (unassigned)
     content = (
       <section className="workspace-card">
