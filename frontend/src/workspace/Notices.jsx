@@ -41,8 +41,9 @@ const successionAnswers = {
  */
 export function Notices({ onOwnerChanged }) {
   const resource = useResource('/notifications');
-  // Issue #204: the successor answers an owner-succession request from its notice. Every request notice keeps the
-  // buttons; the server answers with an error when the request was cancelled, expired or is now someone else's.
+  // Issue #204: the successor answers an owner-succession request from its notice. Only the notice of the request
+  // waiting for this account has the buttons (the server marks it answerable); the others say the request ended
+  // (#200 の決めること 6). A request that ends after the page loaded is refused by the server, and the list reloads.
   const [answering, setAnswering] = useState(/** @type {SuccessionAnswer|null} */ (null));
   /** @param {SuccessionAnswer} kind */
   function submit(kind) {
@@ -67,7 +68,10 @@ export function Notices({ onOwnerChanged }) {
             </div>
             <p>{n.body}</p>
             <p>{new Date(n.createdAt).toLocaleString('ja-JP')}</p>
-            {n.category === 'OWNER_SUCCESSION_REQUEST' && (
+            {n.category === 'OWNER_SUCCESSION_REQUEST' && !n.answerable && (
+              <p className="notice-ended">この申し出は終わったため、承認も断りもできません。</p>
+            )}
+            {n.answerable && (
               <div className="notice-actions">
                 <button type="button" disabled={resource.busy} onClick={() => setAnswering('approval')}>
                   承認する

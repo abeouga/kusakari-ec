@@ -134,12 +134,19 @@ export const pendingDeadline = () =>
  * The result notices that the owner and the successor receive when a request of the sample organization ends without
  * approval (#203, #200 の決めること 1), as `[the owner's, the successor's]` in the form of successionResults. Each
  * says why the request ended; the expired one gives its deadline (pendingDeadline, read before it was invalidated).
- * @param {'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'} ending
+ * @param {'refused'|'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'} ending
  * @param {{owner:string, successor:string, deadline?:string}} names the display names of the owner and the successor
  */
 export function endingNotices(ending, { owner, successor, deadline }) {
   const request = `${sql('SELECT name FROM organizations WHERE id=1;')}のオーナーの譲渡の申し出`;
   const unchanged = 'オーナーは交代していません。';
+  if (ending === 'refused') {
+    const title = 'オーナーの譲渡の申し出が断られました';
+    return [
+      `${title}|${successor}さんが、あなたからの${request}を断りました。${unchanged}`,
+      `${title}|${owner}さんからの${request}を断りました。${unchanged}`,
+    ];
+  }
   if (ending === 'cancelled') {
     const title = 'オーナーの譲渡の申し出が取り消されました';
     return [

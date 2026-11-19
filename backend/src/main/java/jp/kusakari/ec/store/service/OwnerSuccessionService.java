@@ -143,8 +143,7 @@ public class OwnerSuccessionService {
   }
 
   /**
-   * 譲渡先が断る（#194 の 6）。承認待ちを空に戻し、断りを記録する。
-   * 断ったことを誰に知らせるかは決まっていないので（#200 の決めること 1）、通知は送らない。
+   * 譲渡先が断る（#194 の 6）。承認待ちを空に戻し、断りを記録して、オーナーと譲渡先の両方に知らせる（#200 の決めること 1）。
    */
   @Transactional(noRollbackFor = Lapsed.class)
   public Decision refuse() {
@@ -152,6 +151,7 @@ public class OwnerSuccessionService {
     OrganizationEntity organization = addressedTo(viewer);
     organization.clearOwnerSuccession();
     record(organization, OrganizationMemberEventEntity.OWNER_SUCCESSION_REFUSAL, viewer.memberId(), viewer.memberId());
+    notices.refused(organization, viewer.memberId());
     events.flush();
     return new Decision(organization.getId(), organization.getName(), false);
   }
