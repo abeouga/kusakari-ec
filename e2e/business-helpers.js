@@ -64,11 +64,17 @@ export function prepareMember(member, role) {
   const ties = {
     SELLER: `INSERT INTO organization_members(organization_id,member_id) VALUES(1,'${id}');
        INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES(1,'${id}',1,'MANAGER');`,
-    SHOP_OWNER: `UPDATE organizations SET owner_member_id='${id}' WHERE id=1;`,
+    // A new owner starts without the previous owner's succession request (#203).
+    SHOP_OWNER: `UPDATE organizations SET owner_member_id='${id}',pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+       WHERE id=1;`,
     // An applicant starts without an application; an approved one would refuse a new application.
     SHOP_OWNER_APPLICANT: `DELETE FROM organization_applications WHERE applicant_member_id='${id}';`,
   };
-  sql(`UPDATE organizations SET owner_member_id=NULL WHERE owner_member_id='${id}';
+  // The owner's succession request leaves with the owner, and a successor's request with the successor (#203).
+  sql(`UPDATE organizations SET owner_member_id=NULL,pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+        WHERE owner_member_id='${id}';
+       UPDATE organizations SET pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+        WHERE pending_owner_member_id='${id}';
        DELETE FROM organization_members WHERE member_id='${id}';
        UPDATE members SET account_type='${accountTypes[role]}',enabled=TRUE,withdrawn_at=NULL WHERE id='${id}';
        ${ties[role] || ''}

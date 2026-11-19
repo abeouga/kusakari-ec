@@ -6,8 +6,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 
 /**
  * @typedef {{storeId:number,role:string|null,assignableRoles:string[],removable:boolean}} Assignment
- * @typedef {{memberId:string,name:string,email:string,owner:boolean,organizationRole:string|null,organizationRoleEditable:boolean,assignments:Assignment[],expelled:boolean,expellable:boolean}} Account
- * @typedef {{organizationId:number,owner:boolean,organizationAdmin:boolean,stores:{id:number,name:string}[],accounts:Account[]}} AccountsView
+ * @typedef {{memberId:string,name:string,email:string,owner:boolean,organizationRole:string|null,organizationRoleEditable:boolean,assignments:Assignment[],expelled:boolean,expellable:boolean,ownerSuccessionSelectable:boolean}} Account
+ * @typedef {{memberId:string,name:string,email:string,expiresAt:string}} OwnerSuccession
+ * @typedef {{organizationId:number,owner:boolean,organizationAdmin:boolean,stores:{id:number,name:string}[],accounts:Account[],ownerSuccession:OwnerSuccession|null}} AccountsView
  */
 
 /** @type {Record<string,string>} */
@@ -26,6 +27,35 @@ export function StaffAccountsPage() {
   const [removing, setRemoving] = useState(/** @type {{account:Account,store:{id:number,name:string}}|null} */ (null));
   const [expelling, setExpelling] = useState(/** @type {Account|null} */ (null));
   const [reinstating, setReinstating] = useState(/** @type {Account|null} */ (null));
+  // Issue #203: only the owner gets these; the server says who can be chosen and returns the pending request.
+  const [succeeding, setSucceeding] = useState(/** @type {Account|null} */ (null));
+  const [withdrawingSuccession, setWithdrawingSuccession] = useState(false);
+  const pendingSuccession = view?.ownerSuccession ?? null;
+  /** @param {Account} account */
+  function requestSuccession(account) {
+    // The dialog closes either way, so a refusal (e.g. another request is pending) shows on the page.
+    void resource
+      .run(
+        () => write(`/seller/accounts/${account.memberId}/owner-succession`, 'POST'),
+        `${account.name}にオーナーの譲渡を申し出ました。`,
+      )
+      .then(() => setSucceeding(null));
+  }
+  function cancelSuccession() {
+    void resource
+      .run(() => write('/seller/owner-succession', 'DELETE'), 'オーナーの譲渡の申し出を取り消しました。')
+      .then(() => setWithdrawingSuccession(false));
+  }
+  /** @param {Account} account */
+  function successionCell(account) {
+    if (pendingSuccession?.memberId === account.memberId) return '承認待ち';
+    if (!account.ownerSuccessionSelectable) return '';
+    return (
+      <button type="button" disabled={resource.busy} onClick={() => setSucceeding(account)}>
+        オーナーの譲渡を申し出る
+      </button>
+    );
+  }
   /** @param {Account} account */
   function expel(account) {
     void resource
@@ -149,6 +179,19 @@ export function StaffAccountsPage() {
               ? '組織の全員と、全店舗のロールを表示しています。'
               : 'MANAGER の店舗の担当者だけを表示しています。STAFF とロールなしの割り振りができます。'}
           </p>
+          {pendingSuccession && (
+            <>
+              <p>
+                {pendingSuccession.name}（{pendingSuccession.email}）にオーナーの譲渡を申し出ています。承認の期限は
+                {new Date(pendingSuccession.expiresAt).toLocaleString('ja-JP')}です。
+              </p>
+              <p>
+                <button type="button" disabled={resource.busy} onClick={() => setWithdrawingSuccession(true)}>
+                  申し出を取り消す
+                </button>
+              </p>
+            </>
+          )}
           {(view.owner || view.organizationAdmin) && (
             <label>
               表示する人
@@ -169,6 +212,7 @@ export function StaffAccountsPage() {
               '組織のロール',
               ...view.stores.map((store) => store.name),
               ...(view.owner || view.organizationAdmin ? ['組織からの除名'] : []),
+              ...(view.owner ? ['オーナーの譲渡'] : []),
             ]}
             rows={view.accounts.filter(shown).map((account) => [
               account.name,
@@ -182,6 +226,7 @@ export function StaffAccountsPage() {
                 ),
               ),
               ...(view.owner || view.organizationAdmin ? [expulsionCell(account)] : []),
+              ...(view.owner ? [successionCell(account)] : []),
             ])}
           />
         </>
@@ -213,6 +258,35 @@ export function StaffAccountsPage() {
             {removing.account.name}を{removing.store.name}の担当から外しますか？
           </p>
           <p>組織には残るので、表示する人を「どの店舗にも所属していない人」にして、あとで店舗の担当にし直せます。</p>
+        </ConfirmDialog>
+      )}
+      {succeeding && (
+        <ConfirmDialog
+          title="オーナーの譲渡の申し出の確認"
+          confirmLabel="申し出る"
+          busy={resource.busy}
+          onCancel={() => setSucceeding(null)}
+          onConfirm={() => requestSuccession(succeeding)}
+        >
+          <p>{succeeding.name}にオーナーの譲渡を申し出ますか？</p>
+          <p>
+            {succeeding.name}
+            に店舗専用ページの通知が届きます。30 分以内に承認されると、{succeeding.name}が組織のオーナーになり、あなたは
+            ORG_ADMIN になります。
+          </p>
+          <p>承認されるまでは取り消せます。申し出ている間は、ほかの人には申し出られません。</p>
+        </ConfirmDialog>
+      )}
+      {withdrawingSuccession && pendingSuccession && (
+        <ConfirmDialog
+          title="オーナーの譲渡の取り消しの確認"
+          confirmLabel="申し出を取り消す"
+          busy={resource.busy}
+          onCancel={() => setWithdrawingSuccession(false)}
+          onConfirm={cancelSuccession}
+        >
+          <p>{pendingSuccession.name}へのオーナーの譲渡の申し出を取り消しますか？</p>
+          <p>取り消した後は、ほかの人にも申し出られます。</p>
         </ConfirmDialog>
       )}
       {reinstating && (
