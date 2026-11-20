@@ -16,6 +16,7 @@ v3 の前は、商品に追加した会員（`products.owner_member_id`）を持
 
 - 31商品を、組織1（Kusakari サンプル組織）の店舗1（二子玉川ガーデン、`store_id=1`）の商品として入れる。ID・商品番号・価格・植物モデルの設定と構成は sample-data のまま、在庫は書き出したときの値、公開状態は `PUBLISHED`。素材コード（`product.{商品ID}`）の対応も入れる。画像は `frontend/public/images/` にあるものを使う。
 - 店舗1にある4商品は削除済み（`inventory.publication_status='DELETED'`）にする。注文や庭から参照されるので、行は消さない。削除済みにするのはこの4商品だけで、各 PC で店舗の画面から店舗1に登録した商品は変えない（`import-product-sample.mjs` は店舗1のすべての商品を削除済みにしていた）。
+- 店舗2の、Canvas の配置モデル（木・低木・レンガ・ベンチ）に合わせた4商品（`canvas-oak`・`canvas-boxwood`・`canvas-brick`・`canvas-bench`）も削除済みにする（2026-11-20 にユーザーが追加で決めた）。Canvas の商品一覧で邪魔になるため。Canvas 側の配置モデル（`assets` の `tree_oak`・`shrub_boxwood`・`brick_paver`・`bench_wood`）は Canvas のリポジトリのもので、ここでは変えない。
 - ほかの PC には、EC を起動したときの Flyway のマイグレーションで自動で入る。手で流すコマンドは要らない。
 - `import-product-sample.mjs` をすでに流した PC でも失敗せず、商品が重ならないように、同じ ID の商品は sample-data の値で上書きし、素材コードの対応は入っていなければ足す。在庫も書き出したときの値に戻る。
 - 「実演用・紫の草花」は移さない。
@@ -42,5 +43,6 @@ v3 の前は、商品に追加した会員（`products.owner_member_id`）を持
 
 - V7 は31商品の植物モデルの構成を含むので、約6MB の SQL になる。
 - 31商品を店舗の画面で編集・在庫変更していた PC では、V7 を当てたときに sample-data の値に戻る（`import-product-sample.mjs` を流し直したときと同じ）。
-- 店舗1の4商品は削除済みになり、購入者の一覧と Canvas の商品一覧から消える。庭に置いてあれば、販売を終えた商品として出る。
+- 店舗1の4商品と店舗2の Canvas の配置モデル用の4商品は削除済みになり、購入者の一覧と Canvas の商品一覧から消える。庭に置いてあれば、販売を終えた商品として出る。
+- Canvas の配置モデル（木・低木・レンガ・ベンチ）を庭に置いても、対応する EC の商品は買えなくなる（素材コード `plant.oak`・`plant.boxwood`・`garden.brick`・`garden.bench` の商品が削除済みのため）。
 - 追加した人がいない商品は、今ある商品（V7 より前に登録した商品を含む）すべて。V7 より前に店舗の画面で登録した商品は、追加した人を後から埋めない。

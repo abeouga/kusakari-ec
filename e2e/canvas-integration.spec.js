@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember, seedGardenPhoto } from './business-helpers.js';
 import { USER_EMAIL } from './test-accounts.js';
+import { MARGUERITE } from './sample-products.js';
 
 // Issue #113: Canvas and the cart are for a signed-in buyer (canvas#64, #108); the garden is saved by the real Canvas API.
 test('EC to Canvas to project shopping list to selected purchase and persisted cart', async ({ page }) => {
@@ -24,10 +25,10 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '3D庭', exact: true }).click();
     await page.getByRole('tab', { name: '商品一覧', exact: true }).click();
-    await page.getByLabel('商品を検索', { exact: true }).fill('ベンチ');
+    await page.getByLabel('商品を検索', { exact: true }).fill(MARGUERITE.name);
     const target = page.getByTestId('garden-canvas').locator('canvas');
     const bounds = await target.boundingBox();
-    await page.getByTestId('browse-canvas-bench').dragTo(target, {
+    await page.getByTestId(`browse-${MARGUERITE.id}`).dragTo(target, {
       sourcePosition: { x: 30, y: 30 },
       targetPosition: { x: bounds.width * 0.5, y: bounds.height * 0.5 },
     });
@@ -45,10 +46,10 @@ test('EC to Canvas to project shopping list to selected purchase and persisted c
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('.cart-line')).toHaveCount(1);
     const cart = await call(page.request, '/cart').then((r) => r.json());
-    expect(cart.items[0].product.id).toBe('canvas-bench');
+    expect(cart.items[0].product.id).toBe(MARGUERITE.id);
     expect(cart.items[0].quantity).toBe(1);
-    // The pickup store is the product's store (store 2 for the Canvas sample products).
-    expect(cart.items[0].storeId).toBe(2);
+    // The pickup store is the product's store (store 1 for the products V7 added; V7 deleted the store-2 bench).
+    expect(cart.items[0].storeId).toBe(1);
     await mkdir('artifacts/e2e', { recursive: true });
     await page.screenshot({ path: 'artifacts/e2e/canvas-shopping-journey.png', fullPage: true });
     await writeFile('artifacts/e2e/canvas-shopping-cart.json', JSON.stringify(cart, null, 2));

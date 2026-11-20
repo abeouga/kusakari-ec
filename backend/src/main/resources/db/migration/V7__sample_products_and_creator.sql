@@ -8,9 +8,11 @@ ALTER TABLE products
   ADD COLUMN created_by_member_id CHAR(36) NULL AFTER store_id,
   ADD CONSTRAINT fk_products_created_by FOREIGN KEY (created_by_member_id) REFERENCES members (id);
 
--- 店舗1の V2 の4商品は削除済みにする。注文や庭から参照されるので、行は消さない。
+-- V2 の店舗1の4商品と、店舗2の Canvas の配置モデル用の4商品（コナラ・ボックスウッド・レンガ・ベンチ）は削除済みにする。
+-- 注文や庭から参照されるので、行は消さない。
 UPDATE inventory SET publication_status = 'DELETED'
-  WHERE product_id IN ('olive', 'lavender', 'rosemary', 'monstera');
+  WHERE product_id IN ('olive', 'lavender', 'rosemary', 'monstera',
+                       'canvas-oak', 'canvas-boxwood', 'canvas-brick', 'canvas-bench');
 
 -- 31商品。scripts/import-product-sample.mjs をすでに流した PC でも重ならないよう、同じ ID なら上書きする。
 -- 商品番号は KS- で始まる自動の番号と重ならない（PLANT-V2- と DEMO-）。

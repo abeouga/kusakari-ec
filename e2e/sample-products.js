@@ -1,5 +1,5 @@
 // v3 の前に店舗1で売っていた31商品。マイグレーション V7 で店舗1（二子玉川ガーデン）の商品として入る
-// （docs/decisions/2026-11-20-sample-products-and-creator.md）。店舗1の V2 の4商品（olive・lavender・rosemary・monstera）は
+// （docs/decisions/2026-11-20-sample-products-and-creator.md）。店舗1の V2 の4商品（olive・lavender・rosemary・monstera）と店舗2の canvas-oak・canvas-boxwood・canvas-brick・canvas-bench は
 // V7 で削除済みになったので、E2E は代わりにこの商品を使う。一覧は1ページ12件で、E2E の商品も増えていくので、
 // 一覧の中の商品を操作するときは商品番号で検索してから操作する。
 export const OLIVE = {

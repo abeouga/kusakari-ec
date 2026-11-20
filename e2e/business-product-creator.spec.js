@@ -16,7 +16,16 @@ import { ADMIN_EMAIL, MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
 import { MARGUERITE, SAMPLE_PRODUCT_IDS } from './sample-products.js';
 
 const evidence = 'artifacts/business/product-creator';
-const RETIRED = ['olive', 'lavender', 'rosemary', 'monstera'];
+const RETIRED = [
+  'olive',
+  'lavender',
+  'rosemary',
+  'monstera',
+  'canvas-oak',
+  'canvas-boxwood',
+  'canvas-brick',
+  'canvas-bench',
+];
 
 /** @param {string} id */
 const creatorOf = (id) => sql(`SELECT COALESCE(created_by_member_id,'') FROM products WHERE id='${id}';`);
@@ -42,8 +51,9 @@ test('V7 products are on sale at store 1 and the creator is kept on edit and sho
   /** @type {{id:string,sku:string,name:string}|undefined} */
   let product;
   try {
-    // Buyers see the 31 products at store 1 and not the deleted V2 ones, and never the creator.
-    const listed = await call(manager.request, '/products?storeId=1').then((r) => r.json());
+    // Buyers see the 31 products, not the V2 products V7 deleted (store 1 and the Canvas model products of store 2),
+    // and never the creator.
+    const listed = await call(manager.request, '/products').then((r) => r.json());
     const ids = listed.map((/** @type {{id:string}} */ p) => p.id);
     expect(SAMPLE_PRODUCT_IDS.filter((id) => !ids.includes(id))).toEqual([]);
     expect(ids.filter((id) => RETIRED.includes(id))).toEqual([]);
@@ -51,12 +61,9 @@ test('V7 products are on sale at store 1 and the creator is kept on edit and sho
     // The deleted products stay readable for gardens that placed them.
     const references = await call(manager.request, '/products/references', 'POST', { productIds: RETIRED });
     expect(references.status()).toBe(200);
-    expect((await references.json()).map((/** @type {{active:boolean}} */ r) => r.active)).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ]);
+    expect((await references.json()).map((/** @type {{active:boolean}} */ r) => r.active)).toEqual(
+      RETIRED.map(() => false),
+    );
 
     // The MANAGER adds a product: the signed-in member is recorded as the creator.
     const created = await call(manager.request, '/products', 'POST', productInput());
