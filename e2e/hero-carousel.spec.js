@@ -4,15 +4,16 @@ import { writeFile } from 'node:fs/promises';
 const current = (page) => page.locator('.hero-slide[aria-hidden="false"]');
 const hero = (page) => page.getByRole('region', { name: '公開中の商品' });
 
+// The carousel starts at the first public product. Store 1's olive used to be pinned first; V7 marked it deleted.
 async function browse(page) {
   await page.goto('/');
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
-  await page.mouse.move(0, 0);
   // The carousel shows every store's public products in the catalog order (issue #119).
   const response = await page.request.get('/api/products');
   expect(response.status()).toBe(200);
   const products = await response.json();
   expect(products.length).toBeGreaterThan(1);
+  await expect(current(page)).toHaveAttribute('data-product-id', products[0].id);
+  await page.mouse.move(0, 0);
   return products;
 }
 
@@ -30,13 +31,14 @@ test('all public products advance every five seconds, loop and open the matching
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const products = await browse(page);
-  const start = products.findIndex((product) => product.id === 'olive');
+  const start = 0;
+  const first = products[start].id;
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.reload();
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await page.clock.runFor(4900);
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await page.clock.runFor(200);
   for (let step = 1; step <= products.length; step++) {
     const product = products[(start + step) % products.length];
@@ -59,9 +61,9 @@ test('all public products advance every five seconds, loop and open the matching
   await page.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true }).click();
   await page.getByRole('heading', { level: 1 }).click();
   await hero(page).getByRole('button', { name: '前の商品', exact: true }).click();
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await page.reload();
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await saveProducts(page, testInfo, null, 'public-products-reloaded');
   await page.screenshot({ path: testInfo.outputPath('desktop-reloaded.png') });
   expect(errors).toEqual([]);
@@ -69,22 +71,23 @@ test('all public products advance every five seconds, loop and open the matching
 
 test('hover and keyboard focus pause rotation; edge arrows replace central controls', async ({ page }, testInfo) => {
   const products = await browse(page);
+  const first = products[0].id;
   // The first product list can take seconds; start from a paused clock so the carousel has not moved on its own.
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.reload();
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await hero(page).hover();
   await page.clock.runFor(15000);
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await page.mouse.move(0, 0);
   await page.clock.runFor(5100);
-  await expect(current(page)).not.toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).not.toHaveAttribute('data-product-id', first);
   await hero(page).getByRole('button', { name: '前の商品', exact: true }).click();
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await page.mouse.move(0, 0);
   await page.clock.runFor(5100);
-  await expect(current(page)).not.toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).not.toHaveAttribute('data-product-id', first);
   await hero(page).getByRole('button', { name: '前の商品', exact: true }).focus();
   await page.keyboard.press('Tab');
   const selected = await current(page).getAttribute('data-product-id');
@@ -103,14 +106,14 @@ test('hover and keyboard focus pause rotation; edge arrows replace central contr
 test('mobile layout and reduced motion keep product details operable', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await browse(page);
+  const first = (await browse(page))[0].id;
   await page.clock.install();
   await page.clock.runFor(15000);
-  await expect(current(page)).toHaveAttribute('data-product-id', 'olive');
+  await expect(current(page)).toHaveAttribute('data-product-id', first);
   await hero(page).getByRole('button', { name: '次の商品', exact: true }).click();
   await page.clock.runFor(600);
   const id = await current(page).getAttribute('data-product-id');
-  expect(id).not.toBe('olive');
+  expect(id).not.toBe(first);
   const bounds = await hero(page).boundingBox();
   for (const button of await hero(page).getByRole('button').all()) {
     const box = await button.boundingBox();
@@ -123,4 +126,3 @@ test('mobile layout and reduced motion keep product details operable', async ({ 
   await current(page).getByRole('button').click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
-

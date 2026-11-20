@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { createScarceProduct, removeScarceProduct, replenishOrder, sql } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
 import { USER_EMAIL } from './test-accounts.js';
+import { HERB, MARGUERITE, MONSTERA, OLIVE } from './sample-products.js';
 
 // Issue #113: a cart needs a signed-in buyer (#10), the pickup store is the product's store (#70, #119), and the
 // order is paid at the store unless a card is chosen (#131).
@@ -17,18 +18,19 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
   let order;
   try {
     await buyer(page);
-    await expect(page.getByTestId('product-olive')).toBeVisible();
+    await expect(page.locator('.product-card').first()).toBeVisible();
     await page.getByRole('link', { name: '商品を探す', exact: true }).first().click();
     await expect(page).toHaveURL(/#plants$/);
+    // The catalogue shows 12 products a page and E2E products accumulate, so products are found by search first.
+    await page.getByLabel('植物を検索').fill(HERB.name);
     await page.getByRole('button', { name: 'ハーブ', exact: true }).click();
-    await expect(page.getByTestId('product-rosemary')).toBeVisible();
-    await expect(page.getByTestId('product-olive')).toHaveCount(0);
+    await expect(page.getByTestId(`product-${HERB.id}`)).toBeVisible();
     await page.getByRole('button', { name: 'すべて', exact: true }).click();
-    await page.getByLabel('植物を検索').fill('monstera');
-    await expect(page.getByTestId('product-monstera')).toBeVisible();
-    await expect(page.getByTestId('product-olive')).toHaveCount(0);
-    await page.getByLabel('植物を検索').fill('  ks-olv-001  ');
-    await expect(page.getByTestId('product-olive')).toBeVisible();
+    await page.getByLabel('植物を検索').fill('monstera deliciosa');
+    await expect(page.getByTestId(`product-${MONSTERA.id}`)).toBeVisible();
+    await expect(page.getByTestId(`product-${OLIVE.id}`)).toHaveCount(0);
+    await page.getByLabel('植物を検索').fill(`  ${OLIVE.sku.toLowerCase()}  `);
+    await expect(page.getByTestId(`product-${OLIVE.id}`)).toBeVisible();
     await expect(page.locator('.product-card')).toHaveCount(1);
     await page.getByRole('button', { name: 'ハーブ', exact: true }).click();
     await expect(page.locator('.product-card')).toHaveCount(0);
@@ -41,16 +43,16 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     await page.getByLabel('商品の並び順').selectOption('price-asc');
     await expect(page.locator('.product-card').first()).toContainText(Math.min(...prices).toLocaleString('ja-JP'));
     // The catalogue is paginated, so the olive is found by its product number before opening the detail.
-    await page.getByLabel('植物を検索').fill('KS-OLV-001');
+    await page.getByLabel('植物を検索').fill(OLIVE.sku);
     await page.getByRole('button', { name: 'オリーブの詳細', exact: true }).click();
-    await expect(page.getByRole('dialog')).toContainText('KS-OLV-001');
+    await expect(page.getByRole('dialog')).toContainText(OLIVE.sku);
     await page.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
     await expect(page.getByRole('dialog').getByRole('status')).toContainText('カートを更新');
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
     await page.getByRole('link', { name: /カートを開く/ }).click();
     await page.getByRole('button', { name: 'オリーブを1個増やす' }).click();
     await expect(page.locator('.quantity-control')).toHaveText('2');
-    await expect(page.locator('.grand-total')).toContainText('13,600');
+    await expect(page.locator('.grand-total')).toContainText('14,400');
     await page.reload();
     await expect(page.getByRole('link', { name: 'カートを開く（2点）' })).toBeVisible();
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
@@ -64,7 +66,7 @@ test('browse, search, real cart, checkout and reload persisted order', async ({ 
     const response = await saved;
     expect(response.status()).toBe(200);
     [order] = (await response.json()).orders;
-    expect(order.totalYen).toBe(13600);
+    expect(order.totalYen).toBe(14400);
     await expect(page.getByRole('heading', { name: '注文を保存しました' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('link', { name: 'カートを開く（0点）' })).toBeVisible();
@@ -122,7 +124,7 @@ test('store guide, stock shortage and cart removal', async ({ page }) => {
 test('mobile layout, images, keyboard dialog and empty search', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${ec}/`);
-  await expect(page.getByTestId('product-olive')).toBeVisible();
+  await expect(page.locator('.product-card').first()).toBeVisible();
   await page.evaluate(async () => {
     // Optional external fonts must not block checks of the actual local product images.
     const images = [...document.images];
@@ -133,7 +135,8 @@ test('mobile layout, images, keyboard dialog and empty search', async ({ page })
   await page.getByLabel('植物を検索').fill('存在しない植物');
   await expect(page.getByText('条件に合う植物が見つかりません。')).toBeVisible();
   await page.getByRole('button', { name: '条件をリセット' }).click();
-  await page.getByRole('button', { name: 'ローズマリーの詳細', exact: true }).click();
+  await page.getByLabel('植物を検索').fill(MARGUERITE.sku);
+  await page.getByRole('button', { name: `${MARGUERITE.name}の詳細`, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -152,7 +155,7 @@ test('visible error and retry after an explicitly injected network outage', asyn
   await expect(page.getByRole('alert')).toContainText('サーバーに接続できません');
   await page.unroute('**/api/cart');
   await page.getByRole('button', { name: '再読み込み', exact: true }).click();
-  await expect(page.getByTestId('product-olive')).toBeVisible();
+  await expect(page.locator('.product-card').first()).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
@@ -161,12 +164,13 @@ test('checkout retry after an explicitly lost response keeps the same order', as
   const payloads = [];
   try {
     await buyer(page);
-    await expect(page.getByTestId('product-rosemary')).toBeVisible();
+    await page.getByLabel('植物を検索').fill(MARGUERITE.sku);
+    await expect(page.getByTestId(`product-${MARGUERITE.id}`)).toBeVisible();
     const before = (await call(page.request, '/products?storeId=1').then((r) => r.json())).find(
-      (product) => product.id === 'rosemary',
+      (product) => product.id === MARGUERITE.id,
     ).stock;
     const ordersBefore = (await call(page.request, '/orders').then((r) => r.json())).length;
-    await page.getByRole('button', { name: 'ローズマリーをカートに追加' }).click();
+    await page.getByRole('button', { name: `${MARGUERITE.name}をカートに追加` }).click();
     await expect(page.getByRole('link', { name: 'カートを開く（1点）' })).toBeVisible();
     await page.getByRole('link', { name: /カートを開く/ }).click();
     await page.getByRole('button', { name: '注文内容を確認する' }).click();
@@ -199,7 +203,7 @@ test('checkout retry after an explicitly lost response keeps the same order', as
     expect(history).toHaveLength(ordersBefore + 1);
     expect(history[0].id).toBe(order.id);
     const after = await call(page.request, '/products?storeId=1').then((r) => r.json());
-    expect(after.find((product) => product.id === 'rosemary').stock).toBe(before - 1);
+    expect(after.find((product) => product.id === MARGUERITE.id).stock).toBe(before - 1);
     await mkdir('artifacts/e2e', { recursive: true });
     await writeFile('artifacts/e2e/checkout-retry-after-reload.json', JSON.stringify(history, null, 2));
     await page.screenshot({ path: 'artifacts/e2e/checkout-retry-after-reload.png', fullPage: true });

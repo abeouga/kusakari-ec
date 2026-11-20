@@ -56,6 +56,10 @@ public class ProductEntity {
   @Column(name = "store_id", nullable = false, updatable = false)
   private Long storeId;
 
+  /** 商品を追加した会員。店舗の画面で登録したときに入れ、編集では変えない。初期データの商品は空。 */
+  @Column(name = "created_by_member_id", length = 36, columnDefinition = "CHAR(36)", updatable = false)
+  private String createdByMemberId;
+
   /** 商品番号。店舗の中で一意。 */
   @Column(nullable = false, length = 64)
   private String sku;

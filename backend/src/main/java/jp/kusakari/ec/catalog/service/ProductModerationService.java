@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toMap;
 
 import java.util.*;
 import jp.kusakari.ec.auth.AuthService;
+import jp.kusakari.ec.catalog.dto.ProductCreatorName;
 import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.persistence.entity.InventoryEntity;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
@@ -49,7 +50,9 @@ public class ProductModerationService {
     String storeName,
     boolean active,
     boolean suspended,
-    Warning warning
+    Warning warning,
+    // 商品を追加した人の表示名。初期データの商品は null。
+    String createdByName
   ) {}
 
   @Transactional(readOnly = true)
@@ -64,6 +67,10 @@ public class ProductModerationService {
       events.findByEventTypeInOrderByIdDesc(ModerationHistory.WARNING_TYPES),
       ProductModerationEventEntity::getProductId
     );
+    Map<String, String> creators = products
+      .findAllCreatorNames()
+      .stream()
+      .collect(toMap(ProductCreatorName::productId, ProductCreatorName::displayName));
     return products
       .findAll()
       .stream()
@@ -75,7 +82,8 @@ public class ProductModerationService {
           storeNames.getOrDefault(p.getStoreId(), ""),
           !InventoryEntity.DELETED.equals(statuses.getOrDefault(p.getId(), InventoryEntity.DELETED)),
           p.isSuspended(),
-          warnings.get(p.getId())
+          warnings.get(p.getId()),
+          creators.get(p.getId())
         )
       )
       .toList();

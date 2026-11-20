@@ -3,6 +3,7 @@ package jp.kusakari.ec.catalog.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 
 public final class CatalogDtos {
@@ -45,7 +46,10 @@ public final class CatalogDtos {
     JsonNode modelComposition,
     String canvasMaterialCode,
     Long sellerStoreId,
-    String sellerStoreName
+    String sellerStoreName,
+    // 商品を追加した人の表示名。店舗の商品管理の応答だけで入れ、購入者向けの応答では null なので項目ごと出さない。
+    // 初期データの商品（追加した人が空）も null。
+    @JsonInclude(JsonInclude.Include.NON_NULL) String createdByName
   ) {}
 
   /**

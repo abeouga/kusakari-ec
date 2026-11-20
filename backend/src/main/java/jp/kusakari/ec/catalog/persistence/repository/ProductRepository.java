@@ -4,6 +4,7 @@ import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import jp.kusakari.ec.catalog.dto.ProductCreatorName;
 import jp.kusakari.ec.catalog.dto.ProductImageReference;
 import jp.kusakari.ec.catalog.dto.ProductStoreReference;
 import jp.kusakari.ec.catalog.persistence.entity.ProductEntity;
@@ -73,6 +74,20 @@ public interface ProductRepository extends JpaRepository<ProductEntity, String> 
   List<ProductStoreReference> findStoreReferences(@Param("ids") Collection<String> ids);
 
   boolean existsByStoreIdAndSku(Long storeId, String sku);
+
+  // 追加した人の表示名。退会・停止・除名された会員も行は残るので、そのまま名前を返す。追加した人が空の商品は含めない。
+  String CREATOR_NAMES =
+    "select new jp.kusakari.ec.catalog.dto.ProductCreatorName(p.id, m.displayName) " +
+    "from ProductEntity p join AuthMember m on m.id = p.createdByMemberId ";
+
+  @Query(CREATOR_NAMES + "where p.storeId = :storeId")
+  List<ProductCreatorName> findCreatorNamesAtStore(@Param("storeId") long storeId);
+
+  @Query(CREATOR_NAMES + "where p.id = :id")
+  Optional<ProductCreatorName> findCreatorName(@Param("id") String id);
+
+  @Query(CREATOR_NAMES)
+  List<ProductCreatorName> findAllCreatorNames();
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select p from ProductEntity p where p.id = :id")

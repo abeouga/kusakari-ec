@@ -37,6 +37,7 @@
  * @property {string|null} [canvasMaterialCode]
  * @property {number} sellerStoreId The store the product belongs to; it is also the pickup store.
  * @property {string} sellerStoreName
+ * @property {string} [createdByName] Who added the product; only in the store's product management responses, absent for seed data.
  *
  * @typedef {{id:number, name:string, address:string, hours:string, latitude:number|null, longitude:number|null, distanceKm:number|null}} Store
  * storeId/storeName: the line's pickup store, which is the product's store (issue #70).
@@ -54,7 +55,7 @@
  * @typedef {{orders:Order[], payment:CardPayment}} PendingCardPayment
  * @typedef {{recipientName:string,recipientPhone:string,contactEmail:string}} PickupInput
  * @typedef {{paymentMethod:string, recipientName:string, recipientPhone:string, contactEmail:string}} DeliveryDetails
- * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'|'sellerStoreId'|'sellerStoreName'> & {storeId:number}} ProductInput
+ * @typedef {Omit<Product,'id'|'unit'|'source'|'sourceUpdatedAt'|'publishedAt'|'active'|'publicationStatus'|'modelComposition'|'canvasMaterialCode'|'sellerStoreId'|'sellerStoreName'|'createdByName'> & {storeId:number}} ProductInput
  * @typedef {{botanicalForm?:string|null,plantType:string,heightCm:number,widthCm:number,crownShape:string,branchCount:number,branchAngle:number,trunkThicknessCm:number,leafShape:string,leafSizeCm:number,leafDensity:string,leafColor:string,flowerEnabled:boolean,flowerShape:string,flowerSizeCm:number,flowerColor:string,seed:number} & PlantShape} PlantModelProfile
  * Shape controls; null (or absent in older profiles) lets Canvas use the plant type / species value.
  * @typedef {{stemCount?:number|null,stemCurve?:number|null,stemTaper?:number|null,twigLength?:number|null,branchLevels?:number|null,branchDroop?:number|null,branchStart?:number|null,leafSizeVariation?:number|null,leafTipRatio?:number|null,leafArrangement?:string|null}} PlantShape

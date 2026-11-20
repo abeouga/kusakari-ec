@@ -1,7 +1,11 @@
 package jp.kusakari.ec.catalog.service;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import jp.kusakari.ec.catalog.dto.ProductCreatorName;
 import jp.kusakari.ec.catalog.dto.CatalogDtos.ProductView;
 import jp.kusakari.ec.catalog.dto.ProductStatusRequest;
 import jp.kusakari.ec.catalog.dto.StockUpdateRequest;
@@ -27,7 +31,15 @@ public class SellerProductService {
   public List<ProductView> list(long storeId) {
     // 一覧と在庫を見るだけなら、ロール未割り当ての担当者も所属店舗なら見られる（#105）。
     auth.requireStoreViewer(storeId);
-    return catalog.storeProducts(storeId).stream().map(mapper::toSellerView).toList();
+    Map<String, String> creators = products
+      .findCreatorNamesAtStore(storeId)
+      .stream()
+      .collect(toMap(ProductCreatorName::productId, ProductCreatorName::displayName));
+    return catalog
+      .storeProducts(storeId)
+      .stream()
+      .map(product -> mapper.toSellerView(product, creators.get(product.id())))
+      .toList();
   }
 
   public void update(ProductStatusRequest request) {
@@ -65,7 +77,8 @@ public class SellerProductService {
     }
     if (row.getQuantity() != request.expectedStock()) throw stockChanged(row.getQuantity());
     row.setQuantity(request.stock());
-    return mapper.toSellerView(catalog.product(id));
+    String creator = products.findCreatorName(id).map(ProductCreatorName::displayName).orElse(null);
+    return mapper.toSellerView(catalog.product(id), creator);
   }
 
   // ほかの店舗の商品は、ないものとして扱う（商品の店舗は変わらないので、ロックの前に確かめてよい）。

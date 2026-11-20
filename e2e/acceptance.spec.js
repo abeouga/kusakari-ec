@@ -2,10 +2,12 @@ import { test, expect } from '@playwright/test';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { ec, canvas, login, call, seedGardenPhoto } from './business-helpers.js';
 import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
+import { OLIVE } from './sample-products.js';
 
 // This explicit acceptance run preserves its order and garden in the development DB.
 // If rerun after purchase, verify the recorded order; never submit a second purchase.
-// Issue #113 (DB v3): the olive is the sample product 'olive' of store 1. user01 (buyer) and manager01 (MANAGER of
+// Issue #113 (DB v3): the olive is store 1's olive added by V7 (OLIVE in sample-products.js); V7 marked the V2
+// 'olive' deleted. user01 (buyer) and manager01 (MANAGER of
 // store 1) are set up in the development DB by DB-reset.bat, setup.bat or scripts/set-test-accounts.ps1 (#157);
 // fixtures cannot change that DB.
 test('existing olive: seller publication, buyer placement and one retained pickup order', async ({ browser }) => {
@@ -19,7 +21,7 @@ test('existing olive: seller publication, buyer placement and one retained picku
     await login(seller, MANAGER_EMAIL);
     await login(buyer, USER_EMAIL);
     const products = await call(buyer.request, '/products?storeId=1').then((r) => r.json());
-    const product = products.find((p) => p.id === 'olive');
+    const product = products.find((p) => p.id === OLIVE.id);
     expect(product.name).toBe('オリーブ');
     await seller.goto(`${ec}/seller/products`);
     await seller.getByRole('searchbox', { name: '商品検索' }).fill('オリーブ');
@@ -27,11 +29,14 @@ test('existing olive: seller publication, buyer placement and one retained picku
     let saved = await readFile(evidence, 'utf8')
       .then(JSON.parse)
       .catch(() => null);
+    // A record from before V7 is for the V2 olive: move it aside instead of buying a second time.
+    expect(saved?.productId ?? product.id, 'the recorded acceptance order is for another product').toBe(product.id);
     if (!saved) {
       const before = product.stock;
       expect(before).toBeGreaterThan(0);
       expect((await call(buyer.request, '/cart').then((r) => r.json())).itemCount).toBe(0);
       await buyer.goto(ec);
+      await buyer.getByLabel('植物を検索').fill(OLIVE.sku);
       await buyer.getByRole('button', { name: 'オリーブの詳細', exact: true }).click();
       await buyer.getByRole('dialog').getByRole('button', { name: 'カートに追加', exact: true }).click();
       await expect
