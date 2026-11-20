@@ -13,7 +13,7 @@ public class CategoryController {
 
   private final CategoryService service;
 
-  public record Input(@NotNull @Size(max = 30) String previous, @NotBlank @Size(max = 30) String name) {}
+  public record Input(@NotNull @Size(max = 30) String previous, @NotNull @Size(max = 100) String name) {}
 
   @GetMapping("/api/categories")
   public List<String> list() {

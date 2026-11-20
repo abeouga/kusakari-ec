@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class CategoryService {
 
+  private static final int MAX_NAME_LENGTH = 30;
+
   private final CategoryRepository categories;
   private final ProductRepository products;
   private final AuthService auth;
@@ -26,8 +28,14 @@ public class CategoryService {
 
   public void save(String previous, String input) {
     auth.requireAdmin();
-    String name = input.trim();
+    // strip() も全角スペース（U+3000）を取り除く。trim() は U+0020 以下しか取り除かない。
+    String name = input.strip();
     if (name.isEmpty()) throw new ApiException(400, "INVALID_CATEGORY", "カテゴリ名を入力してください。");
+    if (name.length() > MAX_NAME_LENGTH) throw new ApiException(
+      400,
+      "INVALID_CATEGORY",
+      "カテゴリ名は30文字以内で入力してください。"
+    );
     if (name.equals(previous)) return;
     var existing = categories.lock(name);
     if (existing.filter(CategoryEntity::isAvailable).isPresent()) throw new ApiException(
