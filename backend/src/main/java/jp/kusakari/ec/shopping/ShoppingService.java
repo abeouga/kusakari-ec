@@ -187,12 +187,15 @@ public class ShoppingService {
       .collect(Collectors.toMap(listing -> listing.product().id(), listing -> listing));
     List<Line> lines = new ArrayList<>();
     for (var row : source.items()) {
-      Set<String> ids =
-        row.productId() == null ? byCode.getOrDefault(row.materialCode(), Set.of()) : Set.of(row.productId());
+      boolean byMaterial = row.productId() == null;
+      Set<String> ids = byMaterial ? byCode.getOrDefault(row.materialCode(), Set.of()) : Set.of(row.productId());
       var candidates = ids
         .stream()
         .map(listings::get)
         .filter(Objects::nonNull)
+        // 素材コードから選ぶ候補には、もう戻らない理由（削除・閉店・停止）で買えない商品を出さない。
+        // 商品を指定した行は、買えない理由を出すため残す。
+        .filter(listing -> !byMaterial || !removed(listing))
         .map(listing -> {
           var p = listing.product();
           return new Product(
@@ -217,6 +220,10 @@ public class ShoppingService {
       lines,
       listRevision
     );
+  }
+
+  private static boolean removed(Listing listing) {
+    return !listing.purchasable() && CatalogService.REMOVED_REASONS.contains(listing.unavailableReason());
   }
 
   private void invalidSelection() {
