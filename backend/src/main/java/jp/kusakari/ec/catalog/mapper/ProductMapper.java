@@ -20,11 +20,13 @@ public interface ProductMapper {
   @Mapping(target = "publicationStatus", source = "publicationStatus")
   @Mapping(target = "sellerStoreId", source = "product.storeId")
   @Mapping(target = "sellerStoreName", source = "sellerStoreName")
+  @Mapping(target = "createdByName", ignore = true)
   ProductView toView(ProductEntity product, int stock, String publicationStatus, String sellerStoreName);
 
   // Seller forms edit the profile, not the generated geometry. Avoid sending large meshes in list responses.
   @Mapping(target = "modelComposition", ignore = true)
-  ProductView toSellerView(ProductView product);
+  @Mapping(target = "createdByName", source = "createdByName")
+  ProductView toSellerView(ProductView product, String createdByName);
 
   @Named("compositionView")
   default JsonNode compositionView(JsonNode source) {

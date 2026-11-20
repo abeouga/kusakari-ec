@@ -41,6 +41,8 @@ public class ProductEditorService {
     if (input.getStock() < 1) throw new ApiException(400, "STOCK_REQUIRED", "在庫は1以上にしてください。");
     ProductEntity product = mapper.toEntity(input);
     product.setId(UUID.randomUUID().toString());
+    // 追加した人は登録したときだけ入れる（編集では変えない）。
+    product.setCreatedByMemberId(auth.current().getId());
     // 商品番号は店舗の中で一意なので、重複も店舗の中だけで確かめる。
     if (product.getSku() == null || product.getSku().isBlank()) product.setSku(skus.next(input.getStoreId()));
     else if (products.existsByStoreIdAndSku(input.getStoreId(), product.getSku())) throw duplicateSku();

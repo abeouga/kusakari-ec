@@ -12,9 +12,9 @@ test('top page and /materials no longer show the material JSON screen', async ({
   page.on('pageerror', (error) => errors.push(error.message));
   await login(page, USER_EMAIL);
   await page.goto(`${ec}/`);
-  await expect(page.getByTestId('product-olive')).toBeVisible();
+  await expect(page.locator('.product-card').first()).toBeVisible();
   await page.reload();
-  await expect(page.getByTestId('product-olive')).toBeVisible();
+  await expect(page.locator('.product-card').first()).toBeVisible();
   await expect(page.getByRole('button', { name: '材料リストから探す' })).toHaveCount(0);
   await expect(page.locator('.material-banner')).toHaveCount(0);
   await page.screenshot({ path: `${evidence}/top.png`, fullPage: true });

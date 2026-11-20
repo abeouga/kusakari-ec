@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { createScarceProduct, removeScarceProduct, replenishOrder, sql } from './database.js';
 import { ec, login, call, prepareMember } from './business-helpers.js';
 import { ADMIN_EMAIL, USER_EMAIL } from './test-accounts.js';
+import { MARGUERITE, OLIVE } from './sample-products.js';
 
 // Issue #113: the cart and orders belong to a signed-in buyer (#10), mutations carry the CSRF token, and an order is
 // paid at the store unless a card is chosen (#131). The two buyers are the test buyer and the operator (#108).
@@ -29,7 +30,7 @@ test('API validation, cart revision conflict, price confirmation and session iso
   const b = await buyer(browser, ADMIN_EMAIL, 'ADMIN');
   try {
     let cart = await call(a.request, '/cart').then((r) => r.json());
-    const put = (data) => call(a.request, '/cart/items/olive', 'PUT', data);
+    const put = (data) => call(a.request, `/cart/items/${OLIVE.id}`, 'PUT', data);
     expect((await put({ quantity: 1.5, revision: cart.revision })).status()).toBe(400);
     expect((await put({ quantity: 100, revision: cart.revision })).status()).toBe(400);
     expect((await put({ quantity: 1, revision: cart.revision, priceYen: 1 })).status()).toBe(400);
@@ -66,7 +67,7 @@ test('API validation, cart revision conflict, price confirmation and session iso
     const csrf = await a.request.get(`${ec}/api/auth/csrf`).then((r) => r.json());
     expect(
       (
-        await a.request.put(`${ec}/api/cart/items/olive`, {
+        await a.request.put(`${ec}/api/cart/items/${OLIVE.id}`, {
           headers: { Origin: 'https://untrusted.example', [csrf.headerName]: csrf.token },
           data: { quantity: 0, revision: cart.revision },
         })
@@ -74,7 +75,9 @@ test('API validation, cart revision conflict, price confirmation and session iso
     ).toBe(403);
     // Without the CSRF token a signed-in member cannot change the cart either.
     expect(
-      (await a.request.put(`${ec}/api/cart/items/olive`, { data: { quantity: 0, revision: cart.revision } })).status(),
+      (
+        await a.request.put(`${ec}/api/cart/items/${OLIVE.id}`, { data: { quantity: 0, revision: cart.revision } })
+      ).status(),
     ).toBe(403);
   } finally {
     await a.context.close();
@@ -87,13 +90,14 @@ test('same checkout key returns one persisted order and decrements stock once', 
   let first;
   try {
     const stock = async () =>
-      (await call(a.request, '/products?storeId=1').then((r) => r.json())).find((p) => p.id === 'rosemary').stock;
+      (await call(a.request, '/products?storeId=1').then((r) => r.json())).find((p) => p.id === MARGUERITE.id).stock;
     const before = await stock();
     const ordersBefore = (await call(a.request, '/orders').then((r) => r.json())).length;
     const empty = await call(a.request, '/cart').then((r) => r.json());
-    const cart = await call(a.request, '/cart/items/rosemary', 'PUT', { quantity: 2, revision: empty.revision }).then(
-      (r) => r.json(),
-    );
+    const cart = await call(a.request, `/cart/items/${MARGUERITE.id}`, 'PUT', {
+      quantity: 2,
+      revision: empty.revision,
+    }).then((r) => r.json());
     const requestId = randomUUID();
     const results = await Promise.all([
       order(a.request, cart, cart.totalYen, requestId),
@@ -117,10 +121,7 @@ test('same checkout key returns one persisted order and decrements stock once', 
 
 test('two buyers competing for the last unit cannot oversell', async ({ browser }) => {
   const productId = createScarceProduct();
-  const buyers = [
-    await buyer(browser, USER_EMAIL, 'USER'),
-    await buyer(browser, ADMIN_EMAIL, 'ADMIN'),
-  ];
+  const buyers = [await buyer(browser, USER_EMAIL, 'USER'), await buyer(browser, ADMIN_EMAIL, 'ADMIN')];
   try {
     const carts = await Promise.all(
       buyers.map(async ({ request }) => {

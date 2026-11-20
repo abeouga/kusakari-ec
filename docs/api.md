@@ -18,7 +18,7 @@
 | PUT | `/operator/products/{id}/moderation`、`/operator/stores/{id}/enabled` | 運営による商品の公開停止・再開（`{ "suspended": true, "reason": "..." }`）、店舗の利用停止・再開（`{ "enabled": false, "reason": "..." }`）。停止は理由が必須（空なら400 `REASON_REQUIRED`）、再開は空でよい（`reason` の項目自体はどちらも必須。欠けると400 `INVALID_INPUT`）。すでにその状態なら何もしない。閉鎖済みの店舗は409 `STORE_CLOSED`。応答は `{ "suspended": 真偽, "warning": 警告 }`（#16） |
 | PUT | `/operator/products/{id}/warning`、`/operator/stores/{id}/warning` | `{ "warned": true, "reason": "..." }` で警告（理由必須。警告中にもう一度警告できる）、`warned: false` で警告の解除（理由は任意。警告していなければ何もしない）。公開・利用の状態は変えない。どの操作も履歴に1行足し、店舗のオーナーと担当者に通知する（#16） |
 | GET | `/operator/products/{id}/moderation-events`、`/operator/stores/{id}/moderation-events` | 警告・警告解除・停止・再開の履歴（新しい順。`type`・`reason`・`actorName`・`createdAt`）。運営だけ（#16） |
-| GET | `/operator/products` | 運営の商品一覧。各商品の `warning`（今出ている警告の `reason`・`createdAt`。なければ null）を含む。店舗の一覧（`/operator/stores`・`/seller/stores`）と、出店者・運営が開く `/stores/{id}` も `warning` を含む（購入者・未ログインには null）（#16） |
+| GET | `/operator/products` | 運営の商品一覧。各商品の追加した人の表示名 `createdByName`（初期データの商品は null）と、`warning`（今出ている警告の `reason`・`createdAt`。なければ null）を含む。店舗の一覧（`/operator/stores`・`/seller/stores`）と、出店者・運営が開く `/stores/{id}` も `warning` を含む（購入者・未ログインには null）（#16） |
 | GET | `/seller/products/moderation?storeId=1` | 自分の店舗の、運営が警告・停止している商品（`productId`・`productName`・`suspended`・`warning`）。商品一覧と同じく、ロール未割り当ての担当者も所属店舗なら見られる（#16） |
 | GET | `/operator/organizations` | 組織の一覧。`status`（`ACTIVE`・`NOT_ACCEPTING`・`SUSPENDED`）、店舗数、未完了の注文の件数、履歴（#109） |
 | POST | `/operator/organizations/{id}/stop-accepting`、`/resume`、`/order-cancellations` | 受付停止（理由必須）、受付停止の取り消し・停止の解除（理由は任意）、受付停止中の組織の未完了の注文のまとめてキャンセル（理由必須）。受付停止中に未完了の注文がなくなると自動で停止 |
@@ -55,9 +55,10 @@
 
 | メソッド | パス | 内容 |
 |---|---|---|
-| POST | `/products` | 商品を `storeId` の店舗に登録し、その商品の在庫を設定（商品は1つの店舗に属し、在庫は商品ごとに1行）。在庫が1未満なら400 `STOCK_REQUIRED` で何も保存しない（編集の`PUT`は売り切れとして0を許可） |
+| POST | `/products` | 商品を `storeId` の店舗に登録し、その商品の在庫を設定（商品は1つの店舗に属し、在庫は商品ごとに1行）。ログインしている会員を商品を追加した人として記録する（編集では変えない）。在庫が1未満なら400 `STOCK_REQUIRED` で何も保存しない（編集の`PUT`は売り切れとして0を許可） |
 | PUT | `/products/{id}` | 商品属性・画像と在庫を更新。`expectedStock`（省略時は`stock`）が現在の在庫と異なれば409 `STOCK_CHANGED` で何も保存しない |
 | PUT | `/seller/products/{id}/stock` | `{storeId, expectedStock, stock}`。商品の在庫だけを更新（`storeId` は商品の店舗）。在庫行をロックして`expectedStock`と照合し、異なれば409 `STOCK_CHANGED` |
+| GET | `/seller/products?storeId=1` | 店舗の商品管理の一覧（削除済みを除く）。各商品に、追加した人の表示名 `createdByName` を含む（初期データの商品は項目なし）。購入者向けの商品の応答には `createdByName` を出さない |
 | DELETE | `/products/{id}` | 販売終了。カート・注文記録は保持 |
 | GET/PUT/DELETE | `/account/pickup-contact` | 会員の受取連絡先（`recipientName`・`recipientPhone`・`contactEmail`）の取得・保存・削除 |
 | PUT | `/orders/{id}` | 注文受付の自分の注文の受取者・連絡先を更新。支払方法は変えない |

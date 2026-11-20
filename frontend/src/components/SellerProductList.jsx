@@ -194,6 +194,7 @@ export function SellerProductList({ products, storeName, busy, notices, onEdit, 
                   <div>
                     <strong>{p.name}</strong>
                     <small>{p.sku}</small>
+                    <small data-testid={`creator-${p.id}`}>追加した人：{p.createdByName ?? '初期データ'}</small>
                     {notices[p.id]?.warning && <span className="moderation-badge">警告中</span>}
                     {notices[p.id]?.suspended && <span className="moderation-badge">運営により公開停止中</span>}
                   </div>

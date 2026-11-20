@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { ec, canvas, login, call, prepareMember, seedGardenPhoto } from './business-helpers.js';
 import { USER_EMAIL } from './test-accounts.js';
+import { MARGUERITE } from './sample-products.js';
 
 // Issue #113: the garden belongs to the signed-in buyer (canvas#64), so the fixture is made through the real Canvas API
 // with that session. Canvas shows the 3D garden only after the garden's photo is confirmed (Canvas issue #15).
@@ -44,7 +45,7 @@ test('garden list reflects edits and stays independent of existing EC cart quant
   try {
     const cart = await call(page.request, '/cart').then((r) => r.json());
     expect(
-      (await call(page.request, '/cart/items/rosemary', 'PUT', { quantity: 2, revision: cart.revision })).ok(),
+      (await call(page.request, `/cart/items/${MARGUERITE.id}`, 'PUT', { quantity: 2, revision: cart.revision })).ok(),
     ).toBeTruthy();
     await page.goto(`${canvas}/gardens/${garden.id}`, { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: '3D庭', exact: true }).click();
@@ -62,7 +63,7 @@ test('garden list reflects edits and stays independent of existing EC cart quant
     const unchanged = await call(page.request, '/cart').then((r) => r.json());
     expect(unchanged.items).toHaveLength(1);
     expect(unchanged.items[0].quantity).toBe(2);
-    expect(unchanged.items[0].product.id).toBe('rosemary');
+    expect(unchanged.items[0].product.id).toBe(MARGUERITE.id);
     // Removing a placed object lowers the count again.
     await page.getByRole('tab', { name: '商品一覧', exact: true }).click();
     await page.getByTestId('object-row-1').click();

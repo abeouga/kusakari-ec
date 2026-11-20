@@ -7,10 +7,11 @@
 - [decisions/2026-11-13-store-closure-organization-suspension.md](decisions/2026-11-13-store-closure-organization-suspension.md)：店舗の閉鎖と組織の停止の実装。組織の停止の履歴（`organization_moderation_events`、V3）と、連絡先の削除をアプリの定期処理にしたこと
 - 組織からの除名（`organization_members.expelled`）と担当者の操作の記録（`organization_member_events`、V4）：#170・#173 で決め、記録に店舗を持たせることは #177 で決めた。担当から外す場合と除名の場合の違い・除名の扱いは [decisions/2026-11-18-organization-expulsion.md](decisions/2026-11-18-organization-expulsion.md)
 - オーナーの譲渡（`organizations.pending_owner_member_id`・`pending_owner_expires_at`、譲渡の記録の種類、`notifications.category`、V6）：#181・#194・#196・#197 と #200 で決めた。流れ・通知・記録・ロックの順番は [decisions/2026-11-20-owner-succession.md](decisions/2026-11-20-owner-succession.md)
+- 商品を追加した人（`products.created_by_member_id`）と、v3 の前に店舗1で売っていた31商品の移し替え（V7）：2026-11-20 に決めた。[decisions/2026-11-20-sample-products-and-creator.md](decisions/2026-11-20-sample-products-and-creator.md)
 
 この文書の前提は次のとおりです。
 
-- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V6）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
+- テーブル定義の正は、マイグレーション（`backend/src/main/resources/db/migration/` の V1〜V7）です。列の型・長さ・初期値・制約名はマイグレーションに合わせ、この図と食い違ったら図を直します
 - 旧構成（V1〜V15）のデータは移行しません。DB は `DB-reset.bat`（[手順](database-reset.md)）で作り直します
 - 決済は Stripe のテストモードだけを使います。実際のお金は動かしません
 
@@ -133,6 +134,7 @@ erDiagram
     products {
         varchar id PK
         bigint store_id FK "登録後は変更しない"
+        char created_by_member_id FK "追加した人。初期データは空"
         varchar sku "store_id, sku で一意"
         varchar name
         varchar latin_name
@@ -345,6 +347,7 @@ erDiagram
     members |o--o{ refunds : "返金を始めた人"
     products ||--o{ product_moderation_events : "警告・停止の履歴"
     stores ||--o{ store_moderation_events : "警告・停止の履歴"
+    members |o--o{ products : "追加した人"
     members ||--o{ product_moderation_events : "操作した運営者"
     members ||--o{ store_moderation_events : "操作した運営者"
     organizations ||--o{ organization_moderation_events : "受付停止・停止の履歴"
@@ -354,7 +357,7 @@ erDiagram
     members ||--o{ organization_member_events : "操作した人・操作された人"
 ```
 
-テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5、`organizations.pending_owner_member_id`・`pending_owner_expires_at` と `notifications.category` は V6 のマイグレーションで足した）。
+テーブルは29個です（`organization_moderation_events` は V3、`organization_member_events` と `organization_members.expelled` は V4、`notifications.kind`・`store_id` は V5、`organizations.pending_owner_member_id`・`pending_owner_expires_at` と `notifications.category` は V6、`products.created_by_member_id` は V7 のマイグレーションで足した）。
 
 `organization_member_events.event_type` の譲渡の5つの種類は、`OWNER_SUCCESSION_REQUEST`（申し出）、`OWNER_SUCCESSION_CANCELLATION`（取り消し）、`OWNER_SUCCESSION_REFUSAL`（断り）、`OWNER_SUCCESSION_APPROVAL`（承認。交代の記録を兼ねる）、`OWNER_SUCCESSION_AUTO_INVALIDATED`（期限切れ、譲渡先の除名・停止・退会、申し出たオーナーの停止・退会による自動の無効）です（V6 で種類の列を40文字に広げた）。どれも店舗を持ちません。自動で無効は誰かの操作ではありませんが、操作した人の列には申し出たオーナーを入れます（#196 の 6）。
 

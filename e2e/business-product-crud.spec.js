@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { sql } from './database.js';
 import { ec, call, login, prepareMember } from './business-helpers.js';
 import { MANAGER_EMAIL, USER_EMAIL } from './test-accounts.js';
+import { OLIVE } from './sample-products.js';
 
 test.use({ trace: 'off' });
 
@@ -31,7 +32,8 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
   const name = `CRUDデモ植物 ${randomUUID().slice(0, 8)}`;
   let product;
   try {
-    prepareMember(await login(page, MANAGER_EMAIL), 'SELLER');
+    const seller = await login(page, MANAGER_EMAIL);
+    prepareMember(seller, 'SELLER');
     prepareMember(await login(buyer, USER_EMAIL), 'USER');
     await page.goto(`${ec}/`);
     await page.locator('.site-footer').getByRole('button', { name: '商品管理', exact: true }).click();
@@ -76,7 +78,7 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     expect(input.plantModelProfile.heightCm).toBe(input.heightCm);
 
     // The 409 duplicate-number path, the input validation and unknown fields, through the real API.
-    const olive = (await (await call(page.request, '/products?storeId=1')).json()).find((item) => item.id === 'olive');
+    const olive = (await (await call(page.request, '/products?storeId=1')).json()).find((item) => item.id === OLIVE.id);
     const duplicate = await call(page.request, '/products', 'POST', { ...input, sku: olive.sku });
     expect(duplicate.status()).toBe(409);
     expect((await duplicate.json()).code).toBe('SKU_EXISTS');
@@ -93,6 +95,9 @@ test('product CRUD, plant filters, gallery and archived cart through real MySQL'
     await page.reload();
     await page.getByPlaceholder('商品名・商品番号').fill(product.sku);
     await expect(page.getByTestId(`manage-${product.id}`)).toBeVisible();
+    // The signed-in member who registered the product is recorded and shown as its creator (V7).
+    const sellerName = sql(`SELECT display_name FROM members WHERE id='${seller.id}';`);
+    await expect(page.getByTestId(`creator-${product.id}`)).toHaveText(`追加した人：${sellerName}`);
 
     await buyer.goto(`${ec}/`);
     await buyer.getByLabel('植物を検索', { exact: true }).fill(name);

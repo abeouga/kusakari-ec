@@ -62,6 +62,7 @@ function ProductModerationRow({ row, resource }) {
     <section className="workspace-card" data-testid={`operator-product-${row.id}`} aria-label={row.name}>
       <h3>{row.name}</h3>
       <p>店舗：{row.storeName}</p>
+      <p data-testid={`operator-product-creator-${row.id}`}>追加した人：{row.createdByName ?? '初期データ'}</p>
       <p>{row.suspended ? '公開停止中' : row.active ? '公開可能' : '販売終了'}</p>
       <ModerationControls
         target="products"
