@@ -6,6 +6,7 @@ import jp.kusakari.ec.auth.AuthService;
 import jp.kusakari.ec.catalog.persistence.entity.StoreEntity;
 import jp.kusakari.ec.catalog.persistence.repository.StoreRepository;
 import jp.kusakari.ec.common.web.ApiException;
+import jp.kusakari.ec.notification.persistence.entity.NotificationEntity;
 import jp.kusakari.ec.notification.service.NotificationService;
 import jp.kusakari.ec.store.persistence.entity.OrganizationEntity;
 import jp.kusakari.ec.store.persistence.entity.OrganizationModerationEventEntity;
@@ -64,6 +65,7 @@ public class OrganizationSuspensionService {
     notifyOwner(organization, "組織の受付が停止されました", reason);
     openOrders.notifyBuyers(
       storeIds(organization),
+      NotificationEntity.MODERATION,
       "ご注文の店舗は受付を停止しました",
       "ご注文の商品はこれまでどおりお受け取りいただけます。"
     );
@@ -124,7 +126,12 @@ public class OrganizationSuspensionService {
   }
 
   private void notifyOwner(OrganizationEntity organization, String title, String reason) {
-    notices.send(organization.getOwnerMemberId(), title, organization.getName() + (reason == null ? "" : " " + reason));
+    notices.send(
+      organization.getOwnerMemberId(),
+      NotificationEntity.MODERATION,
+      title,
+      organization.getName() + (reason == null ? "" : " " + reason)
+    );
   }
 
   private List<Long> storeIds(OrganizationEntity organization) {

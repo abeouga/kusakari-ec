@@ -64,11 +64,17 @@ export function prepareMember(member, role) {
   const ties = {
     SELLER: `INSERT INTO organization_members(organization_id,member_id) VALUES(1,'${id}');
        INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES(1,'${id}',1,'MANAGER');`,
-    SHOP_OWNER: `UPDATE organizations SET owner_member_id='${id}' WHERE id=1;`,
+    // A new owner starts without the previous owner's succession request (#203).
+    SHOP_OWNER: `UPDATE organizations SET owner_member_id='${id}',pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+       WHERE id=1;`,
     // An applicant starts without an application; an approved one would refuse a new application.
     SHOP_OWNER_APPLICANT: `DELETE FROM organization_applications WHERE applicant_member_id='${id}';`,
   };
-  sql(`UPDATE organizations SET owner_member_id=NULL WHERE owner_member_id='${id}';
+  // The owner's succession request leaves with the owner, and a successor's request with the successor (#203).
+  sql(`UPDATE organizations SET owner_member_id=NULL,pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+        WHERE owner_member_id='${id}';
+       UPDATE organizations SET pending_owner_member_id=NULL,pending_owner_expires_at=NULL
+        WHERE pending_owner_member_id='${id}';
        DELETE FROM organization_members WHERE member_id='${id}';
        UPDATE members SET account_type='${accountTypes[role]}',enabled=TRUE,withdrawn_at=NULL WHERE id='${id}';
        ${ties[role] || ''}
@@ -89,6 +95,101 @@ export function prepareStaff(member, stores, organizationAdmin = false) {
   sql(`UPDATE members SET account_type='SHOP_STAFF' WHERE id='${member.id}';
        INSERT INTO organization_members(organization_id,member_id,role) VALUES(1,'${member.id}',${organizationAdmin ? "'ORG_ADMIN'" : 'NULL'});
        ${rows.length ? `INSERT INTO store_members(store_id,member_id,organization_id,role) VALUES ${rows.join(',')};` : ''}`);
+}
+
+/**
+ * A staff member of the sample organization that never signs in (no Cognito account), owned by the calling test
+ * (#203, #205). The row is kept for audit; the test disables it when it ends.
+ * @param {string} name
+ */
+export function createFixtureStaff(name) {
+  if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
+    throw new Error('Fixtures cannot change the development database.');
+  const id = randomUUID();
+  const member = { id, email: `succession-${id}@example.com` };
+  sql(`INSERT INTO members(id,issuer,subject,email,display_name,account_type,enabled)
+    VALUES('${id}','e2e-fixture','${id}','${member.email}','${name}','USER',TRUE);`);
+  prepareStaff(member, { 1: 'STAFF' });
+  return member;
+}
+
+/**
+ * A member's owner-succession result notices, oldest first, as `title|body` (#203). All of them are personal.
+ * @param {{id:string}} member
+ */
+export function successionResults(member) {
+  const rows = sql(`SELECT CONCAT_WS('|', kind, IFNULL(store_id,'NULL'), title, body) FROM notifications
+                     WHERE member_id='${member.id}' AND category='OWNER_SUCCESSION_RESULT' ORDER BY created_at, id;`);
+  const notices = rows ? rows.split(/\r?\n/) : [];
+  for (const notice of notices) expect(notice.startsWith('PERSONAL|NULL|')).toBe(true);
+  return notices.map((notice) => notice.slice('PERSONAL|NULL|'.length));
+}
+
+/**
+ * The deadline of an organization's pending request (the sample organization by default), in Japan time to the minute
+ * as the notices write it.
+ * @param {number} [organizationId]
+ */
+export const pendingDeadline = (organizationId = 1) =>
+  sql(`SET time_zone='+09:00';
+       SELECT DATE_FORMAT(pending_owner_expires_at,'%Y/%m/%d %H:%i') FROM organizations WHERE id=${Number(organizationId)};`);
+
+/**
+ * The result notices that the owner and the successor receive when a request of an organization (the sample
+ * organization by default) ends without approval (#203, #200 の決めること 1), as `[the owner's, the successor's]` in
+ * the form of successionResults. Each says why the request ended; the expired one gives its deadline (pendingDeadline,
+ * read before it was invalidated). 'expelled', 'disabled' and 'withdrawn' are the successor's; 'owner-disabled' and
+ * 'owner-withdrawn' are the owner's who made the request (#205).
+ * @param {'refused'|'cancelled'|'expired'|'expelled'|'disabled'|'withdrawn'|'owner-disabled'|'owner-withdrawn'} ending
+ * @param {{owner:string, successor:string, deadline?:string}} names the display names of the owner and the successor
+ * @param {number} [organizationId]
+ */
+export function endingNotices(ending, { owner, successor, deadline }, organizationId = 1) {
+  const request = `${sql(`SELECT name FROM organizations WHERE id=${Number(organizationId)};`)}のオーナーの譲渡の申し出`;
+  const unchanged = 'オーナーは交代していません。';
+  if (ending === 'refused') {
+    const title = 'オーナーの譲渡の申し出が断られました';
+    return [
+      `${title}|${successor}さんが、あなたからの${request}を断りました。${unchanged}`,
+      `${title}|${owner}さんからの${request}を断りました。${unchanged}`,
+    ];
+  }
+  if (ending === 'cancelled') {
+    const title = 'オーナーの譲渡の申し出が取り消されました';
+    return [
+      `${title}|${successor}さんへの${request}を取り消しました。${unchanged}`,
+      `${title}|${owner}さんが、あなたへの${request}を取り消しました。${unchanged}`,
+    ];
+  }
+  /** @param {string} successorCalled @param {string} ownerCalled the successor and the owner, as the reader calls them */
+  const why = (successorCalled, ownerCalled) =>
+    ({
+      expired: `承認の期限（${deadline}）が過ぎたため`,
+      expelled: `${successorCalled}が組織から除名されたため`,
+      disabled: `${successorCalled}の利用が運営に停止されたため`,
+      withdrawn: `${successorCalled}が退会したため`,
+      'owner-disabled': `${ownerCalled}の利用が運営に停止されたため`,
+      'owner-withdrawn': `${ownerCalled}が退会したため`,
+    })[ending];
+  const title = 'オーナーの譲渡の申し出が無効になりました';
+  return [
+    `${title}|${why('譲渡先', 'あなた')}、${successor}さんへの${request}は無効になりました。${unchanged}`,
+    `${title}|${why('あなた', 'オーナー')}、${owner}さんからの${request}は無効になりました。${unchanged}`,
+  ];
+}
+
+/**
+ * Gives test accounts display names without an e-mail address, so the names in notices stay readable in the masked
+ * screenshots (a new Cognito account is named after its address).
+ * @param {Record<string,{id:string}>} named the accounts by their new names
+ */
+export function rename(named) {
+  if (process.env.KUSAKARI_ACCEPTANCE_LIVE === 'true')
+    throw new Error('Fixtures cannot change the development database.');
+  for (const [name, member] of Object.entries(named)) {
+    if (!/^[a-f0-9-]{36}$/.test(member.id) || /['\\]/.test(name)) throw new Error('Invalid fixture.');
+    sql(`UPDATE members SET display_name='${name}' WHERE id='${member.id}';`);
+  }
 }
 
 /**

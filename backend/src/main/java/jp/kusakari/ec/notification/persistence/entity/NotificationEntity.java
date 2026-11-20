@@ -13,6 +13,15 @@ public class NotificationEntity {
   public static final String PERSONAL = "PERSONAL";
   public static final String STORE = "STORE";
 
+  // 通知の種類（#194 の 17）。重要かどうかは種類から決め、DB には持たない（対応表は画面の Notices.jsx）。
+  public static final String ORDER = "ORDER";
+  public static final String CANCEL_REQUEST = "CANCEL_REQUEST";
+  public static final String MODERATION = "MODERATION";
+  public static final String STORE_CLOSURE = "STORE_CLOSURE";
+  public static final String OWNER_SUCCESSION_REQUEST = "OWNER_SUCCESSION_REQUEST";
+  public static final String OWNER_SUCCESSION_RESULT = "OWNER_SUCCESSION_RESULT";
+  public static final String GENERAL = "GENERAL";
+
   @Id
   @Column(columnDefinition = "CHAR(36)")
   private String id;
@@ -28,6 +37,10 @@ public class NotificationEntity {
   @Column(name = "store_id", updatable = false)
   private Long storeId;
 
+  /** 通知の種類。作るときに必ず渡す。V6 より前の通知は GENERAL。 */
+  @Column(length = 32, nullable = false, updatable = false)
+  private String category;
+
   @Column(length = 200, nullable = false)
   private String title;
 
@@ -39,17 +52,18 @@ public class NotificationEntity {
 
   private Instant readAt;
 
-  public NotificationEntity(String memberId, String title, String body) {
+  public NotificationEntity(String memberId, String category, String title, String body) {
     this.id = java.util.UUID.randomUUID().toString();
     this.memberId = memberId;
+    this.category = category;
     this.title = title;
     this.body = body;
     this.createdAt = Instant.now();
   }
 
   /** 店舗あての通知。 */
-  public static NotificationEntity forStore(String memberId, long storeId, String title, String body) {
-    var notice = new NotificationEntity(memberId, title, body);
+  public static NotificationEntity forStore(String memberId, long storeId, String category, String title, String body) {
+    var notice = new NotificationEntity(memberId, category, title, body);
     notice.kind = STORE;
     notice.storeId = storeId;
     return notice;

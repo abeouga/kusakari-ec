@@ -99,8 +99,10 @@ test('an owner closes a store: closing stops new orders, the last pickup closes 
   expect(refused.status()).toBe(409);
   const closingNotice = await call(buyer.request, '/notifications').then((r) => r.json());
   expect(
-    closingNotice.some((/** @type {any} */ n) => n.title === 'ご注文の店舗は閉鎖予定です' && n.body.startsWith(name)),
-  ).toBe(true);
+    closingNotice
+      .filter((/** @type {any} */ n) => n.title === 'ご注文の店舗は閉鎖予定です' && n.body.startsWith(name))
+      .map((/** @type {any} */ n) => n.category),
+  ).toEqual(['STORE_CLOSURE']);
   await buyer.goto(`${ec}/store/${storeId}`);
   await expect(buyer.locator('.workspace-main')).toContainText('閉店予定');
   await buyer.goto(`${ec}/purchases`);

@@ -61,9 +61,20 @@ public class AuthMember {
     this.enabled = enabled;
   }
 
-  /** 出店申請の承認。組織を作る前に呼ぶ（組織の外部キーが、オーナーの種別を SHOP_OWNER に限るため）。 */
+  /**
+   * 出店申請の承認と、オーナーの譲渡の承認（#204）。組織を作る・オーナーを付け替える前に呼ぶ
+   * （組織の外部キーが、オーナーの種別を SHOP_OWNER に限るため）。
+   */
   public void becomeOwner() {
     this.accountType = SHOP_OWNER;
+  }
+
+  /**
+   * オーナーの譲渡の承認で、元のオーナーを子アカウントにする（#195 の 5）。
+   * 組織のオーナーを付け替えた後、組織に所属させる前に呼ぶ（組織と所属の外部キーが、会員の種別を見るため）。
+   */
+  public void becomeStaff() {
+    this.accountType = SHOP_STAFF;
   }
 
   public void markEmailVerified() {

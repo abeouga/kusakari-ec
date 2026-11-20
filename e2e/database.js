@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
@@ -7,32 +7,52 @@ import { e2eDatabasePort, importRuntimeTools } from '../scripts/runtime-tools.mj
 if (existsSync('.env')) process.loadEnvFile('.env');
 const tools = importRuntimeTools(process.cwd());
 
+/** The mysql client, its arguments and environment for the dedicated E2E database (kusakari_e2e). */
+function client() {
+  const executable = process.env.MYSQL_CLIENT || (tools.MySql ? join(tools.MySql, 'mysql.exe') : 'mysql');
+  const args = [
+    '-h',
+    '127.0.0.1',
+    '-P',
+    String(e2eDatabasePort()),
+    '-u',
+    process.env.KUSAKARI_EC_DB_USER,
+    '--default-character-set=utf8mb4',
+    '--batch',
+    '--skip-column-names',
+    'kusakari_e2e',
+  ];
+  return { executable, args, env: { ...process.env, MYSQL_PWD: process.env.KUSAKARI_EC_DB_PASSWORD } };
+}
+
 // Only test-owned fixtures and replenishment of purchases made by these tests are allowed.
 export function sql(statement) {
-  const port = e2eDatabasePort();
-  const executable = process.env.MYSQL_CLIENT || (tools.MySql ? join(tools.MySql, 'mysql.exe') : 'mysql');
-  const result = spawnSync(
-    executable,
-    [
-      '-h',
-      '127.0.0.1',
-      '-P',
-      String(port),
-      '-u',
-      process.env.KUSAKARI_EC_DB_USER,
-      '--default-character-set=utf8mb4',
-      '--batch',
-      '--skip-column-names',
-      'kusakari_e2e',
-    ],
-    {
-      input: statement,
-      encoding: 'utf8',
-      env: { ...process.env, MYSQL_PWD: process.env.KUSAKARI_EC_DB_PASSWORD },
-    },
-  );
+  const { executable, args, env } = client();
+  const result = spawnSync(executable, args, { input: statement, encoding: 'utf8', env });
   if (result.status !== 0) throw new Error(`E2E database operation failed: ${result.error?.message || result.stderr}`);
   return result.stdout.trim();
+}
+
+/**
+ * Runs statements in a session of their own without waiting for them, so a test can hold a row lock while the API
+ * works on the same row (issue #204). Resolves with the output once the session ends.
+ * @param {string} statement
+ * @returns {Promise<string>}
+ */
+export function sqlInBackground(statement) {
+  const { executable, args, env } = client();
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, args, { env });
+    let output = '';
+    let errors = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => (output += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk) => (errors += chunk));
+    child.on('error', reject);
+    child.on('close', (status) =>
+      status === 0 ? resolve(output.trim()) : reject(new Error(`E2E database operation failed: ${errors}`)),
+    );
+    child.stdin.end(statement);
+  });
 }
 
 function literal(value) {

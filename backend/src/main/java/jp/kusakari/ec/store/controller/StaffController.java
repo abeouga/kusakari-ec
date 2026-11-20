@@ -6,13 +6,14 @@ import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.Map;
 import jp.kusakari.ec.store.service.MemberEventService;
+import jp.kusakari.ec.store.service.OwnerSuccessionService;
 import jp.kusakari.ec.store.service.StaffAccountService;
 import jp.kusakari.ec.store.service.StoreInvitationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** 出店者画面の人事：アカウント一覧とロール、店舗の招待キー（#111）。 */
+/** 出店者画面の人事：アカウント一覧とロール、店舗の招待キー（#111）、オーナーの譲渡の申し出（#203）と承認・断り（#204）。 */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/seller")
@@ -23,6 +24,7 @@ public class StaffController {
   private final StaffAccountService accounts;
   private final StoreInvitationService invitations;
   private final MemberEventService memberEvents;
+  private final OwnerSuccessionService ownerSuccession;
 
   public record RoleRequest(@NotNull @Pattern(regexp = "MANAGER|STAFF|NONE") String role) {}
 
@@ -32,7 +34,7 @@ public class StaffController {
 
   @GetMapping("/accounts")
   public StaffAccountService.AccountsView accounts() {
-    return accounts.list();
+    return accounts.open();
   }
 
   @PutMapping("/accounts/{memberId}/stores/{storeId}")
@@ -70,6 +72,32 @@ public class StaffController {
   @DeleteMapping("/accounts/{memberId}/expulsion")
   public StaffAccountService.AccountsView reinstate(@PathVariable @Pattern(regexp = MEMBER_ID) String memberId) {
     return accounts.reinstate(memberId);
+  }
+
+  /** オーナーの譲渡を申し出る（#203）。オーナーだけ。 */
+  @PostMapping("/accounts/{memberId}/owner-succession")
+  public StaffAccountService.AccountsView requestOwnerSuccession(
+    @PathVariable @Pattern(regexp = MEMBER_ID) String memberId
+  ) {
+    return ownerSuccession.request(memberId);
+  }
+
+  /** 承認を待っている譲渡の申し出を取り消す（#203）。オーナーだけ。 */
+  @DeleteMapping("/owner-succession")
+  public StaffAccountService.AccountsView cancelOwnerSuccession() {
+    return ownerSuccession.cancel();
+  }
+
+  /** 自分あての譲渡の申し出を承認し、組織のオーナーになる（#204）。今の譲渡先だけ。 */
+  @PostMapping("/owner-succession/approval")
+  public OwnerSuccessionService.Decision approveOwnerSuccession() {
+    return ownerSuccession.approve();
+  }
+
+  /** 自分あての譲渡の申し出を断る（#204）。今の譲渡先だけ。 */
+  @PostMapping("/owner-succession/refusal")
+  public OwnerSuccessionService.Decision refuseOwnerSuccession() {
+    return ownerSuccession.refuse();
   }
 
   /** 担当者の操作の履歴（#180）。除名・復帰は組織の全件、担当の出入りはこの店舗の分。 */

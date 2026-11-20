@@ -87,6 +87,7 @@ test('a warned product stays on sale, is suspended from the danger zone, resumed
   expect((await buyerSees(storeId)).some((/** @type {any} */ p) => p.id === product.id)).toBe(true);
   const warned = await ownerNotices('商品に運営から警告がありました', product.name);
   expect(warned.map((/** @type {any} */ n) => n.body)).toEqual([`${product.name} / ${warnReason}`]);
+  expect(warned.map((/** @type {any} */ n) => n.category)).toEqual(['MODERATION']);
 
   // The seller sees the badge and the reason in the product list, and the notice in the notifications.
   await owner.goto(`${ec}/seller/products`);

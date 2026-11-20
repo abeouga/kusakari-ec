@@ -27,7 +27,11 @@ import org.springframework.stereotype.Component;
  * ORG_ADMIN の付け外し                できる    不可       不可           不可
  * 招待キーの発行・一覧・取り消し      全店舗    全店舗     自分の店舗     不可
  * 組織からの除名・復帰（#175）        できる    できる     不可           不可
+ * オーナーの譲渡の申し出・取り消し    できる    不可       不可           不可（#195 の 7。操作も表示もオーナーだけ）
  * </pre>
+ *
+ * オーナーの譲渡の承認・断り（#204）はロールに関係なく、今の譲渡先（organizations.pending_owner_member_id）本人だけができる。
+ * 交代した元のオーナーは、ほかの ORG_ADMIN と同じ扱いになる（除名もできる。#195 の 8）。
  *
  * 除名できないのは、オーナー本人（organization_members に行がない）と、操作している自分自身（#167）。
  *
@@ -86,6 +90,11 @@ public class StaffPolicy {
 
     /** ORG_ADMIN の付け外し。オーナーだけ。 */
     public boolean canChangeOrganizationRole() {
+      return owner;
+    }
+
+    /** オーナーの譲渡の申し出・取り消しと、承認待ちの表示。オーナーだけ（#195 の 7）。 */
+    public boolean canHandOverOwnership() {
       return owner;
     }
 
