@@ -227,6 +227,9 @@ test('expelling, stopping or withdrawing the successor invalidates the owner suc
 
     // The operator stops the successor from the member page; the request is invalidated in the same transaction.
     await login(successorPage, successorEmail, accounts[1].secret);
+    // Leave the top page first: its own loading (cart, products, then stores) may still be running, and the first
+    // request after the stop is refused and ends the session. The /auth/me check below has to be that first request.
+    await successorPage.goto('about:blank');
     await request();
     await operatorPage.goto(`${ec}/operator/members`);
     const search = operatorPage.getByLabel('名前・メール検索');
