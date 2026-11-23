@@ -1,167 +1,25 @@
-# Kusakari — 植物と、暮らす。
+<div align="center">
+  <h3>
+    <ins>ガーデニング用品を購入するためのオンラインショッピングサイト</ins>
+    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Waving%20Hand.png" alt="Waving Hand" width="25" height="25" /><br>
+    <h4>3Dモデルで庭への植物を植えたイメージを確認でき、そのままwebサイト内で決済できるシステムになっています。</h4>
+    <img width="962" height="253" alt="image" src="https://github.com/user-attachments/assets/e1adfcd6-ece3-4037-b5c7-003bfd1d51c7"/>
+  </h3>
+</div>
 
-別PCで実Cognito認証を使う場合は[認証セットアップ手順](docs/cognito-setup.md)を参照してください。公開可能な共用プールの接続設定は`config/cognito.development.json`、秘密情報は各PCのGit対象外`.env`で管理します。
+# プレビュー画面
+### トップページ
+<img width="1520" height="863" alt="image" src="https://github.com/user-attachments/assets/c2e73471-4649-45e1-ba2c-ed1990d39662" />
 
-Java / Spring Boot + JavaScript / React / Vite + MySQL で動く、ガーデニングECサイトのローカルMVPです。Kusakari Canvas（仮称）の3D庭づくり機能は、商品選びを支援する同じサイト内の機能として扱います。
+### 3D画面
+<img width="1535" height="863" alt="image" src="https://github.com/user-attachments/assets/390823f9-168f-44f1-b2e4-2c19246abb30" />
 
-現在、ECと3D庭づくり機能の試作コード・開発ポート・DBは別々です。Canvasの庭の買い物リストから、配置した商品をECのカートへ追加できます。この技術上の試作分割は、利用者向けサービスを分ける方針ではありません。
-
-## 開く
-
-- **画面:** http://127.0.0.1:5186
-- **API:** http://127.0.0.1:8086/api/health
-- **作業先:** ソースを配置したフォルダー
-- **起動:** `start.bat` をダブルクリック
-- **停止:** `stop.bat` をダブルクリック
-
-初回は `setup.bat` で接続設定と依存を準備します。ほかの PC で実行するスクリプトと実行順は [ほかの PC で実行するスクリプトと実行順](docs/other-pc-scripts.md) にまとめています。旧構成の DB を持つ PC を新しい DB 構成（v3）へ移すときは [他の PC の移行手順](docs/migration-other-pc.md) を参照してください（EC と Canvas の DB の初期化を含みます）。`start.bat` はブラウザーとKusakari専用のSysOverRay操作画面を開き、画面の表示と操作ボタンまで確認します。ブラウザーを自動で開かない場合は `start.bat -NoBrowser` を実行します。
-再実行時は、この作業フォルダから起動したWeb/APIを停止してから同じ5186/8086で作り直します。別のプロセスが固定ポートを使っている場合は停止せず、エラーにします。代替ポートへ移動しません。
-Javaや依存を更新した場合は、停止 → ビルド → 起動の順に実行します。
-
-## できること
-
-- サンプルデータは3店舗の14商品（オリーブ、ラベンダー、ローズマリー、モンステラ、Canvasのモデルに対応する商品、庭づくりのデモ商品）。サイズ、育て方を掲載(育て方はこっちサポートしきれないから出品者が書くブログ機能的なやつとしてなら実装できそう？)
-- カテゴリー・商品名・品番検索、価格順ソート、在庫あり絞り込み。
-- 全店舗の商品を店舗名つきで表示。受取店舗は商品の店舗で、購入者は切り替えない。店舗一覧は東京駅・横浜駅・大宮駅または許可された現在地から距離順に表示。
-- カートへの追加、数量変更、削除、税込合計。カートはMySQLへ保存され、再読み込みで復元。
-- `/cart` でカート・受取情報・店舗受取の注文確認を独立画面で表示。URLを直接開いても利用できます。
-- 注文確認 → 注文確定 → 注文履歴。金額・在庫をサーバーで再確認。
-- Canvasの庭の買い物リストから、配置した商品をカートへ追加。受取店舗は商品の店舗。
-- PC・スマートフォン対応、キーボードでのダイアログ操作、通信失敗時の再試行。
-
-**デモの範囲:** 商品・価格・店舗・在庫はデモ用です。決済は Stripe のテストモードだけを範囲に入れ、実際のお金は動かしません。配送は行わず、受け取りは商品の店舗での店舗受け取りだけです。販売手数料（8%）は注文実績に表示するだけで、請求・精算はしません。
-
-商品一覧は日照・用途・手入れレベル・生産者・価格で絞り込めます。商品詳細には追加画像と生育スペックを表示します。
-画面下部の「商品管理」と出店者画面（`/seller/products`）から商品と在庫を登録・編集・削除できます。
-カートでは数量と任意の受取連絡先を保存し、店舗受取の注文を確定できます。「注文履歴」では受取情報の編集と履歴からの削除ができます。
-商品削除は販売終了、履歴削除は非表示です。これらの削除では注文の取り消しや在庫の復元は行いません。
-テーブルと保存項目は [DB の ER 図](docs/database-er.md) に記載しています。
-注文の在庫減算・購入者と出店者の履歴・キャンセル時の在庫復元を実装しています。外部EC APIは未接続です。
-Canvasのバックエンドは材料コードから商品候補を取得するAPIを使います。連携項目と現在のAPI契約は [docs/api.md](docs/api.md) に記載しています。
-
-## 構成
-
-| 対象 | 技術 / 役割 | 開発ポート |
-|---|---|---|
-| frontend | JavaScript / React 19 / Vite 8 | 5186 |
-| backend | Spring Boot 3.5.16 / Java 21 target / Spring Data JPA / MapStruct / Flyway | 8086 |
-| database | MySQL 8、開発DB `kusakari` | 3306（既存サーバーを共用） |
-| E2E | Playwright Chromium / DB `kusakari_e2e`（実 Cognito） | 15286 / 18286（Canvas 15273 / 18280） |
-
-フロントの実装は `.js` / `.jsx` です。JSDoc + TypeScriptの `checkJs` で型を確認します。
-MySQLサーバーそのものは既存のものを使い、EC試作用DBと権限を分離しています。ローカル試作の3Dデータベースとは直接共有せず、商品連携は合意したAPI契約を通します。
-
-```text
-frontend/src/
-  components/       商品・カート・店舗・商品登録の画面
-  workspace/        出店者・運営・アカウントの画面
-  css/              部位別・画面幅別のスタイル
-  api.js            HTTP通信
-  types.js          APIの型説明（JSDoc）
-  useShop.js         状態更新と処理の順序
-backend/src/main/
-  java/jp/kusakari/ec/
-    auth/           Cognito ログイン・登録・セッション
-    member/         会員・退会
-    store/          組織・店舗・出店申請・招待キー・閉鎖
-    catalog/        商品・在庫・カテゴリ・材料コード
-    commerce/       カート・注文・在庫トランザクション・注文実績
-    payment/        カード決済（Stripe のテストモード）
-    moderation/     警告と停止
-    notification/   通知
-    shopping/       庭の買い物リスト（Canvas 連携）
-    common/         接続元確認、エラー応答、配備用の移行コマンド
-  resources/db/migration/  Flywayスキーマとサンプルデータ（V1〜V3）
-e2e/                実画面・実API・MySQL検証
-scripts/            起動、停止、セットアップ
-sysover-ray2/       専用のWPF操作画面と起動スクリプト
-docs/               今の仕様、設計判断（ADR）、API、画像プロンプト
-```
-
-## 別環境でのセットアップ
-
-Windows 10/11 x64のWindows PowerShell 5.1で `setup.bat` を実行します。`127.0.0.1:3306` のMySQLがあれば自動使用し、rootパスワードが`password`と異なる場合だけ非表示入力します。MySQLがなければKusakari専用MySQLを`3307`で自動準備します。`.env` の手動作成は不要です。
-アプリ用ユーザー・DBポート・アプリ用パスワード（`password`）は自動設定します。
-不足するNode.js LTS、JDK 21、.NET 10 SDKをユーザー領域に取得し、依存・API・Web・SysOverRayをビルドします。
-開発/E2E DBに対する認証・Flyway・実API起動が成功したら `start.bat` で起動します。
-
-通常の再実行は保存済み資格情報を使用します。設定を作り直す場合だけ `setup.bat -Reconfigure` を使います。
-パスワードは非表示入力で、既存MySQLの管理者パスワードは保存しません。
-既存データは削除しません。`kusakari@localhost` はローカルデモ用アカウントとしてパスワードを`password`へ揃えます。
-別PCへ `.env`、`.runtime`、DBデータをコピーせず、そのPCでセットアップしてください。
-手順と制約は [docs/windows-setup.md](docs/windows-setup.md) を参照してください。
-
-### 既存MySQLを使う別PC向け
-
-MySQL Serverをインストール済みのPCでも、通常の `setup.bat` → `start.bat` を使います。3306で応答するMySQLを自動で選び、rootパスワードが `password` と異なる場合だけ非表示入力します。MySQLサービスが停止していれば、`start.bat` がサービスを起動してからAPIとWebを起動します。既存サーバーを明示する場合は `setup.bat -Reconfigure -DatabaseMode existing` を実行します。
-
-## Dockerで起動する場合
-
-Docker Desktopを起動した状態で、プロジェクトのルートから次を実行します。ホスト側のMySQLや他プロジェクトのDBは使用しません。
-
-```powershell
-docker compose up --build
-```
-
-ブラウザーで http://localhost:5186 を開きます。APIは http://localhost:8086/api/health、Docker内MySQLのホスト公開ポートは 13306 です。MySQLのデータは `kusakari-mysql` ボリュームに保存されます。
-
-停止する場合は次を実行します。
-
-```powershell
-docker compose down
-```
-
-データを削除して初期化し直す場合だけ、次を実行します。既存の注文・カート・DBデータも削除されます。
-
-```powershell
-docker compose down -v
-```
-
-ホスト側ポートを変更する場合は、例えば次のように指定します。
-
-```powershell
-$env:KUSAKARI_EC_WEB_HOST_PORT = '15186'
-$env:KUSAKARI_EC_API_HOST_PORT = '18086'
-$env:MYSQL_HOST_PORT = '13306'
-docker compose up --build
-```
-
-## 開発と検証
-
-```powershell
-npm install            # npm ci は使わない（Windows で frontend のソースを消したことがある）
-npm run check          # JavaScript型確認・lint・Viteビルド・Javaビルド
-npm run format:check   # JavaScript / CSS / Java の整形確認
-npm run test:e2e       # 業務 E2E（専用API・専用Web・専用DB・実Cognito）
-```
-
-業務以外の E2E は `e2e/configs/` の設定ごとに `npx playwright test --config e2e/configs/playwright.<名前>.config.js` で実行します。どれも E2E 用の DB（`.env` の `KUSAKARI_EC_E2E_DB_URL`）と実 Cognito のテスト用アカウント（`../kusakari-terraform/.env.test-accounts`）を使い、Canvas は `../kusakari-canvas`（`KUSAKARI_CANVAS_DIRECTORY` で変更可）を起動します。`playwright.acceptance.config.js` だけは、起動中の開発用の環境（5186・開発用の DB）に対して動きます。
-
-API変更時は `stop.bat` 後に `npm run build:api`、続いて `start.bat` を実行します。
-フロント変更はViteで即時反映されます。
-
-操作画面だけを再表示する場合は `sysover-ray2/start.bat` を実行します。画面には起動、停止、再起動、ブラウザーを開くボタンがあります。
-手動のターミナル起動は `npm run dev:api` と `npm run dev:web` です。`stop.bat` はこの作業フォルダのJAR/Viteスクリプトを実行するJava/Nodeプロセスを、コマンドと作成時刻を再確認して停止します。固定ポートを使う別プロジェクトのプロセスは終了しません。
-日本語を含むPowerShellスクリプトはWindows PowerShell 5.1で読めるようUTF-8 BOM付きで保存します。
-
-テストのスクリーンショットとAPI JSONは `artifacts/e2e/`、失敗時traceとレポートは `artifacts/playwright-results/` / `artifacts/playwright-report/` です。
-開発サーバーのログは `.runtime/` にあります。
-
-## 設計上の制約
-
-- ローカル専用です。127.0.0.1へのbindと接続元チェックを使用します。ログインは実Cognitoが必須です（[認証の設計](docs/cognito-auth.md)）。
-- セッションCookieはHttpOnly / SameSite=Lax、有効期間30日です。カートと注文履歴は会員に結び付いているので、Cookieを削除しても、もう一度ログインすれば同じカート・注文履歴を使えます。
-- 在庫は追加時には予約しません。注文確定時にロック・再確認・減算します。
-- 金額は税込JPYの整数です。店舗受け取りのみで、送料はありません。
-- 位置情報はリクエスト内の距離計算に使い、DBに保存しません。距離は道路距離ではなく直線距離です。
-- 外部フォント取得に失敗してもOSのフォントで表示されます。商品画像はプロジェクト内にあります。
-- 本番の決済、実商品フィード、税の規則、手数料の請求・精算、運用管理は別途実装が必要です。
-
-設計判断: [docs/architecture.md](docs/architecture.md) / API: [docs/api.md](docs/api.md) / 画像: [docs/images.md](docs/images.md)
-
-技術要件の確認元: [Spring Boot 3.5](https://docs.spring.io/spring-boot/3.5/system-requirements.html)、[Vite](https://vite.dev/guide/)。
-
-## 業務バックエンドと機能要件
-
-出店者は `/seller`、運営者は `/operator`、アカウントは `/account` です。追加画面の実現範囲と61項目の対応は [機能要件対応表](docs/functional-requirements.md) を参照してください。認証は実Cognito、会員・店舗・審査・注文・通知は実API/MySQLです。決済は Stripe のテストモードだけを範囲に入れ（実際のお金は動かしません）、販売手数料は表示だけです。配送・精算は対象外です。[設計判断と検証方針](docs/architecture.md)を参照してください。
-
+# 主な機能
+1. **ショッピングサイト機能**<br>
+一般的なショッピングサイトのように商品を検索し、カートに入れた商品を購入できます。<br>
+2. **3D機能**<br>
+実際の庭を写真を利用し、その写真上に 植物の3Dモデルを配置して植物の配置イメージを確認できます。<br>
+3. **イメージ作成機能**<br>
+3D機能で作成した庭の状態から AIで実写の配置後イメージを作成します。<br>
+4. **3D機能で配置した植物を購入**<br>
+3D機能で配置した植物の 3Dモデルは、実際に販売されている商品と紐づいているので、そのままカートに入れることで決済ができます。
