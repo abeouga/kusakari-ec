@@ -65,7 +65,7 @@ const operatorMenu = [
   ['/operator/members', '会員管理', Users],
   ['/operator/products', '商品管理', Package],
   ['/operator/categories', 'カテゴリ管理', Tags],
-  ['/operator/applications', '出店審査', ClipboardCheck],
+  ['/operator/applications', '出店者審査', ClipboardCheck],
   ['/operator/sellers', '店舗管理', Store],
   ['/operator/organizations', '組織管理', Landmark],
   ['/operator/orders', '全注文管理', ReceiptText],
