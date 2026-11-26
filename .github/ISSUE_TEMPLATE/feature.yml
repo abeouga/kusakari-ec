@@ -6,50 +6,21 @@ labels:
 
 body:
   - type: textarea
-    id: purpose
+    id: summary
     attributes:
-      label: 目的
-      description: このIssueで何を実現するのか記載してください。
-      placeholder: 例）商品を新規登録できるようにする
+      label: 概要
+      description: |
+        何ができるようになるかを「〜できるようにする」の 1 文で書きます。
+        なぜ要るか・前提・根拠のリンクは、要るときだけ 1 行空けて「>」で 1〜2 文の注釈にします。
+        完了条件は PR に書きます。クラス名・ファイル名を並べたり、「〜は変えない」と断ったりしません。
     validations:
       required: true
 
   - type: textarea
-    id: implementation
+    id: decisions
     attributes:
-      label: 実装内容
-      description: 実装する内容を具体的に記載してください。
+      label: 決めること
+      description: 決まっていないことがあるときだけ書きます。番号付きのチェックボックスで並べ、決まったら [x] にしてどう決まったかを 1 行添えます。
       placeholder: |
-        例）
-        - POST /api/products を追加
-        - 商品登録画面を作成
-        - ProductをDBへ保存
-    validations:
-      required: true
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: 完了条件
-      description: このIssueをCloseできる条件を記載してください。
-      placeholder: |
-        例）
-        - 商品を登録できる
-        - 正常時に201を返す
-        - DBにデータが保存される
-        - 関連テストが成功する
-    validations:
-      required: true
-
-  - type: textarea
-    id: related
-    attributes:
-      label: 関連する設計・資料
-      description: 関連する画面、API、クラス図、シーケンス図などがあれば記載してください。
-      placeholder: 例）商品管理シーケンス図、ProductController
-
-  - type: textarea
-    id: notes
-    attributes:
-      label: 補足
-      description: その他必要な情報があれば記載してください。
+        - [ ] 1. 
+        - [ ] 2. 
