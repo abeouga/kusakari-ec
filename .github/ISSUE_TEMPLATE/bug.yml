@@ -8,57 +8,19 @@ body:
   - type: textarea
     id: summary
     attributes:
-      label: 不具合の概要
-      description: 何が問題なのか簡潔に記載してください。
-      placeholder: 例）商品削除後も一覧画面に商品が残る
+      label: 概要
+      description: |
+        何ができるようになるかを「〜できるようにする」の 1 文で書きます。
+        なぜ要るか・前提・根拠のリンクは、要るときだけ 1 行空けて「>」で 1〜2 文の注釈にします。
+        完了条件は PR に書きます。クラス名・ファイル名を並べたり、「〜は変えない」と断ったりしません。
     validations:
       required: true
 
   - type: textarea
-    id: steps
+    id: decisions
     attributes:
-      label: 再現手順
-      description: 不具合を再現する手順を記載してください。
+      label: 決めること
+      description: 決まっていないことがあるときだけ書きます。番号付きのチェックボックスで並べ、決まったら [x] にしてどう決まったかを 1 行添えます。
       placeholder: |
-        例）
-        1. 商品一覧を開く
-        2. 商品を削除する
-        3. 一覧画面に戻る
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: 期待する動作
-      description: 本来どう動くべきか記載してください。
-      placeholder: 例）削除した商品が一覧から消える
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: 実際の動作
-      description: 実際に発生している動作を記載してください。
-      placeholder: 例）削除した商品が一覧に残っている
-    validations:
-      required: true
-
-  - type: textarea
-    id: environment
-    attributes:
-      label: 発生環境
-      description: 必要であればブラウザ、OS、ブランチなどを記載してください。
-      placeholder: |
-        例）
-        - Windows 11
-        - Chrome
-        - feature/product-delete
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: エラー・ログ
-      description: エラーメッセージやログがあれば記載してください。
-      render: shell
+        - [ ] 1. 
+        - [ ] 2. 

@@ -6,14 +6,13 @@ labels:
 
 body:
   - type: textarea
-    id: background
+    id: summary
     attributes:
-      label: 現在の課題
-      description: 今どのような課題があり、なぜ決める必要があるのかを記載してください。前のIssueで決まったことは書き写さず、「前提のIssue」にリンクを置いてください。
-      placeholder: |
-        例）
-        - 1つのアカウントで1つの店舗しか扱えない
-        - 組織やロールの階層を表す仕組みがない
+      label: 概要
+      description: |
+        何ができるようになるかを「〜できるようにする」の 1 文で書きます。
+        なぜ要るか・前提・根拠のリンクは、要るときだけ 1 行空けて「>」で 1〜2 文の注釈にします。
+        完了条件は書きません。クラス名・ファイル名を並べたり、「〜は変えない」と断ったりしません。
     validations:
       required: true
 
@@ -29,30 +28,3 @@ body:
         - [ ] 4. 実装のIssueを作る
     validations:
       required: true
-
-  - type: textarea
-    id: premises
-    attributes:
-      label: 前提のIssue
-      description: すでに決まっていて、このIssueでは変えないことを決めたIssueへのリンクを記載してください。決まった内容は書き写さず、何を決めたIssueかだけを添えてください。親Issueと同じ前提でも、親Issueの本文を繰り返さず、リンクだけを置いてください。
-      placeholder: |
-        例）
-        - #181：オーナーの譲渡の基本の仕様
-        - #102：オーナーは1つの組織に1人
-
-  - type: textarea
-    id: options
-    attributes:
-      label: 案と比較
-      description: 検討している案と、それぞれの良い点・問題点を記載してください。採用しなかった案は理由とともに残してください。
-      placeholder: |
-        例）
-        - 案A：商品の所有者を組織にする。1回の登録で複数店舗で売れるが、価格の変更がほかの店舗にも効く
-        - 案B：商品の所有者を店舗にする。店舗ごとに登録し直す必要がある
-
-  - type: textarea
-    id: related
-    attributes:
-      label: 関連するIssue・資料
-      description: 親Issue、実装のIssue、関連する設計資料などを記載してください。「前提のIssue」に書いたIssueは、ここに重ねて書かないでください。
-      placeholder: 例）親issue：#103、実装：#107、#108

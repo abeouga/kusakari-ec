@@ -6,53 +6,21 @@ labels:
 
 body:
   - type: textarea
-    id: target
+    id: summary
     attributes:
-      label: 改善対象
-      description: どの部分を改善するのか記載してください。
-      placeholder: 例）ProductServiceの商品登録処理
+      label: 概要
+      description: |
+        何ができるようになるかを「〜できるようにする」の 1 文で書きます。
+        なぜ要るか・前提・根拠のリンクは、要るときだけ 1 行空けて「>」で 1〜2 文の注釈にします。
+        完了条件は PR に書きます。クラス名・ファイル名を並べたり、「〜は変えない」と断ったりしません。
     validations:
       required: true
 
   - type: textarea
-    id: problem
+    id: decisions
     attributes:
-      label: 現在の問題
-      description: 現在どのような問題があるのか記載してください。
+      label: 決めること
+      description: 決まっていないことがあるときだけ書きます。番号付きのチェックボックスで並べ、決まったら [x] にしてどう決まったかを 1 行添えます。
       placeholder: |
-        例）
-        - Controllerに業務ロジックが集中している
-        - 同じ処理が複数箇所に重複している
-    validations:
-      required: true
-
-  - type: textarea
-    id: change
-    attributes:
-      label: 改善内容
-      description: どのように変更する予定か記載してください。
-      placeholder: |
-        例）
-        - 業務ロジックをServiceへ移動
-        - 重複処理を共通メソッドへまとめる
-    validations:
-      required: true
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: 完了条件
-      description: 改善完了と判断する条件を記載してください。
-      placeholder: |
-        例）
-        - 重複コードがなくなっている
-        - 既存機能の動作が変わっていない
-        - テストがすべて成功する
-    validations:
-      required: true
-
-  - type: textarea
-    id: impact
-    attributes:
-      label: 影響範囲
-      description: 影響する画面、API、クラスなどを記載してください。
+        - [ ] 1. 
+        - [ ] 2. 
